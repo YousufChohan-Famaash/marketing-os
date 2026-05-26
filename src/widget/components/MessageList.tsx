@@ -1,0 +1,159 @@
+import { useEffect, useRef, useState } from 'react';
+import type { Message, ScopeChip as ScopeChipModel } from '../types/domain';
+import { useSocket } from '../services/socketContext';
+import { useWidgetStore } from '../store/widgetStore';
+import { generateId } from '../utils/id';
+import { FileUploadZone } from './FileUploadZone';
+import { LinkCard } from './LinkCard';
+import { MessageBubble } from './MessageBubble';
+import { QuickReplyChips } from './QuickReplyChips';
+import { RetainerCard } from './RetainerCard';
+import { ScopeChip } from './ScopeChip';
+import { TypingIndicator } from './TypingIndicator';
+import { VideoMessage } from './VideoMessage';
+
+type TimelineItem =
+  | { kind: 'message'; ts: number; data: Message }
+  | { kind: 'chip'; ts: number; data: ScopeChipModel };
+
+const SCROLL_TOLERANCE = 64;
+
+export function MessageList() {
+  const messages = useWidgetStore((s) => s.messages);
+  const chips = useWidgetStore((s) => s.chips);
+  const isAiTyping = useWidgetStore((s) => s.isAiTyping);
+  const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const updateMessage = useWidgetStore((s) => s.updateMessage);
+
+  const socket = useSocket();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(true);
+
+  const timeline: TimelineItem[] = [
+    ...messages.map<TimelineItem>((m) => ({ kind: 'message', ts: m.timestamp, data: m })),
+    ...chips.map<TimelineItem>((c) => ({ kind: 'chip', ts: c.timestamp, data: c })),
+  ].sort((a, b) => a.ts - b.ts);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pinned) return;
+    el.scrollTop = el.scrollHeight;
+  }, [timeline.length, isAiTyping, pinned]);
+
+  // Re-pin to bottom whenever the message content of the LAST message grows.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pinned) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages.map((m) => m.content).join('|'), pinned]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setPinned(distanceFromBottom <= SCROLL_TOLERANCE);
+  };
+
+  const sendQuickReply = (msg: Message, option: string) => {
+    if (!socket) return;
+    updateMessage(msg.id, { selectedOption: option });
+    // Mirror the selection as a lead bubble for visual continuity.
+    useWidgetStore.getState().addMessage({
+      id: generateId('msg_lead'),
+      role: 'lead',
+      type: 'text',
+      content: option,
+      timestamp: Date.now(),
+      status: 'sent',
+    });
+    socket.send({ type: 'quick_reply_selected', messageId: msg.id, selectedOption: option });
+  };
+
+  const handleFilesUploaded = (msg: Message, files: Message['files'] = []) => {
+    if (!socket || !files || files.length === 0) return;
+    updateMessage(msg.id, { files });
+    socket.send({ type: 'file_uploaded', files });
+  };
+
+  const handleRetainerReview = (msg: Message) => {
+    updateMessage(msg.id, { retainerStatus: 'signing' });
+    setActiveModal('esign');
+  };
+
+  return (
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className="flex-1 overflow-y-auto px-4 py-3"
+      role="log"
+      aria-live="polite"
+      aria-relevant="additions text"
+      aria-atomic="false"
+      aria-label="Conversation"
+    >
+      <div className="flex flex-col gap-3">
+        {timeline.map((item) => {
+          if (item.kind === 'chip') {
+            return (
+              <div key={`chip_${item.data.id}`} className="flex justify-center">
+                <ScopeChip chip={item.data} />
+              </div>
+            );
+          }
+          const m = item.data;
+          if (m.type === 'video_intro' || m.type === 'video_message') {
+            return <VideoMessage key={m.id} message={m} />;
+          }
+          if (m.type === 'link_card' && m.linkCard) {
+            return <LinkCard key={m.id} card={m.linkCard} />;
+          }
+          if (m.type === 'retainer') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  <RetainerCard message={m} onReviewAndSign={() => handleRetainerReview(m)} />
+                }
+              />
+            );
+          }
+          if (m.type === 'quick_reply' && m.options) {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming && (
+                    <QuickReplyChips
+                      options={m.options}
+                      selected={m.selectedOption}
+                      onSelect={(opt) => sendQuickReply(m, opt)}
+                    />
+                  )
+                }
+              />
+            );
+          }
+          if (m.type === 'file_upload' && m.role !== 'lead') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming && (
+                    <FileUploadZone
+                      onComplete={(files) => handleFilesUploaded(m, files)}
+                    />
+                  )
+                }
+              />
+            );
+          }
+          return <MessageBubble key={m.id} message={m} />;
+        })}
+        {isAiTyping && <TypingIndicator />}
+      </div>
+    </div>
+  );
+}
