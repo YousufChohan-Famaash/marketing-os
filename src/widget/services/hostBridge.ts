@@ -37,15 +37,20 @@ export interface HostBridgeClient {
 }
 
 /**
- * Build a regex that matches any of the supplied origins. If the list is empty,
- * fall back to matching only the iframe's own origin (safe default for dev).
+ * Build a regex that matches any of the supplied origins, PLUS the iframe's
+ * own origin (so same-domain demo deployments — widget + host page on one
+ * Vercel project — always handshake without explicit allow-list entries).
+ *
+ * Cross-origin embeds (real client sites embedding widget.famaash.com on
+ * a third-party law-firm domain) still go through `allowedOrigins` from boot config.
  */
 function originAllowList(origins: string[]): RegExp {
-  const sources =
-    origins.length > 0
-      ? origins
-      : [typeof window !== 'undefined' ? window.location.origin : 'http://localhost'];
-  const escaped = sources.map((o) => o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const selfOrigin =
+    typeof window !== 'undefined' ? window.location.origin : '';
+  const set = new Set<string>([selfOrigin, ...origins].filter(Boolean));
+  const escaped = [...set].map((o) =>
+    o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+  );
   return new RegExp(`^(${escaped.join('|')})$`);
 }
 

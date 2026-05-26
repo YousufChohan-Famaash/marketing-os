@@ -13,9 +13,9 @@ import type { AnalyticsEvent, ConversationSocket } from './types/protocol';
 import { generateId } from './utils/id';
 
 function readFirmIdFromQuery(): string {
-  if (typeof window === 'undefined') return 'firm_mendelson_demo';
+  if (typeof window === 'undefined') return 'firm_famaash_demo';
   const params = new URLSearchParams(window.location.search);
-  return params.get('firm_id') ?? 'firm_mendelson_demo';
+  return params.get('firm_id') ?? 'firm_famaash_demo';
 }
 
 export function App() {

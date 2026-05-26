@@ -428,25 +428,25 @@ export function createFlow(_config: WidgetBootConfig): Flow {
     stage = 'done';
     const links: LinkCardPayload[] = [
       {
-        url: 'https://mendelson-law.com/blog/first-48-hours',
+        url: 'https://famaash-law.com/blog/first-48-hours',
         title: 'What to expect in your first 48 hours',
         description:
           'A short guide to the medical, insurance, and communication steps that matter most.',
-        domain: 'mendelson-law.com',
+        domain: 'famaash-law.com',
       },
       {
-        url: 'https://mendelson-law.com/blog/contingency-fees',
+        url: 'https://famaash-law.com/blog/contingency-fees',
         title: 'How contingency fees work',
         description:
           'No fees unless we win. Here\'s exactly how that math plays out.',
-        domain: 'mendelson-law.com',
+        domain: 'famaash-law.com',
       },
       {
-        url: 'https://mendelson-law.com/checklists/medical-documentation',
+        url: 'https://famaash-law.com/checklists/medical-documentation',
         title: 'Required medical documentation checklist',
         description:
           'Print this and bring it to every appointment for the next 30 days.',
-        domain: 'mendelson-law.com',
+        domain: 'famaash-law.com',
       },
     ];
 
@@ -472,11 +472,11 @@ export function createFlow(_config: WidgetBootConfig): Flow {
         ),
         ...links.map(aiLinkCard),
         aiText(
-          'If you have any urgent questions, [text us anytime](sms:+15551234567) or [email Sarah directly](mailto:sarah@mendelson-law.com).',
+          'If you have any urgent questions, [text us anytime](sms:+15551234567) or [email Sarah directly](mailto:sarah@famaash-law.com).',
           true,
         ),
         aiText(
-          `Sarah from our team will reach out about your ${practiceArea.toLowerCase()} matter within 24 hours. Thanks for choosing Mendelson & Associates.`,
+          `Sarah from our team will reach out about your ${practiceArea.toLowerCase()} matter within 24 hours. Thanks for choosing Famaash Law.`,
         ),
       ],
       awaiting: 'none',

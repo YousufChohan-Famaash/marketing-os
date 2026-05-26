@@ -98,7 +98,7 @@ export default function ESignChunk() {
         <div className="rounded-md border border-hairline bg-subtle p-3 text-[12px] leading-relaxed text-ink-soft">
           <p className="font-semibold text-ink">CONTINGENCY FEE RETAINER AGREEMENT</p>
           <p className="mt-2">
-            This agreement is between you ("Client") and Mendelson &amp; Associates
+            This agreement is between you ("Client") and Famaash Law
             ("Firm"). The Firm will represent you on a contingency basis at 33% of any
             recovery. No fee unless we win.
           </p>

@@ -31,13 +31,13 @@ export function HumanTakeoverModal() {
   const choose = (id: 'call' | 'live' | 'video') => {
     if (id === 'live') {
       setAgentTakeover({
-        agentName: 'Sarah Mendelson',
+        agentName: 'Sarah Khan',
         agentTitle: 'Intake specialist',
       });
       addChip({
         id: `chip_handoff_${Date.now()}`,
         kind: 'attorney_joining',
-        label: 'Sarah Mendelson joining call · warm handoff queued for 2:34 PM',
+        label: 'Sarah Khan joining call · warm handoff queued for 2:34 PM',
         timestamp: Date.now(),
       });
     }

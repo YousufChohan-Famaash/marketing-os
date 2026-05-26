@@ -34,7 +34,7 @@ Open <http://localhost:5173/demo-host.html> — that's a fake PI-firm landing pa
 A client site adds **one line** to its HTML:
 
 ```html
-<script async src="https://widget.famaash.com/loader.js" data-firm-id="firm_mendelson_demo"></script>
+<script async src="https://widget.famaash.com/loader.js" data-firm-id="firm_famaash_demo"></script>
 ```
 
 The loader (`src/loader/loader.ts`):
@@ -174,7 +174,7 @@ See the "Deferred — track here, fold in next pass" section of the spec doc. Hi
 ## Public widget API
 
 ```html
-<script async src="https://widget.famaash.com/loader.js" data-firm-id="firm_mendelson_demo"></script>
+<script async src="https://widget.famaash.com/loader.js" data-firm-id="firm_famaash_demo"></script>
 <script>
   // Available after the loader runs.
   Famaash.open();
