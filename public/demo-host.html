@@ -282,10 +282,10 @@
     </footer>
 
     <!--
-      Famaash widget embed. In production this is:
-        <script async src="https://widget.famaash.com/loader.js" data-firm-id="..."></script>
-      During dev, Vite serves the TS source directly as a module.
+      Famaash widget embed. /loader.js is the deploy artefact.
+      In dev, a Vite middleware aliases /loader.js -> /src/loader/loader.ts
+      so the same HTML works in both modes (see vite.config.ts).
     -->
-    <script type="module" src="/src/loader/loader.ts" data-firm-id="firm_mendelson_demo"></script>
+    <script type="module" src="/loader.js" data-firm-id="firm_mendelson_demo"></script>
   </body>
 </html>
