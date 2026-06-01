@@ -12,7 +12,6 @@ interface WidgetControlsProps {
 }
 
 export function WidgetControls({
-  onClose,
   onMinimize,
   onReplay,
   onExpand,
