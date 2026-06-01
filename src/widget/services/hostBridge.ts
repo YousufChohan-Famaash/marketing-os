@@ -30,6 +30,8 @@ export interface IframeBridgeHandlers {
 export interface HostBridgeClient {
   requestClose(): Promise<void>;
   requestMinimize(): Promise<void>;
+  requestExpand(): Promise<void>;
+  requestShrink(): Promise<void>;
   getHostContext(): Promise<HostContext | null>;
   notifyEvent(event: AnalyticsEvent): void;
   destroy(): void;
@@ -109,6 +111,14 @@ export function createHostBridge(
       const r = await ready;
       await r?.requestMinimize();
     },
+    async requestExpand() {
+      const r = await ready;
+      await r?.requestExpand();
+    },
+    async requestShrink() {
+      const r = await ready;
+      await r?.requestShrink();
+    },
     async getHostContext() {
       const r = await ready;
       if (!r) return null;
@@ -139,6 +149,8 @@ function makeNoOpClient(): HostBridgeClient {
   return {
     requestClose: async () => undefined,
     requestMinimize: async () => undefined,
+    requestExpand: async () => undefined,
+    requestShrink: async () => undefined,
     getHostContext: async () => null,
     notifyEvent: () => undefined,
     destroy: () => undefined,

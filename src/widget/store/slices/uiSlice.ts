@@ -12,6 +12,7 @@ import type { WidgetStore } from '../widgetStore';
 export type ActiveModal =
   | 'esign'
   | 'voice'
+  | 'video'
   | 'human-takeover'
   | 'emergency'
   | null;

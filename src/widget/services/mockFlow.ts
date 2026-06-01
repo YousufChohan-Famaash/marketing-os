@@ -194,7 +194,7 @@ export function createFlow(_config: WidgetBootConfig): Flow {
           field: field('practice_area', 'Matter type', 'select', input.value, 'identity'),
         },
         aiQuickReply(
-          `Thanks — let's look at your ${input.value.toLowerCase()} matter. Before we go further, can I send you automated updates about your case?`,
+          `I'm really sorry that happened to you. Before we start, may I send you automated updates about your case?`,
           ['Yes', 'No'],
         ),
       ],
@@ -228,7 +228,9 @@ export function createFlow(_config: WidgetBootConfig): Flow {
     return {
       outputs: [
         { kind: 'scope_chip', chip: chip('tcpa_captured', 'TCPA consent captured') },
-        aiText("Great! What's your name?"),
+        aiText(
+          "Thank you. Let me ask a few quick questions so I can help. What's your first name?",
+        ),
       ],
       awaiting: 'text',
       isTerminal: false,

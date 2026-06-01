@@ -12,9 +12,11 @@ import { SafetyButtons } from './SafetyButtons';
 interface WidgetShellProps {
   onClose: () => void;
   onMinimize: () => void;
+  onExpand: () => void;
+  isExpanded: boolean;
 }
 
-export function WidgetShell({ onClose, onMinimize }: WidgetShellProps) {
+export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: WidgetShellProps) {
   const composerRef = useRef<ComposerHandle>(null);
   const bootStatus = useWidgetStore((s) => s.bootStatus);
   const bootError = useWidgetStore((s) => s.bootError);
@@ -61,13 +63,13 @@ export function WidgetShell({ onClose, onMinimize }: WidgetShellProps) {
   }
 
   if (introEnabled && !introCompleted) {
-    return <IntroStage onClose={onClose} />;
+    return <IntroStage onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />;
   }
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-bg">
-      <ChatHeader onClose={onClose} onMinimize={onMinimize} />
-      <div className="flex justify-center bg-bg-canvas pb-1">
+      <ChatHeader onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+      <div className="flex justify-center pb-1">
         <CaptureProgress />
       </div>
       <CaptureDrawer />

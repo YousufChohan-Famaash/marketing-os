@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import type { Message } from '../types/domain';
 import { cn } from '../utils/cn';
+import { matchPracticeIcon } from './BrandAssets';
 import { RichText } from './RichText';
 
 interface MessageBubbleProps {
@@ -11,12 +12,14 @@ interface MessageBubbleProps {
 
 function bubbleStyle(role: Message['role']): string {
   if (role === 'lead') {
-    return 'bg-famaash text-white rounded-2xl rounded-br-md ml-auto';
+    // Figma: light-purple pill, dark text, right-aligned.
+    return 'bg-[#EEEEFF] text-[#1A1A1A] rounded-pill border border-[#F3F3F3] ml-auto';
   }
   if (role === 'agent') {
-    return 'bg-success-soft text-ink rounded-2xl rounded-bl-md border border-success/30';
+    return 'bg-success-soft text-ink rounded-2xl rounded-bl-md border border-success/30 font-message';
   }
-  return 'bg-subtle text-ink rounded-2xl rounded-bl-md border border-hairline';
+  // AI: no bubble chrome in the new design — plain text in the message font.
+  return 'bg-transparent text-[#1E2939] font-message';
 }
 
 function formatTime(ts: number): string {
@@ -32,6 +35,7 @@ export const MessageBubble = memo(function MessageBubble({
   const isAi = message.role === 'ai' || message.role === 'agent';
   const isFailed = message.status === 'failed';
   const isSending = message.status === 'sending';
+  const leadIcon = isLead ? matchPracticeIcon(message.content, 16) : null;
 
   return (
     <div
@@ -42,14 +46,21 @@ export const MessageBubble = memo(function MessageBubble({
     >
       <div
         className={cn(
-          'inline-flex max-w-[85%] px-4 py-2.5 text-[0.9375rem] leading-relaxed shadow-sm',
+          'inline-flex max-w-[88%] text-[0.8125rem] leading-relaxed',
           'whitespace-pre-wrap break-words',
+          // AI text is chrome-free; lead/agent keep bubble padding + shadow.
+          message.role === 'ai' ? 'px-0.5 py-1' : 'px-4 py-2.5 shadow-sm',
           bubbleStyle(message.role),
           message.isStreaming && 'stream-cursor',
         )}
       >
         {message.hasMarkdown && isAi ? (
           <RichText content={message.content} />
+        ) : isLead ? (
+          <span className="flex items-center gap-2">
+            {leadIcon}
+            <span>{message.content}</span>
+          </span>
         ) : (
           <span>{message.content}</span>
         )}

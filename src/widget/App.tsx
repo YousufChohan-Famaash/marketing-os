@@ -26,6 +26,7 @@ export function App() {
   const isWidgetOpen = useWidgetStore((s) => s.isWidgetOpen);
 
   const [socket, setSocket] = useState<ConversationSocket | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
@@ -103,6 +104,16 @@ export function App() {
     void bridgeRef.current?.requestMinimize();
   };
 
+  const handleExpand = () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    if (next) {
+      void bridgeRef.current?.requestExpand();
+    } else {
+      void bridgeRef.current?.requestShrink();
+    }
+  };
+
   const handleError = (error: Error) => {
     notifyHostEvent({
       type: 'widget_error',
@@ -118,7 +129,7 @@ export function App() {
     >
       <SocketContext.Provider value={socket}>
         <div className="relative flex h-full w-full flex-col">
-          <WidgetShell onClose={handleClose} onMinimize={handleMinimize} />
+          <WidgetShell onClose={handleClose} onMinimize={handleMinimize} onExpand={handleExpand} isExpanded={isExpanded} />
           <ModalHost />
         </div>
       </SocketContext.Provider>

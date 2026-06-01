@@ -19,10 +19,9 @@
     width: 100%;
     background: var(--bg);
     color: var(--ink);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-feature-settings: 'cv11', 'ss03', 'calt', 'kern', 'liga';
+    font-family: var(--font-ui);
     font-weight: 450;
-    letter-spacing: -0.005em;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
@@ -88,6 +87,10 @@
 }
 
 @layer utilities {
+  .font-message {
+    font-family: var(--font-message);
+  }
+
   .sr-only {
     position: absolute;
     width: 1px;

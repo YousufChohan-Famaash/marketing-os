@@ -209,6 +209,8 @@ export interface IframeBridge {
 export interface HostBridge {
   requestClose(): Promise<void>;
   requestMinimize(): Promise<void>;
+  requestExpand(): Promise<void>;
+  requestShrink(): Promise<void>;
   getHostContext(): Promise<HostContext>;
   notifyEvent(event: { type: string; data: unknown }): Promise<void>;
 }

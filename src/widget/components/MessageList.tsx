@@ -3,6 +3,7 @@ import type { Message, ScopeChip as ScopeChipModel } from '../types/domain';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
+import { ConversationIntro } from './ConversationIntro';
 import { FileUploadZone } from './FileUploadZone';
 import { LinkCard } from './LinkCard';
 import { MessageBubble } from './MessageBubble';
@@ -91,11 +92,12 @@ export function MessageList() {
       aria-atomic="false"
       aria-label="Conversation"
     >
-      <div className="flex flex-col gap-3">
+      <ConversationIntro />
+      <div className="mt-2 flex flex-col gap-3">
         {timeline.map((item) => {
           if (item.kind === 'chip') {
             return (
-              <div key={`chip_${item.data.id}`} className="flex justify-center">
+              <div key={`chip_${item.data.id}`} className="flex justify-start">
                 <ScopeChip chip={item.data} />
               </div>
             );

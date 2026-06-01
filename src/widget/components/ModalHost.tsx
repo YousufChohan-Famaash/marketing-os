@@ -4,10 +4,10 @@ import { EmergencyModal } from './EmergencyModal';
 import { HumanTakeoverModal } from './HumanTakeoverModal';
 import { SpinnerIcon } from '../utils/icons';
 
-// Lazy chunks. VideoRecorderChunk is built but has no UI trigger wired yet;
-// flag in spec deferred list says: surface from composer or safety menu.
+// Lazy chunks — each loaded only when its modal opens.
 const VoiceCallChunk = lazy(() => import('./lazy/VoiceCallChunk'));
 const ESignChunk = lazy(() => import('./lazy/ESignChunk'));
+const VideoRecorderChunk = lazy(() => import('./lazy/VideoRecorderChunk'));
 
 function ChunkFallback() {
   return (
@@ -31,6 +31,7 @@ export function ModalHost() {
     <Suspense fallback={<ChunkFallback />}>
       {activeModal === 'voice' && <VoiceCallChunk />}
       {activeModal === 'esign' && <ESignChunk />}
+      {activeModal === 'video' && <VideoRecorderChunk />}
     </Suspense>
   );
 }

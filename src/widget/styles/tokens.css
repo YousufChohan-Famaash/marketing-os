@@ -45,4 +45,11 @@
 
   /* Easing */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Typography (per Figma: Satoshi for UI, Sora for AI messages / inputs) */
+  --font-ui: 'Satoshi', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-message: 'Sora', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Practice-area icon accent (Figma uses blue, distinct from brand purple) */
+  --practice-accent: #155DFC;
 }

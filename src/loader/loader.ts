@@ -23,6 +23,8 @@ interface IframeMethods {
 interface HostMethods {
   requestClose(): void;
   requestMinimize(): void;
+  requestExpand(): void;
+  requestShrink(): void;
   getHostContext(): { url: string; referrer: string; utm: Record<string, string> };
   notifyEvent(event: { type: string; data: unknown }): void;
 }
@@ -90,6 +92,10 @@ const styles = `
   }
 }
 #${IFRAME_ID}.is-hidden, #${LAUNCHER_ID}.is-hidden { display: none; }
+#${IFRAME_ID}.is-expanded {
+  width: min(680px, calc(100vw - 40px));
+  height: min(80vh, 800px);
+}
 `;
 
 function injectStyles(): void {
@@ -143,11 +149,15 @@ function readScriptConfig(): { firmId: string; widgetOrigin: string } {
   const hostMethods: HostMethods = {
     requestClose: () => {
       iframe?.classList.add('is-hidden');
-      launcher.classList.remove('is-hidden');
     },
     requestMinimize: () => {
       iframe?.classList.add('is-hidden');
-      launcher.classList.remove('is-hidden');
+    },
+    requestExpand: () => {
+      iframe?.classList.add('is-expanded');
+    },
+    requestShrink: () => {
+      iframe?.classList.remove('is-expanded');
     },
     getHostContext: () => ({
       url: window.location.href,
@@ -195,21 +205,18 @@ function readScriptConfig(): { firmId: string; widgetOrigin: string } {
   }
 
   function openWidget(): void {
-    launcher.classList.add('is-hidden');
     ensureIframe()
       .then((remote) => {
         iframe?.classList.remove('is-hidden');
         return remote.open();
       })
       .catch(() => {
-        launcher.classList.remove('is-hidden');
         iframe?.classList.add('is-hidden');
       });
   }
 
   function closeWidget(): void {
     iframe?.classList.add('is-hidden');
-    launcher.classList.remove('is-hidden');
     iframeRemote?.close().catch(() => undefined);
   }
 

@@ -38,11 +38,9 @@ const FAMAASH_DEMO: WidgetBootConfig = {
     introVideoCaption:
       "Hi 👋 I'm John Famaash, founding partner. What kind of matter can we help with?",
     practiceAreas: [
-      'Car Accident',
-      'Slip & Fall',
-      'Workers’ Compensation',
-      'Medical Malpractice',
-      'Animal Bite',
+      'Car / motor vehicle accident',
+      'Truck or commercial vehicle',
+      'Slip & fall / premises',
       'Something else',
     ],
   },
