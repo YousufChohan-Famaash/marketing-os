@@ -65,24 +65,15 @@ type Stage =
   | 'done';
 
 const STATE_OPTIONS = [
-  'NJ',
-  'NY',
-  'PA',
-  'CA',
-  'TX',
-  'FL',
-  'IL',
-  'MA',
-  'GA',
-  'OH',
+  'New York',
+  'New Jersey',
+  'Pennsylvania',
+  'California',
+  'Texas',
+  'Florida',
+  'Illinois',
+  'Massachusetts',
   'Other',
-];
-
-const INCIDENT_DATE_OPTIONS = [
-  'Today',
-  'Yesterday',
-  '2–7 days ago',
-  'More than a week ago',
 ];
 
 const ROLE_OPTIONS = ['Driving', 'Passenger', 'Other'];
@@ -121,6 +112,14 @@ const aiText = (content: string, hasMarkdown = false): FlowOutput => ({
 const aiQuickReply = (content: string, options: string[]): FlowOutput => ({
   kind: 'ai_message',
   message: { role: 'ai', type: 'quick_reply', content, options },
+});
+
+const aiDatePicker = (
+  content: string,
+  datePickerMode: 'birthday' | 'recent',
+): FlowOutput => ({
+  kind: 'ai_message',
+  message: { role: 'ai', type: 'date_picker', content, datePickerMode },
 });
 
 const aiFileRequest = (content: string): FlowOutput => ({
@@ -247,7 +246,7 @@ export function createFlow(_config: WidgetBootConfig): Flow {
           kind: 'field_captured',
           field: field('first_name', 'First name', 'text', input.content.trim(), 'identity'),
         },
-        aiText(`Got it, ${leadName}. What's your date of birth?`),
+        aiDatePicker(`Got it, ${leadName}. What's your date of birth?`, 'birthday'),
       ],
       awaiting: 'text',
       isTerminal: false,
@@ -293,12 +292,12 @@ export function createFlow(_config: WidgetBootConfig): Flow {
             `SOL passed · ${input.value} · 698 days remaining`,
           ),
         },
-        aiQuickReply(
+        aiDatePicker(
           'Tell me what happened. When did the accident occur?',
-          INCIDENT_DATE_OPTIONS,
+          'recent',
         ),
       ],
-      awaiting: 'quick_reply',
+      awaiting: 'text',
       isTerminal: false,
     };
   }

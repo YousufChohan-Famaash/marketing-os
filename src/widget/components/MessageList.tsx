@@ -3,6 +3,7 @@ import type { Message, ScopeChip as ScopeChipModel } from '../types/domain';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
+import { CalendarPicker } from './CalendarPicker';
 import { ConversationIntro } from './ConversationIntro';
 import { FileUploadZone } from './FileUploadZone';
 import { LinkCard } from './LinkCard';
@@ -57,17 +58,25 @@ export function MessageList() {
 
   const sendQuickReply = (msg: Message, option: string) => {
     if (!socket) return;
+    // The chosen chip stays highlighted in place (no mirrored lead bubble).
     updateMessage(msg.id, { selectedOption: option });
-    // Mirror the selection as a lead bubble for visual continuity.
+    socket.send({ type: 'quick_reply_selected', messageId: msg.id, selectedOption: option });
+  };
+
+  const sendDate = (msg: Message, label: string) => {
+    if (!socket) return;
+    // Collapse the picker and mirror the choice as a lead bubble.
+    updateMessage(msg.id, { selectedOption: label });
     useWidgetStore.getState().addMessage({
       id: generateId('msg_lead'),
       role: 'lead',
       type: 'text',
-      content: option,
+      content: label,
       timestamp: Date.now(),
       status: 'sent',
     });
-    socket.send({ type: 'quick_reply_selected', messageId: msg.id, selectedOption: option });
+    // The flow's date stages accept a plain text reply.
+    socket.send({ type: 'lead_message', content: label, clientMessageId: generateId('msg_lead') });
   };
 
   const handleFilesUploaded = (msg: Message, files: Message['files'] = []) => {
@@ -116,6 +125,23 @@ export function MessageList() {
                 message={m}
                 affordance={
                   <RetainerCard message={m} onReviewAndSign={() => handleRetainerReview(m)} />
+                }
+              />
+            );
+          }
+          if (m.type === 'date_picker') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming &&
+                  !m.selectedOption && (
+                    <CalendarPicker
+                      mode={m.datePickerMode}
+                      onSubmit={(label) => sendDate(m, label)}
+                    />
+                  )
                 }
               />
             );

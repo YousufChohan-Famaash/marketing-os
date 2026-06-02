@@ -1,4 +1,5 @@
 import { useRef, type KeyboardEvent } from 'react';
+import { cn } from '../utils/cn';
 
 interface QuickReplyChipsProps {
   options: string[];
@@ -9,7 +10,8 @@ interface QuickReplyChipsProps {
 
 /**
  * Keyboard-navigable chip row. Arrow keys cycle, Enter/Space activates.
- * Once selected, chips collapse and `selected` is highlighted.
+ * After a pick the chips stay in place: the chosen one fills brand-purple and
+ * the rest fade out, locked from further input (Figma).
  */
 export function QuickReplyChips({
   options,
@@ -18,6 +20,7 @@ export function QuickReplyChips({
   onSelect,
 }: QuickReplyChipsProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const locked = Boolean(selected) || Boolean(disabled);
 
   const focusAt = (idx: number) => {
     const len = options.length;
@@ -41,31 +44,38 @@ export function QuickReplyChips({
     }
   };
 
-  if (selected) {
-    return null;
-  }
-
   return (
     <div
       role="group"
       aria-label="Quick reply options"
-      className="mt-2 flex flex-wrap gap-1.5"
+      className="mt-2 flex flex-wrap gap-2"
     >
-      {options.map((option, i) => (
-        <button
-          key={option}
-          ref={(el) => {
-            refs.current[i] = el;
-          }}
-          type="button"
-          disabled={disabled}
-          onClick={() => onSelect(option)}
-          onKeyDown={(e) => handleKey(e, i)}
-          className="rounded-pill border border-famaash-border bg-white px-3 py-1.5 text-[13px] font-medium text-famaash transition-colors hover:bg-famaash-light disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {option}
-        </button>
-      ))}
+      {options.map((option, i) => {
+        const isSelected = option === selected;
+        return (
+          <button
+            key={option}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            disabled={locked}
+            aria-pressed={isSelected}
+            onClick={() => onSelect(option)}
+            onKeyDown={(e) => handleKey(e, i)}
+            className={cn(
+              'rounded-pill border px-4 py-2 text-[13px] font-medium transition-colors',
+              isSelected
+                ? 'border-transparent bg-famaash text-white'
+                : 'border-[#EAEEF3] bg-white text-[#1A1A1A] hover:bg-[#F5F8FB]',
+              locked && 'cursor-default',
+              locked && !isSelected && 'opacity-50',
+            )}
+          >
+            {option}
+          </button>
+        );
+      })}
     </div>
   );
 }

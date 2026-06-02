@@ -1,4 +1,5 @@
 node_modules/
+prompts/
 dist/
 .vite/
 .env

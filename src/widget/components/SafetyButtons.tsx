@@ -17,7 +17,7 @@ export function SafetyButtons() {
         <button
           type="button"
           onClick={() => setActiveModal('human-takeover')}
-          className="inline-flex items-center gap-1 rounded-pill border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-ink-soft hover:bg-subtle"
+          className="inline-flex items-center gap-1 rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-2.5 py-1 text-[11px] font-medium text-[#1A1A1A] hover:bg-[#F5F8FB]"
         >
           <PhoneIcon size={12} aria-hidden="true" />
           Talk to a human
@@ -25,7 +25,7 @@ export function SafetyButtons() {
       )}
       <button
         type="button"
-        className="mx-auto inline-flex items-center gap-1 rounded-pill border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-ink-soft hover:bg-subtle"
+        className="mx-auto inline-flex items-center gap-1 rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-2.5 py-1 text-[11px] font-medium text-[#1A1A1A] hover:bg-[#F5F8FB]"
       >
         <MessageSquareIcon size={12} aria-hidden="true" />
         Text me
@@ -33,9 +33,9 @@ export function SafetyButtons() {
       <button
         type="button"
         onClick={() => setActiveModal('emergency')}
-        className="inline-flex items-center gap-1 rounded-pill border border-danger/30 bg-danger-soft px-2.5 py-1 text-[11px] font-medium text-danger hover:bg-danger/15"
+        className="inline-flex items-center gap-1 rounded-pill border border-[#F9E2E2] bg-[#FFEFEF] px-2.5 py-1 text-[11px] font-medium text-[#1A1A1A] hover:bg-[#FCE4E4]"
       >
-        <AlertIcon size={12} aria-hidden="true" />
+        <AlertIcon size={12} className="text-[#F86669]" aria-hidden="true" />
         I need help now
       </button>
     </div>

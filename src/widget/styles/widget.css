@@ -91,6 +91,15 @@
     font-family: var(--font-message);
   }
 
+  /* Hide scrollbar on the date-wheel columns (iOS-style picker). */
+  .wheel-col {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .wheel-col::-webkit-scrollbar {
+    display: none;
+  }
+
   .sr-only {
     position: absolute;
     width: 1px;

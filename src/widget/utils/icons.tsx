@@ -68,6 +68,18 @@ export const ChevronUpIcon = (p: IconProps) => (
   </Base>
 );
 
+export const ChevronLeftIcon = (p: IconProps) => (
+  <Base {...p}>
+    <polyline points="15 18 9 12 15 6" />
+  </Base>
+);
+
+export const ChevronRightIcon = (p: IconProps) => (
+  <Base {...p}>
+    <polyline points="9 18 15 12 9 6" />
+  </Base>
+);
+
 export const SendIcon = (p: IconProps) => (
   <Base {...p}>
     <line x1="22" y1="2" x2="11" y2="13" />

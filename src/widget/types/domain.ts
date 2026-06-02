@@ -3,6 +3,7 @@ export type MessageRole = 'ai' | 'lead' | 'system' | 'agent';
 export type MessageType =
   | 'text'
   | 'quick_reply'
+  | 'date_picker'
   | 'file_upload'
   | 'retainer'
   | 'video_intro'
@@ -47,6 +48,8 @@ export interface Message {
   status: 'sending' | 'sent' | 'delivered' | 'failed';
   options?: string[];
   selectedOption?: string;
+  /** For `date_picker` messages: tunes the calendar's initial view. 'birthday' opens decades back; 'recent' opens on the current month. Future dates are always blocked. */
+  datePickerMode?: 'birthday' | 'recent';
   files?: UploadedFile[];
   retainerStatus?: 'pending' | 'signing' | 'signed';
   video?: VideoPayload;
