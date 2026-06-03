@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { ScopeChip } from '../../types/domain';
 import type { WidgetStore } from '../widgetStore';
+import { nextSeq } from '../seq';
 
 export interface ScopeSlice {
   chips: ScopeChip[];
@@ -15,6 +16,7 @@ export const createScopeSlice: StateCreator<
   ScopeSlice
 > = (set) => ({
   chips: [],
-  addChip: (chip) => set((state) => ({ chips: [...state.chips, chip] })),
+  addChip: (chip) =>
+    set((state) => ({ chips: [...state.chips, { ...chip, seq: chip.seq ?? nextSeq() }] })),
   resetChips: () => set({ chips: [] }),
 });

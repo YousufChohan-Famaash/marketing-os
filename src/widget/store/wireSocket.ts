@@ -1,3 +1,4 @@
+import type { Message } from '../types/domain';
 import type { ConversationSocket } from '../types/protocol';
 import { useWidgetStore } from './widgetStore';
 
@@ -7,6 +8,26 @@ import { useWidgetStore } from './widgetStore';
  */
 export function wireSocketToStore(socket: ConversationSocket): () => void {
   const store = useWidgetStore;
+
+  /**
+   * Patch a message by id, creating it if absent. Used by the standalone
+   * affordance events (quick_reply_options, retainer_present, …) which augment
+   * a question bubble whether or not its `message_complete` arrived first.
+   */
+  const mergeMessage = (id: string, patch: Partial<Message>) => {
+    const s = store.getState();
+    const existing = s.messages.find((m) => m.id === id);
+    s.upsertMessage({
+      role: 'ai',
+      type: 'text',
+      content: '',
+      timestamp: Date.now(),
+      status: 'delivered',
+      ...existing,
+      ...patch,
+      id,
+    } as Message);
+  };
 
   const offs: Array<() => void> = [
     socket.on('message_complete', (e) => {
@@ -48,6 +69,36 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
               : null;
         if (sectionId) store.getState().setSectionComplete(sectionId, true);
       }
+    }),
+
+    // Standalone affordance events — used when the backend delivers a question's
+    // options/upload/retainer/card separately instead of embedded in the message.
+    socket.on('quick_reply_options', (e) => {
+      mergeMessage(e.messageId, { type: 'quick_reply', options: e.options });
+    }),
+
+    socket.on('file_upload_request', (e) => {
+      mergeMessage(e.messageId, { type: 'file_upload', content: e.prompt });
+    }),
+
+    socket.on('retainer_present', (e) => {
+      mergeMessage(e.messageId, { type: 'retainer', retainerStatus: 'pending' });
+    }),
+
+    socket.on('link_card', (e) => {
+      mergeMessage(e.messageId, {
+        type: 'link_card',
+        linkCard: e.card,
+        content: e.card.title,
+      });
+    }),
+
+    socket.on('video_message', (e) => {
+      mergeMessage(e.messageId, {
+        type: 'video_message',
+        video: e.video,
+        role: e.role ?? 'ai',
+      });
     }),
 
     socket.on('agent_takeover', (e) => {

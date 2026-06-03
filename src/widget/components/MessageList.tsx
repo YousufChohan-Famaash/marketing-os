@@ -15,10 +15,30 @@ import { TypingIndicator } from './TypingIndicator';
 import { VideoMessage } from './VideoMessage';
 
 type TimelineItem =
-  | { kind: 'message'; ts: number; data: Message }
-  | { kind: 'chip'; ts: number; data: ScopeChipModel };
+  | { kind: 'message'; order: number; data: Message }
+  | { kind: 'chip'; order: number; data: ScopeChipModel };
 
 const SCROLL_TOLERANCE = 64;
+
+/**
+ * Coerce `options` to a clean string[]. The backend should send plain strings
+ * (it normalizes option objects to their label), but we defend against
+ * `{label,value}` shapes and stray empties so chips always render.
+ */
+function normalizeOptions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((o) => {
+      if (typeof o === 'string') return o;
+      if (o && typeof o === 'object') {
+        const obj = o as Record<string, unknown>;
+        return String(obj.label ?? obj.value ?? obj.text ?? '');
+      }
+      return String(o);
+    })
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export function MessageList() {
   const messages = useWidgetStore((s) => s.messages);
@@ -31,10 +51,21 @@ export function MessageList() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
 
+  // Order by client arrival sequence (seq), not server timestamps — the latter
+  // aren't monotonic against client-stamped lead bubbles. Fall back to timestamp
+  // only if seq is somehow absent.
   const timeline: TimelineItem[] = [
-    ...messages.map<TimelineItem>((m) => ({ kind: 'message', ts: m.timestamp, data: m })),
-    ...chips.map<TimelineItem>((c) => ({ kind: 'chip', ts: c.timestamp, data: c })),
-  ].sort((a, b) => a.ts - b.ts);
+    ...messages.map<TimelineItem>((m) => ({
+      kind: 'message',
+      order: m.seq ?? m.timestamp,
+      data: m,
+    })),
+    ...chips.map<TimelineItem>((c) => ({
+      kind: 'chip',
+      order: c.seq ?? c.timestamp,
+      data: c,
+    })),
+  ].sort((a, b) => a.order - b.order);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -63,20 +94,24 @@ export function MessageList() {
     socket.send({ type: 'quick_reply_selected', messageId: msg.id, selectedOption: option });
   };
 
-  const sendDate = (msg: Message, label: string) => {
+  const sendDate = (msg: Message, value: { iso: string; label: string }) => {
     if (!socket) return;
-    // Collapse the picker and mirror the choice as a lead bubble.
-    updateMessage(msg.id, { selectedOption: label });
+    // Collapse the picker; show the friendly label, but send ISO to the backend.
+    updateMessage(msg.id, { selectedOption: value.label });
     useWidgetStore.getState().addMessage({
       id: generateId('msg_lead'),
       role: 'lead',
       type: 'text',
-      content: label,
+      content: value.label,
       timestamp: Date.now(),
       status: 'sent',
     });
-    // The flow's date stages accept a plain text reply.
-    socket.send({ type: 'lead_message', content: label, clientMessageId: generateId('msg_lead') });
+    // Date fields expect an unambiguous ISO YYYY-MM-DD reply.
+    socket.send({
+      type: 'lead_message',
+      content: value.iso,
+      clientMessageId: generateId('msg_lead'),
+    });
   };
 
   const handleFilesUploaded = (msg: Message, files: Message['files'] = []) => {
@@ -139,29 +174,33 @@ export function MessageList() {
                   !m.selectedOption && (
                     <CalendarPicker
                       mode={m.datePickerMode}
-                      onSubmit={(label) => sendDate(m, label)}
+                      onSubmit={(value) => sendDate(m, value)}
                     />
                   )
                 }
               />
             );
           }
-          if (m.type === 'quick_reply' && m.options) {
-            return (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                affordance={
-                  !m.isStreaming && (
-                    <QuickReplyChips
-                      options={m.options}
-                      selected={m.selectedOption}
-                      onSelect={(opt) => sendQuickReply(m, opt)}
-                    />
-                  )
-                }
-              />
-            );
+          if (m.type === 'quick_reply') {
+            const opts = normalizeOptions(m.options);
+            if (opts.length > 0) {
+              return (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  affordance={
+                    !m.isStreaming && (
+                      <QuickReplyChips
+                        options={opts}
+                        selected={m.selectedOption}
+                        multiSelect={m.multiSelect}
+                        onSelect={(opt) => sendQuickReply(m, opt)}
+                      />
+                    )
+                  }
+                />
+              );
+            }
           }
           if (m.type === 'file_upload' && m.role !== 'lead') {
             return (

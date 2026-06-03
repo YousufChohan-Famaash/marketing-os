@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../utils/cn';
 
+export interface DateSelection {
+  /** ISO `YYYY-MM-DD` — sent to the backend (unambiguous, stored verbatim). */
+  iso: string;
+  /** Human-readable label (e.g. "Mar 15, 1985") — shown in the transcript bubble. */
+  label: string;
+}
+
 interface CalendarPickerProps {
   /** Tunes the initial year. 'birthday' starts ~30 years back; 'recent' starts on the current year. */
   mode?: 'birthday' | 'recent';
-  /** Called with a human-readable date label (e.g. "Mar 15, 1985") when the user taps OK. */
-  onSubmit: (label: string) => void;
+  /** Called with the chosen date (ISO for the backend, label for display) when the user taps OK. */
+  onSubmit: (value: DateSelection) => void;
 }
 
 const MONTHS = [
@@ -138,13 +145,15 @@ export function CalendarPicker({ mode = 'recent', onSubmit }: CalendarPickerProp
 
   const submit = () => {
     if (isFuture) return;
-    onSubmit(
-      selected.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }),
-    );
+    const dayNum = Math.min(dayIdx, dayCount - 1) + 1;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const iso = `${year}-${pad(monthIdx + 1)}-${pad(dayNum)}`;
+    const label = selected.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    onSubmit({ iso, label });
   };
 
   return (

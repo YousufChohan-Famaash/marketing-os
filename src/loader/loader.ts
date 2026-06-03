@@ -82,19 +82,24 @@ const styles = `
   z-index: ${Z_INDEX};
   color-scheme: light;
 }
-@media (max-width: 640px) {
-  #${IFRAME_ID} {
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-}
 #${IFRAME_ID}.is-hidden, #${LAUNCHER_ID}.is-hidden { display: none; }
 #${IFRAME_ID}.is-expanded {
   width: min(680px, calc(100vw - 40px));
   height: min(80vh, 800px);
+}
+/* On phones the widget is always full-screen — this overrides the expanded
+   size too (declared last + equal specificity). 100dvh tracks the dynamic
+   viewport so the bottom isn't hidden behind the mobile browser chrome. */
+@media (max-width: 640px) {
+  #${IFRAME_ID},
+  #${IFRAME_ID}.is-expanded {
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
 }
 `;
 

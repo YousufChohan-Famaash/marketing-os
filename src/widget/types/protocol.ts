@@ -8,9 +8,9 @@ import type {
 } from './domain';
 
 /**
- * Wire protocol between the widget client and the (eventually real) backend.
- * Mocked end-to-end client-side in this build; the real backend MUST match
- * these shapes — that's how `MockSocket` becomes a one-file swap.
+ * Wire protocol between the widget client and the backend. The backend speaks
+ * these exact shapes over the LiveKit room data channel; `RealSocket` adapts
+ * them to the `ConversationSocket` interface below.
  */
 
 // ─────────────────────────────────────────────────────────────────────
@@ -154,16 +154,22 @@ export interface RetainerSignedClientEvent {
   signedAt: number;
 }
 
+/** Lead asked to be connected to a human. Backend responds with `agent_takeover`. */
+export interface RequestHumanClientEvent {
+  type: 'request_human';
+}
+
 export type ClientEvent =
   | LeadMessageEvent
   | QuickReplySelectedEvent
   | PracticeAreaSelectedClientEvent
   | FieldEditClientEvent
   | FileUploadedClientEvent
-  | RetainerSignedClientEvent;
+  | RetainerSignedClientEvent
+  | RequestHumanClientEvent;
 
 // ─────────────────────────────────────────────────────────────────────
-// Socket interface — MockSocket and (eventually) RealSocket implement this
+// Socket interface — RealSocket implements this
 // ─────────────────────────────────────────────────────────────────────
 
 export type ServerEventHandler<T extends ServerEvent['type']> = (

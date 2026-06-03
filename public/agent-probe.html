@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Famaash — LiveKit Agent Probe</title>
+    <style>
+      body { font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace; margin: 0; background: #0f172a; color: #e2e8f0; }
+      header { padding: 12px 16px; background: #1e293b; display: flex; gap: 12px; align-items: center; }
+      h1 { font-size: 14px; margin: 0; color: #fff; font-weight: 600; }
+      button { font: inherit; padding: 6px 14px; border-radius: 6px; border: none; background: #534FEB; color: #fff; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      input { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #334155; background: #0b1220; color: #e2e8f0; width: 360px; }
+      #log { padding: 12px 16px; white-space: pre-wrap; word-break: break-word; }
+      .ok { color: #4ade80; } .warn { color: #fbbf24; } .err { color: #f87171; }
+      .evt { color: #38bdf8; } .dim { color: #94a3b8; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>LiveKit Agent Probe</h1>
+      <input id="firm" value="511eeb77-061e-4465-a772-a12d2c06cd83" />
+      <button id="start">Start</button>
+      <span id="status" class="dim">idle</span>
+    </header>
+    <div id="log"></div>
+
+    <script type="module">
+      import { Room, RoomEvent } from 'https://esm.sh/livekit-client@2.19.1';
+
+      const API_BASE = 'https://api.catafleet.com/api/v1/widget';
+      const logEl = document.getElementById('log');
+      const statusEl = document.getElementById('status');
+      const startBtn = document.getElementById('start');
+      const firmInput = document.getElementById('firm');
+
+      function log(msg, cls = '') {
+        const t = new Date().toISOString().slice(11, 23);
+        const line = document.createElement('div');
+        if (cls) line.className = cls;
+        line.textContent = `[${t}] ${msg}`;
+        logEl.appendChild(line);
+        // eslint-disable-next-line no-console
+        console.log('[probe]', msg);
+      }
+
+      async function start() {
+        startBtn.disabled = true;
+        statusEl.textContent = 'starting…';
+        const firmId = firmInput.value.trim();
+        const conversationId = 'conv_probe_' + (crypto.randomUUID?.() ?? Date.now());
+        log(`firm_id=${firmId}`, 'dim');
+        log(`conversation_id=${conversationId}`, 'dim');
+
+        let token, livekitUrl, serverTopic = 'widget';
+        try {
+          const res = await fetch(`${API_BASE}/token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ firm_id: firmId, conversation_id: conversationId, language: 'en' }),
+          });
+          log(`POST /token → HTTP ${res.status}`, res.ok ? 'ok' : 'err');
+          const data = await res.json();
+          token = data.token;
+          livekitUrl = data.livekit_url;
+          serverTopic = data.server_topic || 'widget';
+          log(`room_name=${data.room_name}  lead_number=${data.lead_number}`, 'dim');
+          log(`server_topic=${data.server_topic}  client_topic=${data.client_topic}`, 'dim');
+          log(`livekit_url=${livekitUrl}`, 'dim');
+        } catch (e) {
+          log('token fetch failed: ' + e, 'err');
+          startBtn.disabled = false;
+          return;
+        }
+
+        const room = new Room();
+
+        room.on(RoomEvent.ConnectionStateChanged, (s) => log('connection state → ' + s, 'evt'));
+        room.on(RoomEvent.ParticipantConnected, (p) =>
+          log('✅ PARTICIPANT JOINED: ' + p.identity + '  (kind=' + p.kind + ')', 'ok'),
+        );
+        room.on(RoomEvent.ParticipantDisconnected, (p) => log('participant left: ' + p.identity, 'warn'));
+        room.on(RoomEvent.DataReceived, (payload, participant, _kind, topic) => {
+          const text = new TextDecoder().decode(payload);
+          log(`◀ DATA  topic=${topic}  from=${participant?.identity}  ${text}`, 'ok');
+        });
+        room.on(RoomEvent.TranscriptionReceived, (segs, p) => {
+          log(`◀ TRANSCRIPTION from=${p?.identity}  ${segs.map((s) => JSON.stringify({ text: s.text, final: s.final })).join(', ')}`, 'ok');
+        });
+        room.on(RoomEvent.TrackSubscribed, (_t, _pub, p) => log('track from ' + p.identity, 'dim'));
+
+        try {
+          room.registerTextStreamHandler(serverTopic, async (reader, info) => {
+            const text = await reader.readAll();
+            log(`◀ TEXT STREAM from=${info?.identity}  ${text}`, 'ok');
+          });
+          log(`registered text-stream handler on "${serverTopic}"`, 'dim');
+        } catch (e) {
+          log('registerTextStreamHandler unavailable: ' + e, 'warn');
+        }
+
+        try {
+          await room.connect(livekitUrl, token);
+          statusEl.textContent = 'connected';
+          log('connected to room', 'ok');
+          const remotes = [...room.remoteParticipants.values()].map((p) => p.identity);
+          log('remote participants already in room: ' + JSON.stringify(remotes), remotes.length ? 'ok' : 'warn');
+          log('… waiting for an agent to join + greet. If nothing appears within ~10s, no agent is being dispatched (backend).', 'dim');
+        } catch (e) {
+          log('room.connect failed: ' + e, 'err');
+          startBtn.disabled = false;
+        }
+      }
+
+      startBtn.addEventListener('click', start);
+    </script>
+  </body>
+</html>

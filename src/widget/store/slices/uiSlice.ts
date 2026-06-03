@@ -32,8 +32,11 @@ export interface UiSlice {
   activeModal: ActiveModal;
   unreadCount: number;
   agentTakeover: AgentTakeover | null;
+  /** Active conversation id — needed by REST calls (uploads, e-sign). */
+  conversationId: string | null;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
+  setConversationId: (id: string | null) => void;
   openWidget: () => void;
   closeWidget: () => void;
   toggleCaptureDrawer: () => void;
@@ -54,8 +57,10 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   activeModal: null,
   unreadCount: 0,
   agentTakeover: null,
+  conversationId: null,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
+  setConversationId: (id) => set({ conversationId: id }),
   openWidget: () => set({ isWidgetOpen: true, unreadCount: 0 }),
   closeWidget: () => set({ isWidgetOpen: false, activeModal: null, isCaptureDrawerOpen: false }),
   toggleCaptureDrawer: () =>

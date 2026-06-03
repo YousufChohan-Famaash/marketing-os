@@ -50,12 +50,20 @@ export interface Message {
   selectedOption?: string;
   /** For `date_picker` messages: tunes the calendar's initial view. 'birthday' opens decades back; 'recent' opens on the current month. Future dates are always blocked. */
   datePickerMode?: 'birthday' | 'recent';
+  /** For `quick_reply` messages: when true the lead may pick several chips; the answer is sent comma-joined (e.g. "neck, lower back"). */
+  multiSelect?: boolean;
+  /** Internal field name the AI is asking for (e.g. `police_called`). Informational — for captured-field labels. Not sent back. */
+  fieldName?: string;
+  /** Dotted storage path of the field (e.g. `accident_details.police_called`). Informational. */
+  storagePath?: string;
   files?: UploadedFile[];
   retainerStatus?: 'pending' | 'signing' | 'signed';
   video?: VideoPayload;
   linkCard?: LinkCardPayload;
   hasMarkdown?: boolean;
   isStreaming?: boolean;
+  /** Client-assigned arrival order for the transcript (see store/seq.ts). */
+  seq?: number;
 }
 
 export type FieldType =
@@ -103,6 +111,8 @@ export interface ScopeChip {
   kind: ScopeChipKind;
   label: string;
   timestamp: number;
+  /** Client-assigned arrival order for the transcript (see store/seq.ts). */
+  seq?: number;
 }
 
 export type LauncherPosition = 'bottom-right' | 'bottom-left' | 'bottom-center';
@@ -155,4 +165,8 @@ export interface WidgetBootConfig {
   compliance: ComplianceConfig;
   /** Origins permitted to embed this widget. Loader + iframe validate against this list. */
   allowedOrigins?: string[];
+  /** Transport the backend speaks. The backend returns 'livekit'. */
+  transport?: 'livekit' | 'websocket';
+  /** Informational LiveKit URL. Use the per-session url from POST /token to actually connect. */
+  livekitUrl?: string;
 }

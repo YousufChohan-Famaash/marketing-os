@@ -4,17 +4,16 @@ import type { UploadedFile } from '../types/domain';
 import { CloseIcon, FileIcon, ImageIcon, UploadIcon } from '../utils/icons';
 import { generateId } from '../utils/id';
 import { cn } from '../utils/cn';
+import { putToPresignedUrl, signUploads } from '../services/api';
+import { useWidgetStore } from '../store/widgetStore';
 
 interface FileUploadZoneProps {
-  /** Fired once when all files in the batch finish their mock upload. */
+  /** Fired once when all files in the batch finish uploading. */
   onComplete: (files: UploadedFile[]) => void;
   /** Hide the zone after completion (typical case). */
   hideOnComplete?: boolean;
   disabled?: boolean;
 }
-
-const SIM_UPLOAD_DURATION_MS = 2000;
-const SIM_UPLOAD_STEP_MS = 80;
 
 export function FileUploadZone({
   onComplete,
@@ -33,6 +32,50 @@ export function FileUploadZone({
     onCompleteRef.current = onComplete;
   });
 
+  const patchFile = useCallback((id: string, patch: Partial<UploadedFile>) => {
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  }, []);
+
+  // Presign, then PUT each file directly to S3 with progress.
+  const uploadBatch = useCallback(
+    async (accepted: File[], entries: UploadedFile[]) => {
+      const conversationId = useWidgetStore.getState().conversationId;
+      if (!conversationId) {
+        entries.forEach((e) => patchFile(e.id, { status: 'failed' }));
+        return;
+      }
+      try {
+        const { uploads } = await signUploads(
+          conversationId,
+          accepted.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+        );
+        await Promise.all(
+          uploads.map((slot, i) => {
+            const file = accepted[i];
+            const id = entries[i].id;
+            return putToPresignedUrl(slot.uploadUrl, file, (p) =>
+              patchFile(id, { progress: p }),
+            )
+              .then(() =>
+                patchFile(id, {
+                  status: 'uploaded',
+                  progress: 100,
+                  url: slot.publicUrl,
+                  thumbnail: file.type.startsWith('image/')
+                    ? slot.publicUrl
+                    : undefined,
+                }),
+              )
+              .catch(() => patchFile(id, { status: 'failed' }));
+          }),
+        );
+      } catch {
+        entries.forEach((e) => patchFile(e.id, { status: 'failed' }));
+      }
+    },
+    [patchFile],
+  );
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       const next: UploadedFile[] = acceptedFiles.map((f) => ({
@@ -46,8 +89,9 @@ export function FileUploadZone({
         progress: 0,
       }));
       setFiles((prev) => [...prev, ...next]);
+      void uploadBatch(acceptedFiles, next);
     },
-    [],
+    [uploadBatch],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -55,32 +99,6 @@ export function FileUploadZone({
     disabled: disabled || completed,
     multiple: true,
   });
-
-  // Mock upload progress per-file. Stops once `completed` is true.
-  useEffect(() => {
-    if (completed) return undefined;
-    const interval = setInterval(() => {
-      setFiles((prev) => {
-        let changed = false;
-        const next = prev.map((f) => {
-          if (f.status === 'uploading') {
-            const inc = (SIM_UPLOAD_STEP_MS / SIM_UPLOAD_DURATION_MS) * 100;
-            const newProgress = Math.min(100, f.progress + inc);
-            const done = newProgress >= 100;
-            changed = true;
-            return {
-              ...f,
-              progress: newProgress,
-              status: done ? ('uploaded' as const) : ('uploading' as const),
-            };
-          }
-          return f;
-        });
-        return changed ? next : prev;
-      });
-    }, SIM_UPLOAD_STEP_MS);
-    return () => clearInterval(interval);
-  }, [completed]);
 
   // Fire onComplete when ALL files are uploaded and there's at least one.
   // `onComplete` deliberately omitted from deps — read via ref above.
@@ -163,6 +181,9 @@ export function FileUploadZone({
                   />
                 </div>
               </div>
+              {f.status === 'failed' && (
+                <span className="shrink-0 text-[11px] font-medium text-danger">Failed</span>
+              )}
               {f.status === 'uploading' && (
                 <button
                   type="button"

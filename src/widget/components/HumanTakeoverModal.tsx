@@ -1,3 +1,4 @@
+import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { CalendarIcon, PhoneIcon } from '../utils/icons';
 import { Modal } from './Modal';
@@ -19,8 +20,11 @@ const OPTIONS = [
 
 export function HumanTakeoverModal() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const socket = useSocket();
 
   const choose = (_id: 'call' | 'schedule') => {
+    // Tell the backend a human was requested; it replies with `agent_takeover`.
+    socket?.send({ type: 'request_human' });
     setActiveModal(null);
   };
 

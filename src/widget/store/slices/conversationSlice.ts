@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { Message } from '../../types/domain';
 import type { WidgetStore } from '../widgetStore';
+import { nextSeq } from '../seq';
 
 export interface ConversationSlice {
   messages: Message[];
@@ -23,7 +24,9 @@ export const createConversationSlice: StateCreator<
 > = (set) => ({
   messages: [],
   addMessage: (msg) =>
-    set((state) => ({ messages: [...state.messages, msg] })),
+    set((state) => ({
+      messages: [...state.messages, { ...msg, seq: msg.seq ?? nextSeq() }],
+    })),
   updateMessage: (id, updates) =>
     set((state) => ({
       messages: state.messages.map((m) => (m.id === id ? { ...m, ...updates } : m)),
@@ -31,9 +34,13 @@ export const createConversationSlice: StateCreator<
   upsertMessage: (msg) =>
     set((state) => {
       const idx = state.messages.findIndex((m) => m.id === msg.id);
-      if (idx === -1) return { messages: [...state.messages, msg] };
+      if (idx === -1) {
+        return { messages: [...state.messages, { ...msg, seq: msg.seq ?? nextSeq() }] };
+      }
       const next = state.messages.slice();
-      next[idx] = msg;
+      // Preserve the original arrival order across the streaming scaffold→final
+      // replacement, so a finalized message doesn't jump to the bottom.
+      next[idx] = { ...msg, seq: state.messages[idx].seq ?? msg.seq ?? nextSeq() };
       return { messages: next };
     }),
   removeMessage: (id) =>
@@ -54,6 +61,7 @@ export const createConversationSlice: StateCreator<
               timestamp: Date.now(),
               status: 'delivered',
               isStreaming: true,
+              seq: nextSeq(),
             } as Message,
           ],
         };
