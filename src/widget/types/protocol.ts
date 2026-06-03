@@ -157,6 +157,14 @@ export interface RetainerSignedClientEvent {
 /** Lead asked to be connected to a human. Backend responds with `agent_takeover`. */
 export interface RequestHumanClientEvent {
   type: 'request_human';
+  /** How the lead wants to be reached. */
+  method?: 'immediate' | 'delayed' | 'scheduled' | 'emergency';
+  /** Callback number the lead entered. */
+  phone?: string;
+  /** For `delayed`: minutes from now (15 / 30 / 45 / 60). */
+  delayMinutes?: number;
+  /** For `scheduled`: `YYYY-MM-DD HH:mm` (24h) of the requested call. */
+  scheduledAt?: string;
 }
 
 export type ClientEvent =

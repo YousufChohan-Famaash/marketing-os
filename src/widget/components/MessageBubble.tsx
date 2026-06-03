@@ -18,8 +18,8 @@ function bubbleStyle(role: Message['role']): string {
   if (role === 'agent') {
     return 'bg-success-soft text-ink rounded-2xl rounded-bl-md border border-success/30 font-message';
   }
-  // AI: no bubble chrome in the new design — plain text in the message font.
-  return 'bg-transparent text-[#1E2939] font-message';
+  // AI: iMessage-style incoming bubble — soft gray, left-aligned, tail bottom-left.
+  return 'bg-[#E9E9EB] text-[#1E2939] rounded-2xl rounded-bl-md font-message';
 }
 
 function formatTime(ts: number): string {
@@ -46,10 +46,10 @@ export const MessageBubble = memo(function MessageBubble({
     >
       <div
         className={cn(
-          'inline-flex max-w-[88%] text-[0.8125rem] leading-relaxed',
+          'inline-flex max-w-[88%] px-4 py-2.5 text-[0.8125rem] leading-relaxed',
           'whitespace-pre-wrap break-words',
-          // AI text is chrome-free; lead/agent keep bubble padding + shadow.
-          message.role === 'ai' ? 'px-0.5 py-1' : 'px-4 py-2.5 shadow-sm',
+          // Lead/agent keep a subtle shadow; the AI gray bubble stays flat (iMessage-like).
+          message.role !== 'ai' && 'shadow-sm',
           bubbleStyle(message.role),
           message.isStreaming && 'stream-cursor',
         )}

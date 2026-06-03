@@ -336,3 +336,10 @@ export const CalendarIcon = (p: IconProps) => (
     <line x1="3" y1="10" x2="21" y2="10" />
   </Base>
 );
+
+export const ClockIcon = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <polyline points="12 7 12 12 15 14" />
+  </Base>
+);
