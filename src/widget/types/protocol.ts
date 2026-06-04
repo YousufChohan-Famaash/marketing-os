@@ -1,5 +1,6 @@
 import type {
   CapturedField,
+  ConsentModal,
   LinkCardPayload,
   Message,
   ScopeChip,
@@ -16,6 +17,17 @@ import type {
 // ─────────────────────────────────────────────────────────────────────
 // Server → client events
 // ─────────────────────────────────────────────────────────────────────
+
+/** The agent has joined the room and attached its handler — safe to send the first ClientEvent. */
+export interface ReadyEvent {
+  type: 'ready';
+}
+
+/** TCPA consent prompt shown as a blocking modal after the phone is captured. */
+export interface ConsentModalEvent {
+  type: 'consent_modal';
+  consent: ConsentModal;
+}
 
 export interface MessageChunkEvent {
   type: 'message_chunk';
@@ -100,6 +112,8 @@ export interface FileUploadAckEvent {
 }
 
 export type ServerEvent =
+  | ReadyEvent
+  | ConsentModalEvent
   | MessageChunkEvent
   | MessageCompleteEvent
   | FieldCapturedEvent
@@ -136,6 +150,20 @@ export interface PracticeAreaSelectedClientEvent {
   value: string;
 }
 
+/** The opening case-type chip — the first user message that starts the flow. */
+export interface CaseTypeSelectedClientEvent {
+  type: 'case_type_selected';
+  slug: string;
+  label: string;
+  case_type_id: string;
+}
+
+/** Response to a `consent_modal` (TCPA). */
+export interface ConsentResponseClientEvent {
+  type: 'consent_response';
+  agree: boolean;
+}
+
 export interface FieldEditClientEvent {
   type: 'field_edit';
   fieldId: string;
@@ -152,6 +180,13 @@ export interface RetainerSignedClientEvent {
   type: 'retainer_signed';
   envelopeId: string;
   signedAt: number;
+}
+
+/** A document was signed inline (Dropbox `sign` event). Advances the doc flow. */
+export interface DocumentSignedClientEvent {
+  type: 'document_signed';
+  itemId?: string;
+  documentId?: string;
 }
 
 /** Lead asked to be connected to a human. Backend responds with `agent_takeover`. */
@@ -171,9 +206,12 @@ export type ClientEvent =
   | LeadMessageEvent
   | QuickReplySelectedEvent
   | PracticeAreaSelectedClientEvent
+  | CaseTypeSelectedClientEvent
+  | ConsentResponseClientEvent
   | FieldEditClientEvent
   | FileUploadedClientEvent
   | RetainerSignedClientEvent
+  | DocumentSignedClientEvent
   | RequestHumanClientEvent;
 
 // ─────────────────────────────────────────────────────────────────────

@@ -101,6 +101,10 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
       });
     }),
 
+    socket.on('consent_modal', (e) => {
+      store.getState().setConsent(e.consent);
+    }),
+
     socket.on('agent_takeover', (e) => {
       store.getState().setAgentTakeover({
         agentName: e.agentName,

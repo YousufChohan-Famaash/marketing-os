@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type {
+  CaseType,
   ComplianceConfig,
   FeatureFlags,
   FirmBranding,
@@ -15,6 +16,10 @@ export interface FeatureFlagsSlice {
   flags: FeatureFlags | null;
   branding: FirmBranding | null;
   compliance: ComplianceConfig | null;
+  caseTypes: CaseType[];
+  /** Dropbox Sign embedded client id (null when e-sign isn't configured). */
+  dropboxSignClientId: string | null;
+  dropboxSignTestMode: boolean;
   allowedOrigins: string[];
   setBootConfig: (config: WidgetBootConfig) => void;
 }
@@ -31,6 +36,9 @@ export const createFeatureFlagsSlice: StateCreator<
   flags: null,
   branding: null,
   compliance: null,
+  caseTypes: [],
+  dropboxSignClientId: null,
+  dropboxSignTestMode: false,
   allowedOrigins: [],
   setBootConfig: (config) =>
     set({
@@ -40,6 +48,9 @@ export const createFeatureFlagsSlice: StateCreator<
       flags: config.features,
       branding: config.branding,
       compliance: config.compliance,
+      caseTypes: config.caseTypes ?? [],
+      dropboxSignClientId: config.dropboxSignClientId ?? null,
+      dropboxSignTestMode: config.dropboxSignTestMode ?? false,
       allowedOrigins: config.allowedOrigins ?? [],
     }),
 });

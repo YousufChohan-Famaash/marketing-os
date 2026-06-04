@@ -4,13 +4,26 @@ export type MessageType =
   | 'text'
   | 'quick_reply'
   | 'date_picker'
+  | 'name_input'
+  | 'phone_input'
+  | 'email_input'
+  | 'number_input'
   | 'file_upload'
   | 'retainer'
+  | 'document_sign'
   | 'video_intro'
   | 'video_message'
   | 'voice_clip'
   | 'link_card'
   | 'rich_text';
+
+/** A signable document referenced by a `document_sign` card. */
+export interface DocumentRef {
+  itemId: string;
+  name: string;
+  isRetainer?: boolean;
+  status?: string;
+}
 
 export interface UploadedFile {
   id: string;
@@ -58,6 +71,8 @@ export interface Message {
   storagePath?: string;
   files?: UploadedFile[];
   retainerStatus?: 'pending' | 'signing' | 'signed';
+  /** For `document_sign` cards: the document to review & sign. */
+  document?: DocumentRef;
   video?: VideoPayload;
   linkCard?: LinkCardPayload;
   hasMarkdown?: boolean;
@@ -115,6 +130,24 @@ export interface ScopeChip {
   seq?: number;
 }
 
+/** A case-type chip offered in the opener (from boot config). */
+export interface CaseType {
+  id: string;
+  slug: string;
+  label: string;
+  icon?: string | null;
+}
+
+/** TCPA (or similar) consent prompt the agent sends after capturing the phone. */
+export interface ConsentModal {
+  kind: string; // e.g. 'tcpa'
+  phone: string;
+  title: string;
+  body: string;
+  agreeLabel: string;
+  declineLabel: string;
+}
+
 export type LauncherPosition = 'bottom-right' | 'bottom-left' | 'bottom-center';
 
 export interface FirmBranding {
@@ -163,6 +196,12 @@ export interface WidgetBootConfig {
   branding: FirmBranding;
   flowId: string;
   compliance: ComplianceConfig;
+  /** Case-type chips for the opener. Falls back to branding.practiceAreas when empty. */
+  caseTypes?: CaseType[];
+  /** Dropbox Sign embedded client id — present only when e-sign is configured. */
+  dropboxSignClientId?: string | null;
+  /** Pass to the embedded SDK's open({ testMode }); true on sandbox/test apps. */
+  dropboxSignTestMode?: boolean;
   /** Origins permitted to embed this widget. Loader + iframe validate against this list. */
   allowedOrigins?: string[];
   /** Transport the backend speaks. The backend returns 'livekit'. */

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "focus-trap-react": "^10.2.3",
+    "hellosign-embedded": "^2.12.3",
     "livekit-client": "^2.19.1",
     "penpal": "^6.2.2",
     "react": "^18.3.1",

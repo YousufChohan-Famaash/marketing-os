@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
+import { ConsentModal } from './components/ConsentModal';
 import { ModalHost } from './components/ModalHost';
+import { SigningSheet } from './components/SigningSheet';
 import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
-import { createSocket, loadBootConfig } from './services/transport';
+import {
+  createSocket,
+  getOrCreateConversationId,
+  loadBootConfig,
+  rehydrateFromHistory,
+} from './services/transport';
 import { useWidgetStore } from './store/widgetStore';
 import { wireSocketToStore } from './store/wireSocket';
 import type { AnalyticsEvent, ConversationSocket } from './types/protocol';
-import { generateId } from './utils/id';
 
 /** Fallback firm when none is supplied via ?firm_id= (the Al-Muhami test org). */
 const DEFAULT_FIRM_ID = '511eeb77-061e-4465-a772-a12d2c06cd83';
@@ -27,6 +33,9 @@ export function App() {
   const openWidget = useWidgetStore((s) => s.openWidget);
   const closeWidget = useWidgetStore((s) => s.closeWidget);
   const isWidgetOpen = useWidgetStore((s) => s.isWidgetOpen);
+  const pendingCaseType = useWidgetStore((s) => s.pendingCaseType);
+  const setPendingCaseType = useWidgetStore((s) => s.setPendingCaseType);
+  const activeSigning = useWidgetStore((s) => s.activeSigning);
 
   const [socket, setSocket] = useState<ConversationSocket | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -34,7 +43,7 @@ export function App() {
 
   const firmId = useMemo(readFirmIdFromQuery, []);
 
-  // Boot: fetch config → (resume?) → spin up socket → wire to store → host bridge.
+  // Boot: config → (resume history) → PAINT opener → connect in the background.
   useEffect(() => {
     let disposed = false;
     let localSocket: ConversationSocket | null = null;
@@ -48,11 +57,18 @@ export function App() {
         if (disposed) return;
         setBootConfig(config);
 
-        // Fresh conversation each load so the agent always greets on join.
-        // (Resume via a persisted id is disabled until the backend's history
-        // endpoint + re-greet on rejoin are confirmed — see transport.ts.)
-        const conversationId = generateId('conv');
+        // Persisted per-firm id so a refresh resumes the same conversation
+        // (/token is idempotent). Returning visitors repaint their transcript.
+        const { id: conversationId, returning } = getOrCreateConversationId(firmId);
         setConversationId(conversationId);
+        if (returning) {
+          await rehydrateFromHistory(conversationId, abort.signal);
+          if (disposed) return;
+        }
+
+        // Paint the opener (video + greeting + chips) NOW — don't wait for the
+        // LiveKit connection. The pick is buffered and flushed once we connect.
+        setBootStatus('ready');
 
         localSocket = await createSocket(config);
         if (disposed) {
@@ -60,8 +76,7 @@ export function App() {
           return;
         }
         unwire = wireSocketToStore(localSocket);
-        await localSocket.connect(firmId, conversationId);
-        if (disposed) return;
+        // Expose the socket before connect so a buffered pick can be queued.
         setSocket(localSocket);
 
         // Host bridge with origin allow-list from boot config.
@@ -74,7 +89,8 @@ export function App() {
           config.allowedOrigins ?? [],
         );
 
-        setBootStatus('ready');
+        await localSocket.connect(firmId, conversationId);
+        if (disposed) return;
         notifyHostEvent({ type: 'widget_opened', data: { firmId, conversationId } });
       } catch (err) {
         if (disposed) return;
@@ -92,6 +108,15 @@ export function App() {
       bridgeRef.current = null;
     };
   }, [firmId, setBootConfig, setBootStatus, setConversationId, openWidget, closeWidget]);
+
+  // Flush the buffered opener pick once a socket exists (RealSocket itself
+  // queues it until the agent's `ready` event arrives).
+  useEffect(() => {
+    if (socket && pendingCaseType) {
+      socket.send(pendingCaseType);
+      setPendingCaseType(null);
+    }
+  }, [socket, pendingCaseType, setPendingCaseType]);
 
   // Open the widget locally when it boots — in production the host's launcher
   // would call `iframe.open()` over Penpal, but for local dev we self-open.
@@ -145,6 +170,8 @@ export function App() {
         <div className="relative flex h-full w-full flex-col">
           <WidgetShell onClose={handleClose} onMinimize={handleMinimize} onExpand={handleExpand} isExpanded={isExpanded} />
           <ModalHost />
+          <ConsentModal />
+          {activeSigning && <SigningSheet signing={activeSigning} />}
         </div>
       </SocketContext.Provider>
     </ErrorBoundary>

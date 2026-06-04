@@ -9,6 +9,7 @@
 
 import type { WidgetBootConfig } from '../types/domain';
 import type { ConversationSocket } from '../types/protocol';
+import { isPersistenceEnabled } from '../config/env';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { fetchConversationHistory, fetchWidgetConfig } from './api';
@@ -32,15 +33,27 @@ export async function createSocket(
 }
 
 /**
- * Conversation id, persisted per-firm in sessionStorage so a page refresh
- * resumes the same conversation (the backend treats /token as idempotent on
- * conversation_id). `returning` is true when we found a stored id.
+ * Conversation id. When persistence is ON, it's stored per-firm in
+ * sessionStorage so a refresh resumes the same conversation (`/token` is
+ * idempotent). When OFF (the default), every load is a fresh conversation —
+ * handy for repeated end-to-end testing. `returning` drives history rehydrate.
  */
 export function getOrCreateConversationId(firmId: string): {
   id: string;
   returning: boolean;
 } {
   const key = `${CONV_STORAGE_PREFIX}${firmId}`;
+
+  if (!isPersistenceEnabled()) {
+    // Fresh each load; clear any stale id so turning persistence back on starts clean.
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+    return { id: generateId('conv'), returning: false };
+  }
+
   try {
     const existing = sessionStorage.getItem(key);
     if (existing) return { id: existing, returning: true };
@@ -72,6 +85,8 @@ export async function rehydrateFromHistory(
     for (const chip of history.chips ?? []) store.addChip(chip);
     for (const message of history.messages ?? []) store.upsertMessage(message);
     if (history.agentTakeover) store.setAgentTakeover(history.agentTakeover);
+    // The conversation already started → skip the opener, show the transcript.
+    if ((history.messages ?? []).length > 0) store.setCaseTypePicked(true);
   } catch (err) {
     console.warn('[famaash-widget] history rehydrate skipped', err);
   }

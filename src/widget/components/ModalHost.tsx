@@ -6,7 +6,6 @@ import { SpinnerIcon } from '../utils/icons';
 
 // Lazy chunks — each loaded only when its modal opens.
 const VoiceCallChunk = lazy(() => import('./lazy/VoiceCallChunk'));
-const ESignChunk = lazy(() => import('./lazy/ESignChunk'));
 const VideoRecorderChunk = lazy(() => import('./lazy/VideoRecorderChunk'));
 
 function ChunkFallback() {
@@ -30,7 +29,6 @@ export function ModalHost() {
   return (
     <Suspense fallback={<ChunkFallback />}>
       {activeModal === 'voice' && <VoiceCallChunk />}
-      {activeModal === 'esign' && <ESignChunk />}
       {activeModal === 'video' && <VideoRecorderChunk />}
     </Suspense>
   );

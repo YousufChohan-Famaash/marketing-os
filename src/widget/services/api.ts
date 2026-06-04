@@ -45,10 +45,32 @@ export interface UploadSignResponse {
   uploads: UploadSlot[];
 }
 
-/** POST /esign/session — fresh embedded signing URL for the retainer. */
+/** POST /esign/session — fresh embedded signing URL for a document. */
 export interface EsignSessionResponse {
   envelopeId: string;
   signingUrl: string;
+  itemId?: string;
+  isRetainer?: boolean;
+}
+
+/** One document in the document-collection state (signing or upload list). */
+export interface DocumentItem {
+  itemId: string;
+  name: string;
+  documentType: string;
+  status: 'pending' | 'sent' | 'signed' | 'uploaded' | 'declined' | 'error' | 'reviewed' | string;
+  isRequired: boolean;
+  isRetainer: boolean;
+  signedAt: string | null;
+  documentUrl: string | null;
+}
+
+/** GET /documents — full document-collection state for a conversation. */
+export interface DocumentsResponse {
+  signing: DocumentItem[];
+  upload: DocumentItem[];
+  portalUrl: string | null;
+  dropboxSignClientId: string | null;
 }
 
 /** GET /conversations/{id}/messages — cold-load rehydration. */
@@ -151,14 +173,33 @@ export function signUploads(
   );
 }
 
-/** POST /esign/session — embedded retainer signing URL (fetch just-in-time). */
+/**
+ * POST /esign/session — fresh embedded signing URL for a document (fetch
+ * just-in-time on tap). Pass `itemId` from the card; omit to auto-resolve the
+ * most recent unsigned retainer.
+ */
 export function createEsignSession(
   conversationId: string,
+  itemId?: string,
   signal?: AbortSignal,
 ): Promise<EsignSessionResponse> {
+  const body: Record<string, string> = { conversationId };
+  if (itemId) body.itemId = itemId;
   return request<EsignSessionResponse>(
     '/esign/session',
-    { method: 'POST', body: JSON.stringify({ conversationId }) },
+    { method: 'POST', body: JSON.stringify(body) },
+    signal,
+  );
+}
+
+/** GET /documents?conversation_id=... — document-collection state for a panel/re-sync. */
+export function fetchDocuments(
+  conversationId: string,
+  signal?: AbortSignal,
+): Promise<DocumentsResponse> {
+  return request<DocumentsResponse>(
+    `/documents?conversation_id=${encodeURIComponent(conversationId)}`,
+    undefined,
     signal,
   );
 }

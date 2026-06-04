@@ -5,6 +5,8 @@ import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { CalendarPicker } from './CalendarPicker';
 import { ConversationIntro } from './ConversationIntro';
+import { DocumentSignCard } from './DocumentSignCard';
+import { EmailInput, NameInput, NumberInput, PhoneInput } from './FieldInputs';
 import { FileUploadZone } from './FileUploadZone';
 import { LinkCard } from './LinkCard';
 import { MessageBubble } from './MessageBubble';
@@ -44,7 +46,7 @@ export function MessageList() {
   const messages = useWidgetStore((s) => s.messages);
   const chips = useWidgetStore((s) => s.chips);
   const isAiTyping = useWidgetStore((s) => s.isAiTyping);
-  const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const setActiveSigning = useWidgetStore((s) => s.setActiveSigning);
   const updateMessage = useWidgetStore((s) => s.updateMessage);
 
   const socket = useSocket();
@@ -114,6 +116,22 @@ export function MessageList() {
     });
   };
 
+  // Generic answer for typed widgets (name/phone/email/number) and quick-date
+  // chips: shows the lead bubble and sends the value as a lead_message verbatim.
+  const sendLeadAnswer = (msg: Message, content: string) => {
+    if (!socket) return;
+    updateMessage(msg.id, { selectedOption: content });
+    useWidgetStore.getState().addMessage({
+      id: generateId('msg_lead'),
+      role: 'lead',
+      type: 'text',
+      content,
+      timestamp: Date.now(),
+      status: 'sent',
+    });
+    socket.send({ type: 'lead_message', content, clientMessageId: generateId('msg_lead') });
+  };
+
   const handleFilesUploaded = (msg: Message, files: Message['files'] = []) => {
     if (!socket || !files || files.length === 0) return;
     updateMessage(msg.id, { files });
@@ -121,8 +139,8 @@ export function MessageList() {
   };
 
   const handleRetainerReview = (msg: Message) => {
-    updateMessage(msg.id, { retainerStatus: 'signing' });
-    setActiveModal('esign');
+    // Legacy single retainer card — sign inline; backend auto-resolves the retainer.
+    setActiveSigning({ name: 'Retainer Agreement', messageId: msg.id });
   };
 
   return (
@@ -164,7 +182,17 @@ export function MessageList() {
               />
             );
           }
+          if (m.type === 'document_sign') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={<DocumentSignCard message={m} />}
+              />
+            );
+          }
           if (m.type === 'date_picker') {
+            const quickDates = normalizeOptions(m.options);
             return (
               <MessageBubble
                 key={m.id}
@@ -172,10 +200,82 @@ export function MessageList() {
                 affordance={
                   !m.isStreaming &&
                   !m.selectedOption && (
-                    <CalendarPicker
-                      mode={m.datePickerMode}
-                      onSubmit={(value) => sendDate(m, value)}
-                    />
+                    <div>
+                      {quickDates.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {quickDates.map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => sendLeadAnswer(m, opt)}
+                              className="rounded-pill border border-[#EAEEF3] bg-white px-4 py-2 text-[13px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <CalendarPicker
+                        mode={m.datePickerMode}
+                        onSubmit={(value) => sendDate(m, value)}
+                      />
+                    </div>
+                  )
+                }
+              />
+            );
+          }
+          if (m.type === 'name_input') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming &&
+                  !m.selectedOption && (
+                    <NameInput onSubmit={(c) => sendLeadAnswer(m, c)} />
+                  )
+                }
+              />
+            );
+          }
+          if (m.type === 'phone_input') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming &&
+                  !m.selectedOption && (
+                    <PhoneInput onSubmit={(c) => sendLeadAnswer(m, c)} />
+                  )
+                }
+              />
+            );
+          }
+          if (m.type === 'email_input') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming &&
+                  !m.selectedOption && (
+                    <EmailInput onSubmit={(c) => sendLeadAnswer(m, c)} />
+                  )
+                }
+              />
+            );
+          }
+          if (m.type === 'number_input') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={
+                  !m.isStreaming &&
+                  !m.selectedOption && (
+                    <NumberInput onSubmit={(c) => sendLeadAnswer(m, c)} />
                   )
                 }
               />

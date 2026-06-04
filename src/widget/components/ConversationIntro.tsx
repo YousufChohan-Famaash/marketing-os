@@ -1,11 +1,13 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
+import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { PlayIcon } from '../utils/icons';
 
 /**
- * The video + heading + subtext block shown at the top of the conversation
- * scroll area (inline variant). Scrolls away naturally as messages accumulate.
- * Mirrors the Figma "small rounded video" treatment in states 2 & 3.
+ * The intro video pinned at the top of the conversation scroll. It keeps its
+ * full opener size (565:728) and simply scrolls up as messages accumulate —
+ * it does NOT shrink into a message bubble. A play button lets the lead scroll
+ * back up and replay it in the chat.
  */
 export function ConversationIntro() {
   const branding = useWidgetStore((s) => s.branding);
@@ -13,24 +15,42 @@ export function ConversationIntro() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [played, setPlayed] = useState(false);
 
-  if (!branding?.introVideoUrl) return null;
+  const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
+  const posterUrl = resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
+
+  // Muted autoplay + loop (matches the opener); the play button unmutes/replays.
+  useEffect(() => {
+    if (!videoUrl) return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.play().catch(() => undefined);
+  }, [videoUrl]);
+
+  if (!videoUrl) return null;
 
   const play = () => {
-    void videoRef.current?.play();
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.currentTime = 0;
+    void v.play();
     setPlayed(true);
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-2 pt-1">
-      <div className="relative w-[65%] overflow-hidden rounded-[25px] bg-obsidian shadow-sm">
+    <div className="flex flex-col gap-4 pb-2">
+      {/* Full-bleed, full-size video (escapes the list's px-4) — same as the opener. */}
+      <div className="relative -mx-4 aspect-[565/728] max-h-[370px] overflow-hidden bg-obsidian">
         <video
           ref={videoRef}
-          src={branding.introVideoUrl}
-          poster={branding.introVideoPoster}
+          src={videoUrl}
+          poster={posterUrl}
           controls={played}
           playsInline
+          loop
           preload="metadata"
-          className="block aspect-[7/8] w-full object-cover"
+          className="block h-full w-full object-cover"
           aria-label="Introduction video"
         />
         {!played && (
@@ -40,8 +60,8 @@ export function ConversationIntro() {
             aria-label="Play introduction video"
             className="absolute inset-0 flex items-center justify-center"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-famaash shadow-lg backdrop-blur">
-              <PlayIcon size={22} aria-hidden="true" />
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-famaash shadow-lg backdrop-blur">
+              <PlayIcon size={24} aria-hidden="true" />
             </span>
           </button>
         )}
@@ -50,10 +70,6 @@ export function ConversationIntro() {
         <h2 className="text-[16px] font-bold leading-snug tracking-[-0.02em] text-[#1A1A1A]">
           Hi <span aria-hidden="true">👋</span> I&apos;m an AI intake assistant for {firmName}
         </h2>
-        <p className="mt-2 text-[13px] leading-relaxed tracking-[-0.01em] text-[#0D0D12]">
-          I&apos;ll help you understand if we can take your case and connect you with
-          the right attorney. What kind of matter brings you here today?
-        </p>
       </div>
     </div>
   );

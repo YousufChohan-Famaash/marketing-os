@@ -25,16 +25,23 @@ import { createConversationToken } from './api';
 
 const DEFAULT_CLIENT_TOPIC = 'widget.client';
 const DEV = import.meta.env.DEV;
+/** Belt-and-suspenders: assume the agent is listening if `ready` never arrives. */
+const READY_FALLBACK_MS = 9000;
 
 type AnyHandler = (event: ServerEvent) => void;
 
 export class RealSocket implements ConversationSocket {
   private readonly handlers = new Map<ServerEvent['type'], Set<AnyHandler>>();
   private room: Room | null = null;
-  private connected = false;
   private clientTopic = DEFAULT_CLIENT_TOPIC;
   private readonly encoder = new TextEncoder();
   private readonly decoder = new TextDecoder();
+  // The agent joins a beat after room.connect() resolves and only then attaches
+  // its data handler; LiveKit doesn't buffer for absent subscribers, so we hold
+  // outbound events until the `ready` event (or a fallback timer) and flush then.
+  private agentReady = false;
+  private pending: ClientEvent[] = [];
+  private readyTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly config: WidgetBootConfig) {}
 
@@ -78,7 +85,6 @@ export class RealSocket implements ConversationSocket {
     if (!url) throw new Error('[famaash-widget] no LiveKit URL from /token or boot config');
 
     await room.connect(url, session.token);
-    this.connected = true;
     if (DEV) {
       console.log('[famaash-widget] connected to room', session.room_name);
       console.log(
@@ -86,11 +92,28 @@ export class RealSocket implements ConversationSocket {
         [...room.remoteParticipants.values()].map((p) => p.identity),
       );
     }
+
+    // Fallback in case the agent never emits `ready`.
+    this.readyTimer = setTimeout(() => {
+      if (DEV) console.log('[famaash-widget] ready fallback fired');
+      this.markReady();
+    }, READY_FALLBACK_MS);
   }
 
   send(event: ClientEvent): void {
+    // Queue until the agent is listening. This also covers the window before
+    // room.connect() resolves (the opener can be picked before we're connected).
+    if (!this.agentReady) {
+      if (DEV) console.log('[famaash-widget] ⏸ queued (waiting for ready)', event.type);
+      this.pending.push(event);
+      return;
+    }
+    this.publish(event);
+  }
+
+  private publish(event: ClientEvent): void {
     const room = this.room;
-    if (!this.connected || !room) return;
+    if (!room) return;
     if (DEV) console.log('[famaash-widget] ▶ send', event.type, event);
     const json = JSON.stringify(event);
     // Fresh ArrayBuffer-backed view so the bytes satisfy publishData's typing.
@@ -102,6 +125,21 @@ export class RealSocket implements ConversationSocket {
       .catch((err: unknown) => {
         console.warn('[famaash-widget] publishData failed', err);
       });
+  }
+
+  private markReady(): void {
+    if (this.agentReady) return;
+    this.agentReady = true;
+    if (this.readyTimer) {
+      clearTimeout(this.readyTimer);
+      this.readyTimer = null;
+    }
+    if (DEV && this.pending.length) {
+      console.log('[famaash-widget] flushing', this.pending.length, 'queued event(s)');
+    }
+    const queued = this.pending;
+    this.pending = [];
+    for (const event of queued) this.publish(event);
   }
 
   on<T extends ServerEvent['type']>(
@@ -120,7 +158,12 @@ export class RealSocket implements ConversationSocket {
   }
 
   disconnect(): void {
-    this.connected = false;
+    this.agentReady = false;
+    this.pending = [];
+    if (this.readyTimer) {
+      clearTimeout(this.readyTimer);
+      this.readyTimer = null;
+    }
     this.handlers.clear();
     void this.room?.disconnect();
     this.room = null;
@@ -140,6 +183,8 @@ export class RealSocket implements ConversationSocket {
     const ev = event as ServerEvent;
     if (!ev || typeof ev.type !== 'string') return;
     if (DEV) console.log('[famaash-widget] ◀ recv', ev.type, ev);
+    // The agent is now listening — release any queued client events.
+    if (ev.type === 'ready') this.markReady();
     const set = this.handlers.get(ev.type);
     if (!set) return;
     for (const handler of set) handler(ev);

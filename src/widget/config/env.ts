@@ -21,3 +21,16 @@ export function getApiBase(): string {
   const base = fromQuery ?? import.meta.env.VITE_WIDGET_API_BASE ?? DEFAULT_API_BASE;
   return base.replace(/\/+$/, '');
 }
+
+/**
+ * Whether to persist the conversation id + resume on reload. OFF by default so
+ * every load starts a fresh conversation (handy for repeated end-to-end tests).
+ * Turn on with `?persist=1` or `VITE_WIDGET_PERSIST=1`.
+ */
+export function isPersistenceEnabled(): boolean {
+  const fromQuery = queryParam('persist');
+  if (fromQuery === '1' || fromQuery === 'true') return true;
+  if (fromQuery === '0' || fromQuery === 'false') return false;
+  const env = import.meta.env.VITE_WIDGET_PERSIST;
+  return env === '1' || env === 'true';
+}

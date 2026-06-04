@@ -20,19 +20,16 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   const composerRef = useRef<ComposerHandle>(null);
   const bootStatus = useWidgetStore((s) => s.bootStatus);
   const bootError = useWidgetStore((s) => s.bootError);
-  const introCompleted = useWidgetStore(
-    (s) => s.capturedFields.practice_area !== undefined,
-  );
-  const introEnabled = useWidgetStore(
-    (s) => Boolean(s.branding?.introVideoUrl) && Boolean(s.flags?.video_intro),
-  );
+  // The opener (greeting + case-type chips) shows until the lead picks a case
+  // type — that pick is the first user message that starts the agent flow.
+  const caseTypePicked = useWidgetStore((s) => s.caseTypePicked);
 
-  // Focus management — push focus to the composer once we're past intro.
+  // Focus management — push focus to the composer once we're into the chat.
   useEffect(() => {
-    if (bootStatus === 'ready' && (introCompleted || !introEnabled)) {
+    if (bootStatus === 'ready' && caseTypePicked) {
       composerRef.current?.focus();
     }
-  }, [bootStatus, introCompleted, introEnabled]);
+  }, [bootStatus, caseTypePicked]);
 
   // Esc closes the widget.
   useEffect(() => {
@@ -62,7 +59,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     );
   }
 
-  if (introEnabled && !introCompleted) {
+  if (!caseTypePicked) {
     return <IntroStage onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />;
   }
 
