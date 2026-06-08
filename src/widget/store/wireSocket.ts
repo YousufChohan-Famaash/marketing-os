@@ -6,8 +6,34 @@ import { useWidgetStore } from './widgetStore';
  * Wire socket events to the store. Returns an unsubscribe function that
  * detaches all handlers. Pair with `socket.disconnect()` in the same cleanup.
  */
+/** Auto-clear the typing dots if a stream stalls without a matching final. */
+const TYPING_IDLE_MS = 4000;
+
 export function wireSocketToStore(socket: ConversationSocket): () => void {
   const store = useWidgetStore;
+
+  // Typing-indicator lifecycle. The dots are driven by `isAiTyping`, which we
+  // keep self-healing: any finalized message or a stall clears it, so it can't
+  // get stuck on if the backend's final doesn't match the streaming scaffold.
+  let typingTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearTypingTimer = () => {
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+    }
+  };
+  const armTyping = (id: string) => {
+    store.getState().setStreaming(id);
+    clearTypingTimer();
+    typingTimer = setTimeout(() => {
+      typingTimer = null;
+      store.getState().endStreaming();
+    }, TYPING_IDLE_MS);
+  };
+  const stopTyping = () => {
+    clearTypingTimer();
+    store.getState().endStreaming();
+  };
 
   /**
    * Patch a message by id, creating it if absent. Used by the standalone
@@ -32,10 +58,12 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
   const offs: Array<() => void> = [
     socket.on('message_complete', (e) => {
       store.getState().upsertMessage(e.message);
+      // Streaming scaffold → show dots; any finalized message → clear them
+      // (regardless of id, so a non-matching final can't leave them stuck).
       if (e.message.isStreaming) {
-        store.getState().setStreaming(e.messageId);
-      } else if (store.getState().streamingMessageId === e.messageId) {
-        store.getState().endStreaming();
+        armTyping(e.messageId);
+      } else {
+        stopTyping();
       }
       if (!store.getState().isWidgetOpen) {
         store.getState().incrementUnread();
@@ -44,6 +72,8 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
 
     socket.on('message_chunk', (e) => {
       store.getState().appendToMessage(e.messageId, e.chunk);
+      // Keep the dots alive while chunks flow; the idle timer clears them after.
+      armTyping(e.messageId);
     }),
 
     socket.on('field_captured', (e) => {
@@ -102,6 +132,8 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
     }),
 
     socket.on('consent_modal', (e) => {
+      // Agent is waiting on the user now — not composing.
+      stopTyping();
       store.getState().setConsent(e.consent);
     }),
 
@@ -113,11 +145,12 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
     }),
 
     socket.on('conversation_ended', () => {
-      store.getState().endStreaming();
+      stopTyping();
     }),
   ];
 
   return () => {
+    clearTypingTimer();
     for (const off of offs) off();
   };
 }

@@ -25,6 +25,7 @@ export type ActiveModal =
   | 'video'
   | 'human-takeover'
   | 'emergency'
+  | 'text-handoff'
   | null;
 
 export type BootStatus = 'idle' | 'loading' | 'ready' | 'error';

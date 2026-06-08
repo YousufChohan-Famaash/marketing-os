@@ -25,6 +25,7 @@ export function SafetyButtons() {
       )}
       <button
         type="button"
+        onClick={() => setActiveModal('text-handoff')}
         className="mx-auto inline-flex items-center gap-1 rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-2.5 py-1 text-[11px] font-medium text-[#1A1A1A] hover:bg-[#F5F8FB]"
       >
         <MessageSquareIcon size={12} aria-hidden="true" />

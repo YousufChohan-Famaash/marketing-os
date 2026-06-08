@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { EmergencyModal } from './EmergencyModal';
 import { HumanTakeoverModal } from './HumanTakeoverModal';
+import { TextHandoffModal } from './TextHandoffModal';
 import { SpinnerIcon } from '../utils/icons';
 
 // Lazy chunks — each loaded only when its modal opens.
@@ -25,6 +26,7 @@ export function ModalHost() {
 
   if (activeModal === 'human-takeover') return <HumanTakeoverModal />;
   if (activeModal === 'emergency') return <EmergencyModal />;
+  if (activeModal === 'text-handoff') return <TextHandoffModal />;
 
   return (
     <Suspense fallback={<ChunkFallback />}>

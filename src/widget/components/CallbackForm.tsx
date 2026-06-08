@@ -1,26 +1,41 @@
 import { useState } from 'react';
-import { AlertIcon, PhoneIcon } from '../utils/icons';
+import { AlertIcon, MessageSquareIcon, PhoneIcon } from '../utils/icons';
+import { cn } from '../utils/cn';
 
 interface CallbackFormProps {
   heading: string;
   body: string;
   cta: string;
+  /** 'alert' — red badge + phone CTA (call/help). 'brand' — purple badge + message CTA (text). */
+  variant?: 'alert' | 'brand';
   onSubmit: (phone: string) => void;
 }
 
 /**
- * Phone-number collection step shared by the "call me" and "I need help"
- * flows: soft alert badge, heading + body, a phone input, and the primary CTA.
- * Matches the Figma callback dialog.
+ * Phone-number collection step shared by the "call me", "I need help", and
+ * "text me" flows: a badge, heading + body, a phone input, and the primary CTA.
  */
-export function CallbackForm({ heading, body, cta, onSubmit }: CallbackFormProps) {
+export function CallbackForm({
+  heading,
+  body,
+  cta,
+  variant = 'alert',
+  onSubmit,
+}: CallbackFormProps) {
   const [phone, setPhone] = useState('');
   const valid = phone.replace(/\D/g, '').length >= 7;
+  const brand = variant === 'brand';
+  const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
   return (
     <div className="space-y-4">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FFEFEF] text-[#F86669]">
-        <AlertIcon size={20} aria-hidden="true" />
+      <span
+        className={cn(
+          'flex h-11 w-11 items-center justify-center rounded-full',
+          brand ? 'bg-famaash-light text-famaash' : 'bg-[#FFEFEF] text-[#F86669]',
+        )}
+      >
+        {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <AlertIcon size={20} aria-hidden="true" />}
       </span>
 
       <div>
@@ -53,7 +68,7 @@ export function CallbackForm({ heading, body, cta, onSubmit }: CallbackFormProps
         disabled={!valid}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <PhoneIcon size={16} aria-hidden="true" />
+        <CtaIcon size={16} aria-hidden="true" />
         {cta}
       </button>
     </div>
