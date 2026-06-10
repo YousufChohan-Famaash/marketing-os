@@ -5,6 +5,9 @@ import { nextSeq } from '../seq';
 
 export interface ConversationSlice {
   messages: Message[];
+  /** True once the agent sends `conversation_ended` — locks the composer. */
+  conversationEnded: boolean;
+  setConversationEnded: (ended: boolean) => void;
   addMessage: (msg: Message) => void;
   /** Patch a subset of fields on an existing message. */
   updateMessage: (id: string, updates: Partial<Message>) => void;
@@ -23,6 +26,8 @@ export const createConversationSlice: StateCreator<
   ConversationSlice
 > = (set) => ({
   messages: [],
+  conversationEnded: false,
+  setConversationEnded: (ended) => set({ conversationEnded: ended }),
   addMessage: (msg) =>
     set((state) => ({
       messages: [...state.messages, { ...msg, seq: msg.seq ?? nextSeq() }],
@@ -70,5 +75,5 @@ export const createConversationSlice: StateCreator<
       next[idx] = { ...next[idx], content: next[idx].content + chunk };
       return { messages: next };
     }),
-  resetConversation: () => set({ messages: [] }),
+  resetConversation: () => set({ messages: [], conversationEnded: false }),
 });

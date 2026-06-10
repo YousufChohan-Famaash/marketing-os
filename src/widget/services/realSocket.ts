@@ -43,7 +43,9 @@ export class RealSocket implements ConversationSocket {
   private pending: ClientEvent[] = [];
   private readyTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private readonly config: WidgetBootConfig) {}
+  // Config is optional so the socket can be created/connected in parallel with
+  // GET /config — the LiveKit URL comes from /token; config is only a fallback.
+  constructor(private readonly config?: WidgetBootConfig) {}
 
   async connect(firmId: string, conversationId: string): Promise<void> {
     const session = await createConversationToken({
@@ -81,7 +83,7 @@ export class RealSocket implements ConversationSocket {
       );
     }
 
-    const url = session.livekit_url || this.config.livekitUrl;
+    const url = session.livekit_url || this.config?.livekitUrl;
     if (!url) throw new Error('[famaash-widget] no LiveKit URL from /token or boot config');
 
     await room.connect(url, session.token);

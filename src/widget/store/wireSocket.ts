@@ -146,6 +146,7 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
 
     socket.on('conversation_ended', () => {
       stopTyping();
+      store.getState().setConversationEnded(true);
     }),
   ];
 

@@ -6,6 +6,7 @@ import { generateId } from '../utils/id';
 import { CalendarPicker } from './CalendarPicker';
 import { ConversationIntro } from './ConversationIntro';
 import { DocumentSignCard } from './DocumentSignCard';
+import { DocumentUploadCard } from './DocumentUploadCard';
 import { EmailInput, NameInput, NumberInput, PhoneInput } from './FieldInputs';
 import { FileUploadZone } from './FileUploadZone';
 import { LinkCard } from './LinkCard';
@@ -188,6 +189,15 @@ export function MessageList() {
                 key={m.id}
                 message={m}
                 affordance={<DocumentSignCard message={m} />}
+              />
+            );
+          }
+          if (m.type === 'document_upload') {
+            return (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                affordance={<DocumentUploadCard message={m} />}
               />
             );
           }

@@ -11,18 +11,25 @@ export type MessageType =
   | 'file_upload'
   | 'retainer'
   | 'document_sign'
+  | 'document_upload'
   | 'video_intro'
   | 'video_message'
   | 'voice_clip'
   | 'link_card'
   | 'rich_text';
 
-/** A signable document referenced by a `document_sign` card. */
+/** A document referenced by a `document_sign` or `document_upload` card. */
 export interface DocumentRef {
   itemId: string;
   name: string;
   isRetainer?: boolean;
   status?: string;
+  /** Upload docs: the document type slug (e.g. `police_report`). */
+  documentType?: string;
+  /** `document_upload`: show a Skip button. */
+  allowSkip?: boolean;
+  /** `document_sign`: offer "text me the link instead" (defer). */
+  allowDefer?: boolean;
 }
 
 export interface UploadedFile {

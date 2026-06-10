@@ -26,6 +26,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const flags = useWidgetStore((s) => s.flags);
   const addMessage = useWidgetStore((s) => s.addMessage);
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const conversationEnded = useWidgetStore((s) => s.conversationEnded);
   const socket = useSocket();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
@@ -70,6 +71,14 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   };
 
   const canSend = value.trim().length > 0;
+
+  if (conversationEnded) {
+    return (
+      <div className="shrink-0 bg-white px-3 py-3 text-center">
+        <p className="text-[12px] text-muted">This conversation has ended.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="shrink-0 bg-white px-3 py-2.5">

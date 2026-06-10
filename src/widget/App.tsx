@@ -43,43 +43,68 @@ export function App() {
 
   const firmId = useMemo(readFirmIdFromQuery, []);
 
-  // Boot: config → (resume history) → PAINT opener → connect in the background.
+  // Boot runs two independent tracks IN PARALLEL so the agent connection isn't
+  // gated behind /config:
+  //   • Connection track: import LiveKit → POST /token → room.connect
+  //   • Config track:      GET /config → (resume history) → PAINT the opener
+  // The conversation_id is generated synchronously, so /token needs nothing
+  // from /config. By the time the user reads the chips and picks, the room is
+  // usually already connected and the pick flushes instantly.
   useEffect(() => {
     let disposed = false;
     let localSocket: ConversationSocket | null = null;
     let unwire: (() => void) | null = null;
     const abort = new AbortController();
+    const DEV = import.meta.env.DEV;
+    const t0 = DEV ? performance.now() : 0;
 
-    (async () => {
-      setBootStatus('loading');
+    setBootStatus('loading');
+    const { id: conversationId, returning } = getOrCreateConversationId(firmId);
+    setConversationId(conversationId);
+
+    // ── Connection track (parallel) ──────────────────────────────────────
+    void (async () => {
+      try {
+        const s = await createSocket();
+        if (disposed) {
+          s.disconnect();
+          return;
+        }
+        localSocket = s;
+        unwire = wireSocketToStore(s);
+        setSocket(s); // expose before connect so a buffered pick can queue
+        await s.connect(firmId, conversationId);
+        if (disposed) return;
+        if (DEV) {
+          // eslint-disable-next-line no-console
+          console.log('[famaash-widget] connected in', Math.round(performance.now() - t0), 'ms');
+        }
+        notifyHostEvent({ type: 'widget_opened', data: { firmId, conversationId } });
+      } catch (err) {
+        if (disposed) return;
+        const message = err instanceof Error ? err.message : 'Connection failed';
+        setBootStatus('error', message);
+      }
+    })();
+
+    // ── Config track (parallel) — gates the opener ───────────────────────
+    void (async () => {
       try {
         const config = await loadBootConfig(firmId, abort.signal);
         if (disposed) return;
         setBootConfig(config);
-
-        // Persisted per-firm id so a refresh resumes the same conversation
-        // (/token is idempotent). Returning visitors repaint their transcript.
-        const { id: conversationId, returning } = getOrCreateConversationId(firmId);
-        setConversationId(conversationId);
         if (returning) {
           await rehydrateFromHistory(conversationId, abort.signal);
           if (disposed) return;
         }
-
-        // Paint the opener (video + greeting + chips) NOW — don't wait for the
-        // LiveKit connection. The pick is buffered and flushed once we connect.
-        setBootStatus('ready');
-
-        localSocket = await createSocket(config);
-        if (disposed) {
-          localSocket.disconnect();
-          return;
+        // Don't override a connection failure that already set 'error'.
+        if (useWidgetStore.getState().bootStatus !== 'error') {
+          setBootStatus('ready');
+          if (DEV) {
+            // eslint-disable-next-line no-console
+            console.log('[famaash-widget] opener ready in', Math.round(performance.now() - t0), 'ms');
+          }
         }
-        unwire = wireSocketToStore(localSocket);
-        // Expose the socket before connect so a buffered pick can be queued.
-        setSocket(localSocket);
-
-        // Host bridge with origin allow-list from boot config.
         bridgeRef.current = createHostBridge(
           {
             onOpen: () => openWidget(),
@@ -88,10 +113,6 @@ export function App() {
           },
           config.allowedOrigins ?? [],
         );
-
-        await localSocket.connect(firmId, conversationId);
-        if (disposed) return;
-        notifyHostEvent({ type: 'widget_opened', data: { firmId, conversationId } });
       } catch (err) {
         if (disposed) return;
         const message = err instanceof Error ? err.message : 'Unknown error';

@@ -24,9 +24,11 @@ export function loadBootConfig(
   return fetchWidgetConfig(firmId, signal);
 }
 
-/** Conversation socket over the LiveKit room data channel. */
+/** Conversation socket over the LiveKit room data channel. Config is optional
+ *  so this can be created in parallel with GET /config (the LiveKit URL comes
+ *  from POST /token). */
 export async function createSocket(
-  config: WidgetBootConfig,
+  config?: WidgetBootConfig,
 ): Promise<ConversationSocket> {
   const { RealSocket } = await import('./realSocket');
   return new RealSocket(config);

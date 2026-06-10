@@ -174,6 +174,21 @@ export interface FileUploadedClientEvent {
   type: 'file_uploaded';
   /** Batch — fired once after all files in the upload zone finish. */
   files: UploadedFile[];
+  /** For `document_upload` cards: which document this file belongs to. */
+  itemId?: string;
+  /** S3 key from POST /uploads/sign — lets the agent finalize the document. */
+  fileKey?: string;
+}
+
+/** Lead skipped an optional `document_upload` (covered by the portal link later). */
+export interface SkipDocumentClientEvent {
+  type: 'skip_document';
+  itemId: string;
+}
+
+/** Lead chose "text me the link instead" on a sign/upload step. */
+export interface DeferDocumentsClientEvent {
+  type: 'defer_documents';
 }
 
 export interface RetainerSignedClientEvent {
@@ -210,6 +225,8 @@ export type ClientEvent =
   | ConsentResponseClientEvent
   | FieldEditClientEvent
   | FileUploadedClientEvent
+  | SkipDocumentClientEvent
+  | DeferDocumentsClientEvent
   | RetainerSignedClientEvent
   | DocumentSignedClientEvent
   | RequestHumanClientEvent;

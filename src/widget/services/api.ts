@@ -39,6 +39,7 @@ export interface UploadSlot {
   fileId: string;
   uploadUrl: string; // presigned PUT
   publicUrl: string; // GET url to hand back in `file_uploaded`
+  fileKey?: string; // S3 key — echoed back in `file_uploaded` / `mark-uploaded`
 }
 
 export interface UploadSignResponse {

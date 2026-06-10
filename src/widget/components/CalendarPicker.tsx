@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { WheelColumn } from './WheelColumn';
 
 export interface DateSelection {
@@ -70,6 +70,26 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
     ? startOfDay(selected) < startOfDay(today) // can't schedule in the past
     : startOfDay(selected) > startOfDay(today); // can't be born / crash in the future
 
+  // Synced ISO value + bounds for the typed <input type="date">. Accessibility:
+  // it works with no scroll wheel and is keyboard/screen-reader friendly.
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const isoValue = `${year}-${pad(monthIdx + 1)}-${pad(Math.min(dayIdx, dayCount - 1) + 1)}`;
+  const todayISO = `${thisYear}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const minDate = isFutureMode ? todayISO : `${years[0]}-01-01`;
+  const maxDate = isFutureMode ? `${years[years.length - 1]}-12-31` : todayISO;
+
+  const onTyped = (e: ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value; // "YYYY-MM-DD" (empty if cleared)
+    if (!v) return;
+    const [y, m, d] = v.split('-').map(Number);
+    if (!y || !m || !d) return;
+    const yi = years.indexOf(y);
+    if (yi === -1) return; // outside the wheel range (min/max should prevent this)
+    setYearIdx(yi);
+    setMonthIdx(m - 1);
+    setDayIdx(Math.min(d, daysIn(y, m - 1)) - 1);
+  };
+
   const reset = () => {
     setYearIdx(Math.max(0, years.indexOf(defaultYear)));
     setMonthIdx(today.getMonth());
@@ -78,19 +98,32 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
 
   const submit = () => {
     if (blocked) return;
-    const dayNum = Math.min(dayIdx, dayCount - 1) + 1;
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const iso = `${year}-${pad(monthIdx + 1)}-${pad(dayNum)}`;
     const label = selected.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
-    onSubmit({ iso, label });
+    onSubmit({ iso: isoValue, label });
   };
 
   return (
     <div className="mt-2 w-full overflow-hidden rounded-2xl border border-[#EAEEF3] bg-white shadow-md">
+      {/* Typed entry — keyboard/no-scroll accessible; stays in sync with the wheels. */}
+      <div className="border-b border-hairline-soft px-3 py-3">
+        <label htmlFor="cal-typed" className="mb-1.5 block text-[11px] font-medium text-muted">
+          Type a date, or scroll below
+        </label>
+        <input
+          id="cal-typed"
+          type="date"
+          value={isoValue}
+          min={minDate}
+          max={maxDate}
+          onChange={onTyped}
+          className="w-full rounded-lg border border-hairline bg-white px-3 py-2 text-[14px] text-ink focus:border-famaash focus:outline-none"
+        />
+      </div>
+
       {/* Wheels */}
       <div className="relative px-3 py-2">
         <div
