@@ -1,78 +1,85 @@
 import type { Message } from '../types/domain';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
-import { CheckIcon, SignatureIcon } from '../utils/icons';
+import { CheckIcon, FileIcon, SignatureIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 
 /**
  * Card for a `document_sign` message — "Review & Sign" opens the inline Dropbox
- * Sign sheet (SigningSheet) for this document. After signing it flips to a
- * "Signed" state (the agent also advances to the next document / portal link).
- * If `document.allowDefer`, also offers "text me the link instead" (defer).
+ * Sign sheet (SigningSheet) for this document. Every card also gets a uniform
+ * "Skip" button when `document.allowSkip` (same `skip_document{itemId}` event as
+ * the upload boxes) — skipped docs are recoverable via the texted portal link.
+ * After signing/skipping it collapses to a settled row and the agent advances.
  */
 export function DocumentSignCard({ message }: { message: Message }) {
   const setActiveSigning = useWidgetStore((s) => s.setActiveSigning);
+  const updateMessage = useWidgetStore((s) => s.updateMessage);
   const socket = useSocket();
+
   const doc = message.document;
   const name = doc?.name ?? 'Document';
+  const allowSkip = doc?.allowSkip === true;
   const signed = message.selectedOption === 'signed' || doc?.status === 'signed';
-  const deferred = message.selectedOption === 'deferred';
+  const skipped = message.selectedOption === 'skipped';
 
   const open = () => {
     setActiveSigning({ itemId: doc?.itemId, name, messageId: message.id });
   };
 
-  const defer = () => {
-    socket?.send({ type: 'defer_documents' });
-    useWidgetStore.getState().updateMessage(message.id, { selectedOption: 'deferred' });
+  const skip = () => {
+    if (!doc) return;
+    socket?.send({ type: 'skip_document', itemId: doc.itemId });
+    updateMessage(message.id, { selectedOption: 'skipped' });
   };
 
+  if (signed || skipped) {
+    return (
+      <div
+        className={cn(
+          'mt-2 flex max-w-[85%] items-center gap-2 rounded-lg border px-3 py-2.5 text-[13px]',
+          signed
+            ? 'border-success/30 bg-success-soft/30 text-ink'
+            : 'border-hairline bg-subtle text-muted',
+        )}
+      >
+        {signed ? (
+          <CheckIcon size={16} className="shrink-0 text-success" aria-hidden="true" />
+        ) : (
+          <FileIcon size={16} className="shrink-0 text-muted" aria-hidden="true" />
+        )}
+        <span className="font-medium">{name}</span>
+        <span>{signed ? 'signed' : 'skipped'}</span>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        'mt-2 max-w-[85%] rounded-lg border bg-white p-3 shadow-sm',
-        signed ? 'border-success/30 bg-success-soft/30' : 'border-famaash-border',
-      )}
-    >
+    <div className="mt-2 max-w-[85%] rounded-lg border border-famaash-border bg-white p-3 shadow-sm">
       <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-md',
-            signed ? 'bg-success/15 text-success' : 'bg-famaash-light text-famaash',
-          )}
-        >
-          {signed ? <CheckIcon size={18} /> : <SignatureIcon size={18} />}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-famaash-light text-famaash">
+          <SignatureIcon size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold text-ink">
-            {signed ? `${name} signed` : name}
-          </p>
-          <p className="mt-0.5 text-[12px] text-muted">
-            {signed ? 'A signed copy is saved to your file.' : 'Review the document and sign inline.'}
-          </p>
-          {!signed && !deferred && (
-            <div className="mt-2 flex flex-col items-start gap-1.5">
+          <p className="text-[14px] font-semibold text-ink">{name}</p>
+          <p className="mt-0.5 text-[12px] text-muted">Review the document and sign inline.</p>
+          <div className="mt-2 flex flex-col items-start gap-1.5">
+            <button
+              type="button"
+              onClick={open}
+              className="inline-flex items-center gap-1.5 rounded-md bg-famaash px-3 py-1.5 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-95"
+            >
+              Review &amp; Sign
+            </button>
+            {allowSkip && (
               <button
                 type="button"
-                onClick={open}
-                className="inline-flex items-center gap-1.5 rounded-md bg-famaash px-3 py-1.5 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-95"
+                onClick={skip}
+                className="text-[12px] font-medium text-muted hover:text-ink"
               >
-                Review &amp; Sign
+                Skip / I&apos;ll do it later
               </button>
-              {doc?.allowDefer && (
-                <button
-                  type="button"
-                  onClick={defer}
-                  className="text-[12px] font-medium text-muted hover:text-ink"
-                >
-                  Can&apos;t sign now? Text me the link instead
-                </button>
-              )}
-            </div>
-          )}
-          {deferred && (
-            <p className="mt-1 text-[12px] text-muted">We&apos;ve texted you the link.</p>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
