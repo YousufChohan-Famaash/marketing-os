@@ -22,6 +22,8 @@ export function ConsentModal() {
     if (choice === null) return;
     socket?.send({ type: 'consent_response', agree: choice });
     setConsent(null);
+    // Agent asks the next field right after consent — show the dots meanwhile.
+    useWidgetStore.getState().beginTyping();
   };
 
   return (

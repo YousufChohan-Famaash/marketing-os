@@ -38,7 +38,9 @@
     font: inherit;
     color: inherit;
     background: none;
-    border: none;
+    /* width 0 but a solid style, so Tailwind `border` width utilities actually
+       render a stroke on buttons (chips, etc.) instead of staying invisible. */
+    border: 0 solid currentColor;
     padding: 0;
     cursor: pointer;
   }
@@ -98,6 +100,13 @@
   }
   .wheel-col::-webkit-scrollbar {
     display: none;
+  }
+
+  /* The typed date field is keyboard entry only — the visual calendar is our
+     custom grid, so suppress the browser's dated native date popup. */
+  .cal-typed::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
   }
 
   .sr-only {

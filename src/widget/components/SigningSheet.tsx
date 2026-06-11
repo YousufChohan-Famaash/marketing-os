@@ -42,6 +42,7 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
         updateMessage(signing.messageId, { retainerStatus: 'signed', selectedOption: 'signed' });
       }
       setActiveSigning(null);
+      useWidgetStore.getState().beginTyping();
     };
 
     (async () => {

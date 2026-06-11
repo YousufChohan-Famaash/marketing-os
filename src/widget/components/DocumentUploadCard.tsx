@@ -38,6 +38,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
         await uploadDocument(conversationId, doc.itemId, file, setProgress);
         socket?.send({ type: 'file_uploaded', itemId: doc.itemId });
         updateMessage(message.id, { selectedOption: 'uploaded' });
+        useWidgetStore.getState().beginTyping();
       } catch {
         setStatus('failed');
       }
@@ -63,6 +64,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
     if (!doc) return;
     socket?.send({ type: 'skip_document', itemId: doc.itemId });
     updateMessage(message.id, { selectedOption: 'skipped' });
+    useWidgetStore.getState().beginTyping();
   };
 
   if (settled) {

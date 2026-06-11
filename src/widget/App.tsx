@@ -38,7 +38,10 @@ export function App() {
   const activeSigning = useWidgetStore((s) => s.activeSigning);
 
   const [socket, setSocket] = useState<ConversationSocket | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  // The chat opens expanded by default now; the user can collapse it back down.
+  // Lives in the store so message rendering can nudge font size when expanded.
+  const isExpanded = useWidgetStore((s) => s.isExpanded);
+  const setExpanded = useWidgetStore((s) => s.setExpanded);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
@@ -113,6 +116,9 @@ export function App() {
           },
           config.allowedOrigins ?? [],
         );
+        // Default to the expanded size — match the `isExpanded` initial state by
+        // telling the host to grow the iframe as soon as the bridge is live.
+        void bridgeRef.current.requestExpand();
       } catch (err) {
         if (disposed) return;
         const message = err instanceof Error ? err.message : 'Unknown error';
@@ -135,6 +141,9 @@ export function App() {
   useEffect(() => {
     if (socket && pendingCaseType) {
       socket.send(pendingCaseType);
+      // The agent opens with its first question after the case-type pick —
+      // show the typing dots while it (and the `ready` handshake) catch up.
+      useWidgetStore.getState().beginTyping();
       setPendingCaseType(null);
     }
   }, [socket, pendingCaseType, setPendingCaseType]);
@@ -166,7 +175,7 @@ export function App() {
 
   const handleExpand = () => {
     const next = !isExpanded;
-    setIsExpanded(next);
+    setExpanded(next);
     if (next) {
       void bridgeRef.current?.requestExpand();
     } else {

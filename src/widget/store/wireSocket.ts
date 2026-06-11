@@ -6,34 +6,15 @@ import { useWidgetStore } from './widgetStore';
  * Wire socket events to the store. Returns an unsubscribe function that
  * detaches all handlers. Pair with `socket.disconnect()` in the same cleanup.
  */
-/** Auto-clear the typing dots if a stream stalls without a matching final. */
-const TYPING_IDLE_MS = 4000;
-
 export function wireSocketToStore(socket: ConversationSocket): () => void {
   const store = useWidgetStore;
 
-  // Typing-indicator lifecycle. The dots are driven by `isAiTyping`, which we
-  // keep self-healing: any finalized message or a stall clears it, so it can't
-  // get stuck on if the backend's final doesn't match the streaming scaffold.
-  let typingTimer: ReturnType<typeof setTimeout> | null = null;
-  const clearTypingTimer = () => {
-    if (typingTimer) {
-      clearTimeout(typingTimer);
-      typingTimer = null;
-    }
-  };
-  const armTyping = (id: string) => {
-    store.getState().setStreaming(id);
-    clearTypingTimer();
-    typingTimer = setTimeout(() => {
-      typingTimer = null;
-      store.getState().endStreaming();
-    }, TYPING_IDLE_MS);
-  };
-  const stopTyping = () => {
-    clearTypingTimer();
-    store.getState().endStreaming();
-  };
+  // Typing-indicator lifecycle. The dots are driven by `isAiTyping`. The store
+  // owns the safety timer (see streamingSlice): `setStreaming` keeps them alive
+  // while chunks flow, `endStreaming` clears them, and either way they can't
+  // stick on if the backend goes quiet. User actions arm them via `beginTyping`.
+  const armTyping = (id: string) => store.getState().setStreaming(id);
+  const stopTyping = () => store.getState().endStreaming();
 
   /**
    * Patch a message by id, creating it if absent. Used by the standalone
@@ -151,7 +132,7 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
   ];
 
   return () => {
-    clearTypingTimer();
+    store.getState().endStreaming();
     for (const off of offs) off();
   };
 }

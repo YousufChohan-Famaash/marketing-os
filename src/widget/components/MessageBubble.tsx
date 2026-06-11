@@ -1,6 +1,10 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import type { Message } from '../types/domain';
+import { useWidgetStore } from '../store/widgetStore';
+import { resolveAssistantAvatar } from '../config/demoMedia';
 import { cn } from '../utils/cn';
+import { findLeadEmail, useGravatar } from '../utils/useGravatar';
+import { Avatar } from './Avatar';
 import { matchPracticeIcon } from './BrandAssets';
 import { RichText } from './RichText';
 
@@ -12,8 +16,8 @@ interface MessageBubbleProps {
 
 function bubbleStyle(role: Message['role']): string {
   if (role === 'lead') {
-    // Figma: light-purple pill, dark text, right-aligned.
-    return 'bg-[#EEEEFF] text-[#1A1A1A] rounded-pill border border-[#F3F3F3] ml-auto';
+    // Match the AI bubble radius, mirrored: rounded-2xl with a bottom-right tail.
+    return 'bg-[#EEEEFF] text-[#1A1A1A] rounded-2xl rounded-br-md border border-[#F3F3F3] ml-auto';
   }
   if (role === 'agent') {
     return 'bg-success-soft text-ink rounded-2xl rounded-bl-md border border-success/30 font-message';
@@ -37,45 +41,79 @@ export const MessageBubble = memo(function MessageBubble({
   const isSending = message.status === 'sending';
   const leadIcon = isLead ? matchPracticeIcon(message.content, 16) : null;
 
+  // Slightly larger, more readable text when the chat is in its expanded size.
+  const isExpanded = useWidgetStore((s) => s.isExpanded);
+  const branding = useWidgetStore((s) => s.branding);
+  const agentTakeover = useWidgetStore((s) => s.agentTakeover);
+
+  // A human-feeling avatar beside incoming (assistant / live-agent) messages.
+  const isAgent = message.role === 'agent';
+  const avatarName = isAgent
+    ? agentTakeover?.agentName ?? branding?.assistantName ?? 'Agent'
+    : branding?.assistantName ?? 'Assistant';
+  const avatarSrc = isAgent ? undefined : resolveAssistantAvatar(branding?.assistantAvatarUrl);
+
+  // The lead gets their Gravatar on the right — but only if one actually exists
+  // for the email they gave us (otherwise the avatar renders nothing).
+  const capturedFields = useWidgetStore((s) => s.capturedFields);
+  const messages = useWidgetStore((s) => s.messages);
+  const leadEmail = useMemo(
+    () => (isLead ? findLeadEmail(capturedFields, messages) : undefined),
+    [isLead, capturedFields, messages],
+  );
+  const leadAvatar = useGravatar(leadEmail);
+
   return (
     <div
       className={cn(
-        'group flex flex-col gap-1',
-        isLead ? 'items-end' : 'items-start',
+        'group flex w-full gap-2',
+        isLead ? 'justify-end' : 'justify-start',
       )}
     >
+      {isAi && <Avatar src={avatarSrc} name={avatarName} size={28} className="mt-0.5" />}
       <div
         className={cn(
-          'inline-flex max-w-[88%] px-4 py-2.5 text-[0.8125rem] leading-relaxed',
-          'whitespace-pre-wrap break-words',
-          // Lead/agent keep a subtle shadow; the AI gray bubble stays flat (iMessage-like).
-          message.role !== 'ai' && 'shadow-sm',
-          bubbleStyle(message.role),
-          message.isStreaming && 'stream-cursor',
+          'flex min-w-0 max-w-[88%] flex-col gap-1',
+          isLead ? 'items-end' : 'items-start',
         )}
       >
-        {message.hasMarkdown && isAi ? (
-          <RichText content={message.content} />
-        ) : isLead ? (
-          <span className="flex items-center gap-2">
-            {leadIcon}
+        <div
+          className={cn(
+            'inline-flex max-w-full px-4 py-2.5 leading-relaxed',
+            isExpanded ? 'text-[0.875rem]' : 'text-[0.8125rem]',
+            'whitespace-pre-wrap break-words',
+            // Lead/agent keep a subtle shadow; the AI gray bubble stays flat (iMessage-like).
+            message.role !== 'ai' && 'shadow-sm',
+            bubbleStyle(message.role),
+            message.isStreaming && 'stream-cursor',
+          )}
+        >
+          {message.hasMarkdown && isAi ? (
+            <RichText content={message.content} />
+          ) : isLead ? (
+            <span className="flex items-center gap-2">
+              {leadIcon}
+              <span>{message.content}</span>
+            </span>
+          ) : (
             <span>{message.content}</span>
-          </span>
-        ) : (
-          <span>{message.content}</span>
-        )}
+          )}
+        </div>
+        {affordance && <div className="w-full">{affordance}</div>}
+        <div
+          className={cn(
+            'flex items-center gap-1 px-2 text-[10px] text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100',
+            isLead ? 'self-end' : 'self-start',
+          )}
+        >
+          {isSending && <span>Sending…</span>}
+          {isFailed && <span className="text-danger">Failed to send</span>}
+          {!isSending && !isFailed && <time dateTime={new Date(message.timestamp).toISOString()}>{formatTime(message.timestamp)}</time>}
+        </div>
       </div>
-      {affordance && <div className="w-full">{affordance}</div>}
-      <div
-        className={cn(
-          'flex items-center gap-1 px-2 text-[10px] text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100',
-          isLead ? 'self-end' : 'self-start',
-        )}
-      >
-        {isSending && <span>Sending…</span>}
-        {isFailed && <span className="text-danger">Failed to send</span>}
-        {!isSending && !isFailed && <time dateTime={new Date(message.timestamp).toISOString()}>{formatTime(message.timestamp)}</time>}
-      </div>
+      {isLead && leadAvatar && (
+        <Avatar src={leadAvatar} size={28} fallback="none" className="mt-0.5" />
+      )}
     </div>
   );
 });

@@ -25,6 +25,7 @@ export interface ComposerHandle {
 export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const flags = useWidgetStore((s) => s.flags);
   const addMessage = useWidgetStore((s) => s.addMessage);
+  const beginTyping = useWidgetStore((s) => s.beginTyping);
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const conversationEnded = useWidgetStore((s) => s.conversationEnded);
   const socket = useSocket();
@@ -59,6 +60,8 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
       content: trimmed,
       clientMessageId: clientId,
     });
+    // Show the typing dots immediately while we wait for the AI's reply.
+    beginTyping();
     setValue("");
     requestAnimationFrame(autoResize);
   };

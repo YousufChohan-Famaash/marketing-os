@@ -30,6 +30,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
     if (!doc) return;
     socket?.send({ type: 'skip_document', itemId: doc.itemId });
     updateMessage(message.id, { selectedOption: 'skipped' });
+    useWidgetStore.getState().beginTyping();
   };
 
   if (signed || skipped) {

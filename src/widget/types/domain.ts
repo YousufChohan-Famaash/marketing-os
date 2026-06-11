@@ -173,6 +173,10 @@ export interface FirmBranding {
   practiceAreas?: string[];
   outroVideoUrl?: string;
   outroVideoPoster?: string;
+  /** Display name for the AI assistant, shown on its avatar / fallback initials. */
+  assistantName?: string;
+  /** Headshot/photo for the AI assistant's chat avatar. Falls back to initials. */
+  assistantAvatarUrl?: string;
 }
 
 export interface FeatureFlags {

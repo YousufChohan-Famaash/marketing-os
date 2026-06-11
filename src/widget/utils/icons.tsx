@@ -343,3 +343,12 @@ export const ClockIcon = (p: IconProps) => (
     <polyline points="12 7 12 12 15 14" />
   </Base>
 );
+
+export const SlidersIcon = (p: IconProps) => (
+  <Base {...p}>
+    <line x1="4" y1="7" x2="20" y2="7" />
+    <line x1="4" y1="17" x2="20" y2="17" />
+    <circle cx="9" cy="7" r="2.4" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="17" r="2.4" fill="currentColor" stroke="none" />
+  </Base>
+);

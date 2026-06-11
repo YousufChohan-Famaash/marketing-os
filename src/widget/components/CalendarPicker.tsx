@@ -1,5 +1,9 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
+import { CalendarGrid } from './CalendarGrid';
 import { WheelColumn } from './WheelColumn';
+import { CalendarIcon, SlidersIcon } from '../utils/icons';
+import { useMediaQuery } from '../utils/useMediaQuery';
+import { cn } from '../utils/cn';
 
 export interface DateSelection {
   /** ISO `YYYY-MM-DD` — sent to the backend (unambiguous, stored verbatim). */
@@ -18,7 +22,7 @@ interface CalendarPickerProps {
   mode?: 'birthday' | 'recent' | 'future';
   /** Called with the chosen date (ISO for the backend, label for display) on OK. */
   onSubmit: (value: DateSelection) => void;
-  /** Optional Cancel handler (e.g. go back). Defaults to resetting the wheels. */
+  /** Optional Cancel handler (e.g. go back). Defaults to resetting the picker. */
   onCancel?: () => void;
 }
 
@@ -27,24 +31,28 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-const daysIn = (year: number, monthIdx: number) =>
-  new Date(year, monthIdx + 1, 0).getDate();
-
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
+const pad = (n: number) => String(n).padStart(2, '0');
+const daysIn = (year: number, monthIdx: number) => new Date(year, monthIdx + 1, 0).getDate();
 
 /**
- * iOS-alarm-style Month / Day / Year wheels. Used inline in the transcript for
- * dates (DOB, accident) and in the scheduler ('future' mode allows upcoming
- * dates and blocks the past).
+ * Date picker that defaults to just a typed `<input type="date">` line — the
+ * user can type a date with the keyboard without ever opening a visual picker.
+ * Tapping the calendar button reveals the visual picker: a month grid on big
+ * screens, the iOS-style wheel slider on small ones (never both, and chosen by
+ * screen size, not a manual toggle). 'future' mode allows upcoming dates and
+ * blocks the past (scheduling); the other modes block the future.
  */
 export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: CalendarPickerProps) {
   const today = new Date();
   const thisYear = today.getFullYear();
   const isFutureMode = mode === 'future';
+  // Touch users get the wheel slider, mouse users the month grid. `pointer`
+  // reflects the real input device, not the iframe/panel size, so it tracks the
+  // user's actual viewport rather than how wide the chat happens to be.
+  const isTouch = useMediaQuery('(pointer: coarse)');
+  // When the chat is wide (expanded) the actions fit on the input line.
+  const isWideChat = useMediaQuery('(min-width: 480px)');
 
-  // Year range + default depend on the mode.
   const years: number[] = [];
   if (isFutureMode) {
     for (let y = thisYear; y <= thisYear + 1; y++) years.push(y);
@@ -56,6 +64,8 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
   const [yearIdx, setYearIdx] = useState(Math.max(0, years.indexOf(defaultYear)));
   const [monthIdx, setMonthIdx] = useState(today.getMonth());
   const [dayIdx, setDayIdx] = useState(today.getDate() - 1);
+  // Collapsed by default — only the typed date line shows until the user opens it.
+  const [showPicker, setShowPicker] = useState(false);
 
   const year = years[yearIdx];
   const dayCount = daysIn(year, monthIdx);
@@ -65,29 +75,25 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
     if (dayIdx > dayCount - 1) setDayIdx(dayCount - 1);
   }, [dayCount, dayIdx]);
 
-  const selected = new Date(year, monthIdx, dayIdx + 1);
-  const blocked = isFutureMode
-    ? startOfDay(selected) < startOfDay(today) // can't schedule in the past
-    : startOfDay(selected) > startOfDay(today); // can't be born / crash in the future
-
-  // Synced ISO value + bounds for the typed <input type="date">. Accessibility:
-  // it works with no scroll wheel and is keyboard/screen-reader friendly.
-  const pad = (n: number) => String(n).padStart(2, '0');
+  // Everything below works off ISO strings — lexicographic compare == chronological.
   const isoValue = `${year}-${pad(monthIdx + 1)}-${pad(Math.min(dayIdx, dayCount - 1) + 1)}`;
   const todayISO = `${thisYear}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   const minDate = isFutureMode ? todayISO : `${years[0]}-01-01`;
   const maxDate = isFutureMode ? `${years[years.length - 1]}-12-31` : todayISO;
+  const blocked = isFutureMode ? isoValue < todayISO : isoValue > todayISO;
 
-  const onTyped = (e: ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value; // "YYYY-MM-DD" (empty if cleared)
-    if (!v) return;
-    const [y, m, d] = v.split('-').map(Number);
+  const setFromIso = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
     if (!y || !m || !d) return;
     const yi = years.indexOf(y);
-    if (yi === -1) return; // outside the wheel range (min/max should prevent this)
+    if (yi === -1) return; // outside the allowed range
     setYearIdx(yi);
     setMonthIdx(m - 1);
     setDayIdx(Math.min(d, daysIn(y, m - 1)) - 1);
+  };
+
+  const onTyped = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) setFromIso(e.target.value);
   };
 
   const reset = () => {
@@ -98,7 +104,8 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
 
   const submit = () => {
     if (blocked) return;
-    const label = selected.toLocaleDateString('en-US', {
+    const [y, m, d] = isoValue.split('-').map(Number);
+    const label = new Date(y, m - 1, d).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -106,13 +113,39 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
     onSubmit({ iso: isoValue, label });
   };
 
+  // When the chat is wide and the visual picker is closed, the actions fit on
+  // the input line; otherwise they sit in a footer below the picker.
+  const buttonsInline = isWideChat && !showPicker;
+
+  const actions = (
+    <>
+      <button
+        type="button"
+        onClick={onCancel ?? reset}
+        className="rounded-pill bg-[#F5F8FB] px-4 py-2 text-[12px] font-bold text-[#1A1A1A] transition-colors hover:bg-hairline-soft"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={submit}
+        disabled={blocked}
+        className="rounded-pill bg-famaash px-5 py-2 text-[12px] font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        OK
+      </button>
+    </>
+  );
+
   return (
     <div className="mt-2 w-full overflow-hidden rounded-2xl border border-[#EAEEF3] bg-white shadow-md">
-      {/* Typed entry — keyboard/no-scroll accessible; stays in sync with the wheels. */}
-      <div className="border-b border-hairline-soft px-3 py-3">
-        <label htmlFor="cal-typed" className="mb-1.5 block text-[11px] font-medium text-muted">
-          Type a date, or scroll below
-        </label>
+      {/* Typed entry — keyboard accessible. The button reveals the visual picker. */}
+      <div
+        className={cn(
+          'flex items-center gap-2 px-3 py-2',
+          !buttonsInline && 'border-b border-hairline-soft',
+        )}
+      >
         <input
           id="cal-typed"
           type="date"
@@ -120,46 +153,62 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
           min={minDate}
           max={maxDate}
           onChange={onTyped}
-          className="w-full rounded-lg border border-hairline bg-white px-3 py-2 text-[14px] text-ink focus:border-famaash focus:outline-none"
+          aria-label="Type a date"
+          className="cal-typed min-w-0 flex-1 rounded-lg border border-hairline bg-white px-3 py-2 text-[14px] text-ink focus:border-famaash focus:outline-none"
         />
+        <button
+          type="button"
+          onClick={() => setShowPicker((v) => !v)}
+          aria-label={showPicker ? 'Hide picker' : isTouch ? 'Open date picker' : 'Open calendar'}
+          aria-pressed={showPicker}
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors',
+            showPicker
+              ? 'border-famaash/30 bg-famaash/10 text-famaash'
+              : 'border-hairline bg-white text-muted hover:text-ink',
+          )}
+        >
+          {isTouch ? <SlidersIcon size={18} /> : <CalendarIcon size={18} />}
+        </button>
+        {buttonsInline && actions}
       </div>
 
-      {/* Wheels */}
-      <div className="relative px-3 py-2">
-        <div
-          className="pointer-events-none absolute inset-x-3 top-1/2 h-10 -translate-y-1/2 rounded-[10px] border-y border-[#EAEEF3] bg-[#F5F8FB]"
-          aria-hidden="true"
-        />
-        <div className="relative flex items-stretch">
-          <WheelColumn items={MONTHS} index={monthIdx} onChange={setMonthIdx} ariaLabel="Month" />
-          <WheelColumn
-            items={days}
-            index={Math.min(dayIdx, dayCount - 1)}
-            onChange={setDayIdx}
-            ariaLabel="Day"
+      {/* Visual picker — hidden until opened. Touch → wheel slider, mouse → grid. */}
+      {showPicker &&
+        (isTouch ? (
+          <div className="relative px-3 py-2">
+            <div
+              className="pointer-events-none absolute inset-x-3 top-1/2 h-10 -translate-y-1/2 rounded-[10px] border-y border-[#EAEEF3] bg-[#F5F8FB]"
+              aria-hidden="true"
+            />
+            <div className="relative flex items-stretch">
+              <WheelColumn items={MONTHS} index={monthIdx} onChange={setMonthIdx} ariaLabel="Month" />
+              <WheelColumn
+                items={days}
+                index={Math.min(dayIdx, dayCount - 1)}
+                onChange={setDayIdx}
+                ariaLabel="Day"
+              />
+              <WheelColumn items={years.map(String)} index={yearIdx} onChange={setYearIdx} ariaLabel="Year" />
+            </div>
+          </div>
+        ) : (
+          <CalendarGrid
+            selectedISO={isoValue}
+            todayISO={todayISO}
+            minISO={minDate}
+            maxISO={maxDate}
+            years={years}
+            onPick={setFromIso}
           />
-          <WheelColumn items={years.map(String)} index={yearIdx} onChange={setYearIdx} ariaLabel="Year" />
-        </div>
-      </div>
+        ))}
 
-      {/* Footer */}
-      <div className="flex items-center justify-end gap-2 border-t border-hairline-soft px-4 py-4">
-        <button
-          type="button"
-          onClick={onCancel ?? reset}
-          className="rounded-pill bg-[#F5F8FB] px-4 py-2 text-[12px] font-bold text-[#1A1A1A] transition-colors hover:bg-hairline-soft"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={blocked}
-          className="rounded-pill bg-famaash px-5 py-2 text-[12px] font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          OK
-        </button>
-      </div>
+      {/* Footer — only when the actions aren't already on the input line. */}
+      {!buttonsInline && (
+        <div className="flex items-center justify-end gap-2 border-t border-hairline-soft px-4 py-3">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

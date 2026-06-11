@@ -95,6 +95,7 @@ export function MessageList() {
     // The chosen chip stays highlighted in place (no mirrored lead bubble).
     updateMessage(msg.id, { selectedOption: option });
     socket.send({ type: 'quick_reply_selected', messageId: msg.id, selectedOption: option });
+    useWidgetStore.getState().beginTyping();
   };
 
   const sendDate = (msg: Message, value: { iso: string; label: string }) => {
@@ -115,6 +116,7 @@ export function MessageList() {
       content: value.iso,
       clientMessageId: generateId('msg_lead'),
     });
+    useWidgetStore.getState().beginTyping();
   };
 
   // Generic answer for typed widgets (name/phone/email/number) and quick-date
@@ -131,12 +133,14 @@ export function MessageList() {
       status: 'sent',
     });
     socket.send({ type: 'lead_message', content, clientMessageId: generateId('msg_lead') });
+    useWidgetStore.getState().beginTyping();
   };
 
   const handleFilesUploaded = (msg: Message, files: Message['files'] = []) => {
     if (!socket || !files || files.length === 0) return;
     updateMessage(msg.id, { files });
     socket.send({ type: 'file_uploaded', files });
+    useWidgetStore.getState().beginTyping();
   };
 
   const handleRetainerReview = (msg: Message) => {
@@ -218,7 +222,7 @@ export function MessageList() {
                               key={opt}
                               type="button"
                               onClick={() => sendLeadAnswer(m, opt)}
-                              className="rounded-pill border border-[#EAEEF3] bg-white px-4 py-2 text-[13px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
+                              className="rounded-pill border border-[#BCC0EE] bg-white px-4 py-2 text-[13px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
                             >
                               {opt}
                             </button>

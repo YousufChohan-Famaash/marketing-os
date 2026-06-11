@@ -22,3 +22,15 @@ export function resolveIntroPoster(
   if (url) return poster ?? undefined; // real firm video → real (or no) poster
   return import.meta.env.DEV ? DEMO_INTRO_POSTER : undefined;
 }
+
+/**
+ * Placeholder assistant headshot, served from /public, used until a firm sets
+ * `branding.assistantAvatarUrl`. If the file is missing the Avatar falls back
+ * to initials, so this is safe even before the image is dropped in.
+ */
+export const DEFAULT_ASSISTANT_AVATAR = '/assistant-avatar.jpg';
+
+/** The firm's configured assistant photo, or the placeholder headshot. */
+export function resolveAssistantAvatar(url?: string | null): string | undefined {
+  return url || DEFAULT_ASSISTANT_AVATAR;
+}

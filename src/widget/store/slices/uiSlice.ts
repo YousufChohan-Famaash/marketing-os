@@ -39,6 +39,8 @@ export interface UiSlice {
   bootStatus: BootStatus;
   bootError: string | null;
   isWidgetOpen: boolean;
+  /** Whether the chat is in its larger expanded size (default) vs the compact panel. */
+  isExpanded: boolean;
   isCaptureDrawerOpen: boolean;
   activeModal: ActiveModal;
   unreadCount: number;
@@ -55,6 +57,7 @@ export interface UiSlice {
   activeSigning: ActiveSigning | null;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
+  setExpanded: (expanded: boolean) => void;
   setConversationId: (id: string | null) => void;
   setCaseTypePicked: (picked: boolean) => void;
   setPendingCaseType: (event: ClientEvent | null) => void;
@@ -76,6 +79,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   bootStatus: 'idle',
   bootError: null,
   isWidgetOpen: false,
+  isExpanded: true,
   isCaptureDrawerOpen: false,
   activeModal: null,
   unreadCount: 0,
@@ -87,6 +91,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   activeSigning: null,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
+  setExpanded: (expanded) => set({ isExpanded: expanded }),
   setConversationId: (id) => set({ conversationId: id }),
   setCaseTypePicked: (picked) => set({ caseTypePicked: picked }),
   setPendingCaseType: (event) => set({ pendingCaseType: event }),
