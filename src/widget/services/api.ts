@@ -74,6 +74,15 @@ export interface DocumentsResponse {
   dropboxSignClientId: string | null;
 }
 
+/** POST /documents/upload — backend-proxied upload (no browser→S3, no CORS). */
+export interface DocumentUploadResponse {
+  itemId: string;
+  status: string;
+  leadDocumentId: string;
+  fileName: string;
+  documentUrl: string | null;
+}
+
 /** GET /conversations/{id}/messages — cold-load rehydration. */
 export interface ConversationHistoryResponse {
   conversationId: string;
@@ -203,6 +212,46 @@ export function fetchDocuments(
     undefined,
     signal,
   );
+}
+
+/**
+ * POST /documents/upload — upload an evidence file THROUGH the backend
+ * (multipart). Replaces the presigned direct-to-S3 PUT (which hit CORS). Uses
+ * XHR so we can show upload progress; the browser sets the multipart boundary.
+ */
+export function uploadDocument(
+  conversationId: string,
+  itemId: string,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<DocumentUploadResponse> {
+  return new Promise<DocumentUploadResponse>((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('conversationId', conversationId);
+    fd.append('itemId', itemId);
+    fd.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${getApiBase()}/documents/upload`, true);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as DocumentUploadResponse);
+        } catch {
+          reject(new ApiError(xhr.status, 'upload response was not JSON', xhr.responseText));
+        }
+      } else {
+        reject(new ApiError(xhr.status, `POST /documents/upload → ${xhr.status}`, xhr.responseText));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'document upload network error'));
+    xhr.send(fd);
+  });
 }
 
 /** GET /conversations/{id}/messages — transcript + fields + chips for cold load. */

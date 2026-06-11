@@ -3,15 +3,16 @@ import { useDropzone } from 'react-dropzone';
 import type { Message } from '../types/domain';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
-import { putToPresignedUrl, signUploads, uploadedFileFromSlot } from '../services/api';
+import { uploadDocument } from '../services/api';
 import { CheckIcon, FileIcon, UploadIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 
 /**
  * Card for a `document_upload` message — one document at a time. Picking a file
- * presigns + PUTs it to S3, then publishes `file_uploaded { itemId, fileKey }`
- * so the agent finalizes it and sends the next box. "Skip" publishes
- * `skip_document` (the portal link at the end covers skipped docs).
+ * uploads it THROUGH the backend (POST /documents/upload, multipart — no
+ * browser→S3, no CORS), then publishes `file_uploaded { itemId }` so the agent
+ * finalizes it and sends the next box. "Skip" publishes `skip_document` (the
+ * portal link at the end covers skipped docs).
  */
 export function DocumentUploadCard({ message }: { message: Message }) {
   const conversationId = useWidgetStore((s) => s.conversationId);
@@ -34,18 +35,8 @@ export function DocumentUploadCard({ message }: { message: Message }) {
       setStatus('uploading');
       setProgress(0);
       try {
-        const { uploads } = await signUploads(conversationId, [
-          { name: file.name, type: file.type, size: file.size },
-        ]);
-        const slot = uploads[0];
-        if (!slot) throw new Error('no upload slot');
-        await putToPresignedUrl(slot.uploadUrl, file, setProgress);
-        socket?.send({
-          type: 'file_uploaded',
-          itemId: doc.itemId,
-          fileKey: slot.fileKey,
-          files: [uploadedFileFromSlot(slot, file)],
-        });
+        await uploadDocument(conversationId, doc.itemId, file, setProgress);
+        socket?.send({ type: 'file_uploaded', itemId: doc.itemId });
         updateMessage(message.id, { selectedOption: 'uploaded' });
       } catch {
         setStatus('failed');

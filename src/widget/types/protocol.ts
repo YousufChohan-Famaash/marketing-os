@@ -172,11 +172,14 @@ export interface FieldEditClientEvent {
 
 export interface FileUploadedClientEvent {
   type: 'file_uploaded';
-  /** Batch — fired once after all files in the upload zone finish. */
-  files: UploadedFile[];
-  /** For `document_upload` cards: which document this file belongs to. */
+  /**
+   * For `document_upload` cards: which document was uploaded. The file itself
+   * goes via POST /documents/upload, so `itemId` alone advances the flow.
+   */
   itemId?: string;
-  /** S3 key from POST /uploads/sign — lets the agent finalize the document. */
+  /** Legacy batch upload zone — the uploaded file list (optional). */
+  files?: UploadedFile[];
+  /** Legacy presigned flow — S3 key (no longer used by document_upload). */
   fileKey?: string;
 }
 
