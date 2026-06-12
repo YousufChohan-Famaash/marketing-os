@@ -72,8 +72,8 @@ const styles = `
   position: fixed;
   bottom: 90px;
   right: 20px;
-  width: 380px;
-  height: 600px;
+  width: 410px;
+  height: 650px;
   max-height: calc(100vh - 110px);
   border: none;
   border-radius: 16px;
@@ -99,6 +99,11 @@ const styles = `
     height: 100dvh;
     max-height: none;
     border-radius: 0;
+  }
+  /* The full-screen chat covers the page, so the floating launcher would just
+     overlap it — hide it while open (the in-chat header handles closing). */
+  #${LAUNCHER_ID}.is-chat-open {
+    display: none;
   }
 }
 `;
@@ -147,6 +152,7 @@ function readScriptConfig(): { firmId: string; widgetOrigin: string } {
   injectStyles();
 
   let iframe: HTMLIFrameElement | null = null;
+  let launcher: HTMLButtonElement | null = null;
   let iframeRemote: IframeMethods | null = null;
   let connection: Connection<IframeMethods> | null = null;
   let iframeReady: Promise<IframeMethods> | null = null;
@@ -154,9 +160,11 @@ function readScriptConfig(): { firmId: string; widgetOrigin: string } {
   const hostMethods: HostMethods = {
     requestClose: () => {
       iframe?.classList.add('is-hidden');
+      launcher?.classList.remove('is-chat-open');
     },
     requestMinimize: () => {
       iframe?.classList.add('is-hidden');
+      launcher?.classList.remove('is-chat-open');
     },
     requestExpand: () => {
       iframe?.classList.add('is-expanded');
@@ -213,19 +221,23 @@ function readScriptConfig(): { firmId: string; widgetOrigin: string } {
     ensureIframe()
       .then((remote) => {
         iframe?.classList.remove('is-hidden');
+        // Hide the launcher behind the full-screen chat (mobile-only via CSS).
+        launcher?.classList.add('is-chat-open');
         return remote.open();
       })
       .catch(() => {
         iframe?.classList.add('is-hidden');
+        launcher?.classList.remove('is-chat-open');
       });
   }
 
   function closeWidget(): void {
     iframe?.classList.add('is-hidden');
+    launcher?.classList.remove('is-chat-open');
     iframeRemote?.close().catch(() => undefined);
   }
 
-  const launcher = makeLauncher(openWidget);
+  launcher = makeLauncher(openWidget);
   document.body.appendChild(launcher);
 
   type FamaashApi = {

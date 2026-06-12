@@ -4,9 +4,10 @@
  * building. In production (no DEV flag) firms without a real video fall back
  * to the compact header instead — we never ship this sample to real users.
  *
- * Small (~0.8 MB) public Big Buck Bunny clip so it autoplays fast.
+ * A professional in an office speaking to camera (free Mixkit clip, 720p),
+ * so the opener reads like a real intake greeting rather than a cartoon.
  */
-export const DEMO_INTRO_VIDEO = 'https://www.w3schools.com/html/mov_bbb.mp4';
+export const DEMO_INTRO_VIDEO = 'https://assets.mixkit.co/videos/4834/4834-720.mp4';
 export const DEMO_INTRO_POSTER: string | undefined = undefined;
 
 /** Resolve the intro video to use: the firm's, or the demo one in DEV. */
