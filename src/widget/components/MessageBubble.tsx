@@ -17,7 +17,8 @@ interface MessageBubbleProps {
 function bubbleStyle(role: Message['role']): string {
   if (role === 'lead') {
     // Match the AI bubble radius, mirrored: rounded-2xl with a bottom-right tail.
-    return 'bg-[#EEEEFF] text-[#1A1A1A] rounded-2xl rounded-br-md border border-[#F3F3F3] ml-auto';
+    // bg uses the brand-light tint so the lead bubble themes with the host site.
+    return 'bg-famaash-light text-[#1A1A1A] rounded-2xl rounded-br-md border border-[#F3F3F3] ml-auto';
   }
   if (role === 'agent') {
     return 'bg-success-soft text-ink rounded-2xl rounded-bl-md border border-success/30 font-message';

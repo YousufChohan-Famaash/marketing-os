@@ -1,7 +1,10 @@
 import type { StateCreator } from 'zustand';
-import type { ConsentModal } from '../../types/domain';
+import type { ConnectChannel, ConsentModal } from '../../types/domain';
 import type { ClientEvent } from '../../types/protocol';
 import type { WidgetStore } from '../widgetStore';
+
+/** Which Connect surface is showing: the home menu or a specific channel. */
+export type ConnectView = 'home' | ConnectChannel;
 
 /** A document the lead is signing inline (drives the SigningSheet). */
 export interface ActiveSigning {
@@ -55,8 +58,18 @@ export interface UiSlice {
   consent: ConsentModal | null;
   /** Document currently being signed inline (drives the SigningSheet). */
   activeSigning: ActiveSigning | null;
+  /** Connect launcher view: the home menu, or a channel the lead routed into. */
+  connectView: ConnectView;
+  /** True once a conversation (chat) has actually begun — drives Small-mode
+   * expand and the video shrink-to-avatar. */
+  conversationStarted: boolean;
+  /** True once the cinematic full-screen open has played / been skipped. */
+  cinematicDismissed: boolean;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
+  setConnectView: (view: ConnectView) => void;
+  setConversationStarted: (started: boolean) => void;
+  dismissCinematic: () => void;
   setExpanded: (expanded: boolean) => void;
   setConversationId: (id: string | null) => void;
   setCaseTypePicked: (picked: boolean) => void;
@@ -89,8 +102,14 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   pendingCaseType: null,
   consent: null,
   activeSigning: null,
+  connectView: 'home',
+  conversationStarted: false,
+  cinematicDismissed: false,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
+  setConnectView: (view) => set({ connectView: view }),
+  setConversationStarted: (started) => set({ conversationStarted: started }),
+  dismissCinematic: () => set({ cinematicDismissed: true }),
   setExpanded: (expanded) => set({ isExpanded: expanded }),
   setConversationId: (id) => set({ conversationId: id }),
   setCaseTypePicked: (picked) => set({ caseTypePicked: picked }),

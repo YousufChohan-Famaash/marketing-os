@@ -98,7 +98,7 @@ export function QuickReplyChips({
                 chipBase,
                 isSelected
                   ? 'border-transparent bg-famaash text-white'
-                  : 'border-[#BCC0EE] bg-white text-[#1A1A1A] hover:bg-[#F5F8FB]',
+                  : 'border-famaash-stroke bg-white text-[#1A1A1A] hover:bg-[#F5F8FB]',
                 locked && 'cursor-default',
                 locked && !isSelected && 'opacity-50',
               )}

@@ -1,0 +1,122 @@
+import { useEffect, useRef, useState } from 'react';
+import { useWidgetStore } from '../store/widgetStore';
+import { resolveAssistantAvatar, resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
+import { PlayIcon, ReplayIcon } from '../utils/icons';
+import { cn } from '../utils/cn';
+import { Avatar } from './Avatar';
+
+interface ConnectVideoProps {
+  /** Sizing/aspect/radius classes for the tile. */
+  className?: string;
+  /** Smaller play/sound controls for the Small-mode tile. */
+  compact?: boolean;
+}
+
+/**
+ * The attorney video on the Connect launcher. Shows one clip at a time per the
+ * admin `videoMode`:
+ *   intro  → the firm's intro video (or the dev sample)
+ *   story  → the firm's "story" video, falling back to the intro
+ *   none   → a branded avatar tile (no video)
+ * Autoplays muted when `settings.autoplay`, otherwise shows paused with a play
+ * button; tapping unmutes. Live presence badge sits top-left. Contact options
+ * are never drawn on the video — the parent renders them below it.
+ */
+export function ConnectVideo({ className, compact }: ConnectVideoProps) {
+  const branding = useWidgetStore((s) => s.branding);
+  const settings = useWidgetStore((s) => s.connect);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [soundOn, setSoundOn] = useState(false);
+
+  const mode = settings.videoMode;
+  const introUrl = resolveIntroVideo(branding?.introVideoUrl);
+  const src =
+    mode === 'none'
+      ? undefined
+      : mode === 'story'
+        ? settings.storyVideoUrl ?? introUrl
+        : introUrl;
+  const poster =
+    mode === 'story'
+      ? settings.storyVideoPoster
+      : resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
+
+  useEffect(() => {
+    if (!src) return;
+    const v = videoRef.current;
+    if (!v) return;
+    if (settings.autoplay) {
+      v.muted = true;
+      v.play().catch(() => undefined);
+    }
+  }, [src, settings.autoplay]);
+
+  // None → branded avatar tile.
+  if (!src) {
+    return (
+      <div
+        className={cn(
+          'flex items-center justify-center bg-famaash-light',
+          className,
+        )}
+        aria-hidden="true"
+      >
+        <Avatar
+          src={resolveAssistantAvatar(branding?.assistantAvatarUrl)}
+          name={branding?.assistantName ?? branding?.name ?? 'Assistant'}
+          size={compact ? 44 : 72}
+        />
+      </div>
+    );
+  }
+
+  const toggleSound = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    const next = !soundOn;
+    v.muted = !next;
+    if (next && v.paused) void v.play();
+    setSoundOn(next);
+  };
+
+  const replay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    void v.play();
+  };
+
+  return (
+    <div className={cn('relative overflow-hidden', className)}>
+      <video
+        ref={videoRef}
+        src={src}
+        poster={poster}
+        playsInline
+        loop
+        preload="metadata"
+        className="h-full w-full object-cover"
+        aria-label="Attorney introduction video"
+      />
+      {/* Live presence */}
+      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#5BD6A0]" aria-hidden="true" />
+        Live
+      </span>
+      {/* Sound / replay control */}
+      <button
+        type="button"
+        onClick={soundOn ? replay : toggleSound}
+        aria-label={soundOn ? 'Replay video' : 'Play with sound'}
+        className={cn(
+          'absolute z-10 flex items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-transform hover:scale-105',
+          compact
+            ? 'bottom-1.5 right-1.5 h-7 w-7'
+            : 'left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2',
+        )}
+      >
+        {soundOn ? <ReplayIcon size={compact ? 13 : 18} /> : <PlayIcon size={compact ? 13 : 18} />}
+      </button>
+    </div>
+  );
+}

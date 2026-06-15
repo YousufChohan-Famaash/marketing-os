@@ -8,22 +8,30 @@ interface CallbackFormProps {
   cta: string;
   /** 'alert' — red badge + phone CTA (call/help). 'brand' — purple badge + message CTA (text). */
   variant?: 'alert' | 'brand';
+  /** TCPA consent text. When set, a required checkbox gates the CTA before we
+   * ever capture the phone number. */
+  consentLabel?: string;
   onSubmit: (phone: string) => void;
 }
 
 /**
  * Phone-number collection step shared by the "call me", "I need help", and
- * "text me" flows: a badge, heading + body, a phone input, and the primary CTA.
+ * "text me" flows: a badge, heading + body, a phone input, the primary CTA,
+ * and (when `consentLabel` is set) a TCPA consent gate the lead must accept
+ * before the number is submitted.
  */
 export function CallbackForm({
   heading,
   body,
   cta,
   variant = 'alert',
+  consentLabel,
   onSubmit,
 }: CallbackFormProps) {
   const [phone, setPhone] = useState('');
-  const valid = phone.replace(/\D/g, '').length >= 7;
+  const [agreed, setAgreed] = useState(false);
+  const phoneValid = phone.replace(/\D/g, '').length >= 7;
+  const valid = phoneValid && (!consentLabel || agreed);
   const brand = variant === 'brand';
   const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
@@ -61,6 +69,18 @@ export function CallbackForm({
           className="w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none"
         />
       </div>
+
+      {consentLabel && (
+        <label className="flex items-start gap-2.5 rounded-lg border border-hairline bg-subtle px-3 py-2.5">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-famaash"
+          />
+          <span className="text-[11.5px] leading-relaxed text-muted">{consentLabel}</span>
+        </label>
+      )}
 
       <button
         type="button"

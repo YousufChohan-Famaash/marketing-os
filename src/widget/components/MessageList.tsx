@@ -222,7 +222,7 @@ export function MessageList() {
                               key={opt}
                               type="button"
                               onClick={() => sendLeadAnswer(m, opt)}
-                              className="rounded-pill border border-[#BCC0EE] bg-white px-4 py-2 text-[13px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
+                              className="rounded-pill border border-famaash-stroke bg-white px-4 py-2 text-[13px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
                             >
                               {opt}
                             </button>

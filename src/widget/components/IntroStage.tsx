@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { generateId } from '../utils/id';
-import { PlayIcon } from '../utils/icons';
+import { ChevronLeftIcon, PlayIcon } from '../utils/icons';
 import { FamaashMark } from './BrandAssets';
 import { PoweredByFooter } from './PoweredByFooter';
 import { PracticeOptions } from './PracticeOptions';
@@ -13,6 +13,9 @@ interface IntroStageProps {
   onMinimize: () => void;
   onExpand: () => void;
   isExpanded: boolean;
+  /** When set, this is the chat channel's case-type step: show a back-to-menu
+   * control and skip the hero video (the home menu already showed it). */
+  onBack?: () => void;
 }
 
 const DEFAULT_PRACTICE_AREAS = [
@@ -27,7 +30,7 @@ const DEFAULT_PRACTICE_AREAS = [
  * that starts the agent flow). Renders the hero intro video when the firm has
  * one; otherwise a compact header. Either way: greeting + case-type chips.
  */
-export function IntroStage({ onClose, onMinimize, onExpand, isExpanded }: IntroStageProps) {
+export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }: IntroStageProps) {
   const branding = useWidgetStore((s) => s.branding);
   const caseTypes = useWidgetStore((s) => s.caseTypes);
   const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
@@ -38,7 +41,9 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded }: IntroS
   const firmName = branding?.name ?? 'our team';
   const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
   const posterUrl = resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
-  const hasVideo = Boolean(videoUrl);
+  // As the chat channel's case-type step (onBack set), skip the hero video —
+  // the home menu already played it; show a compact header instead.
+  const hasVideo = Boolean(videoUrl) && !onBack;
   // Case-type chips from boot config; fall back to legacy free-text practice areas.
   const options = caseTypes.length
     ? caseTypes.map((c) => c.label)
@@ -92,6 +97,7 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded }: IntroS
     // until the agent's `ready`), so an early tap is never lost.
     setPendingCaseType(event);
     setCaseTypePicked(true);
+    useWidgetStore.getState().setConversationStarted(true);
   };
 
   return (
@@ -136,8 +142,19 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded }: IntroS
           </div>
         </div>
       ) : (
-        <header className="flex shrink-0 items-center justify-between px-3 py-2.5">
-          <FamaashMark size={36} />
+        <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2.5">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to all options"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+            >
+              <ChevronLeftIcon size={18} />
+            </button>
+          ) : (
+            <FamaashMark size={36} />
+          )}
           <WidgetControls
             tone="solid"
             onClose={onClose}

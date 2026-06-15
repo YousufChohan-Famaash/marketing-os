@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -8,20 +8,28 @@
       :root {
         --ink: #0f172a;
         --muted: #64748b;
-        --brand: #0f172a;
+        /* Change brand for widget inheritance */
+        --brand: #234224;
         --bg: #ffffff;
         --canvas: #f8f8fb;
         --hairline: #e5e7eb;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif;
         color: var(--ink);
         background: var(--bg);
         line-height: 1.6;
       }
-      .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
       header {
         position: sticky;
         top: 0;
@@ -36,8 +44,14 @@
         justify-content: space-between;
         padding: 16px 0;
       }
-      .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
-      .logo span { color: #b45309; }
+      .logo {
+        font-weight: 700;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+      }
+      .logo span {
+        color: #5ab328;
+      }
       .nav ul {
         display: flex;
         gap: 24px;
@@ -46,14 +60,19 @@
         margin: 0;
         font-size: 14px;
       }
-      .nav a { color: var(--ink); text-decoration: none; }
-      .nav a:hover { color: var(--brand); }
+      .nav a {
+        color: var(--ink);
+        text-decoration: none;
+      }
+      .nav a:hover {
+        color: var(--brand);
+      }
       .cta {
         display: inline-flex;
         align-items: center;
         padding: 8px 16px;
         background: var(--brand);
-        color: #fff;
+        color: #ffffff;
         text-decoration: none;
         border-radius: 6px;
         font-weight: 600;
@@ -71,14 +90,21 @@
         margin: 0 0 16px;
         max-width: 18ch;
       }
-      .hero h1 em { font-style: normal; color: #b45309; }
+      .hero h1 em {
+        font-style: normal;
+        color: #234224;
+      }
       .hero p {
         font-size: 18px;
         color: var(--muted);
         max-width: 56ch;
         margin: 0 0 32px;
       }
-      .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+      .hero-cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
       .ghost {
         display: inline-flex;
         align-items: center;
@@ -91,7 +117,9 @@
         text-decoration: none;
         background: white;
       }
-      section { padding: 64px 0; }
+      section {
+        padding: 64px 0;
+      }
       h2 {
         font-size: 30px;
         font-weight: 700;
@@ -114,8 +142,14 @@
         font-size: 16px;
         font-weight: 600;
       }
-      .card p { color: var(--muted); font-size: 14px; margin: 0; }
-      .attorneys { background: var(--canvas); }
+      .card p {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0;
+      }
+      .attorneys {
+        background: var(--canvas);
+      }
       .attorney {
         display: flex;
         gap: 16px;
@@ -131,8 +165,16 @@
         background: linear-gradient(135deg, #fed7aa, #fdba74);
         flex-shrink: 0;
       }
-      .attorney h3 { margin: 0; font-size: 16px; font-weight: 600; }
-      .attorney p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+      .attorney h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .attorney p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
       footer {
         border-top: 1px solid var(--hairline);
         padding: 32px 0;
@@ -152,7 +194,10 @@
         font-weight: 700;
         letter-spacing: -0.02em;
       }
-      .stat .label { color: var(--muted); font-size: 13px; }
+      .stat .label {
+        color: var(--muted);
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
@@ -165,7 +210,7 @@
           <li><a href="#results">Results</a></li>
           <li><a href="#contact">Contact</a></li>
         </ul>
-        <a href="#contact" class="cta">Free case review</a>
+        <a href="#contact" class="cta" style="color: #ffffff">Free Consult?</a>
       </div>
     </header>
 
@@ -194,11 +239,16 @@
             </div>
             <div class="card">
               <h3>Slip &amp; fall</h3>
-              <p>Premises liability for serious injuries on others' property.</p>
+              <p>
+                Premises liability for serious injuries on others' property.
+              </p>
             </div>
             <div class="card">
               <h3>Workplace injury</h3>
-              <p>Workers' comp claims, OSHA-recordable accidents, third-party suits.</p>
+              <p>
+                Workers' comp claims, OSHA-recordable accidents, third-party
+                suits.
+              </p>
             </div>
             <div class="card">
               <h3>Medical malpractice</h3>
@@ -266,8 +316,8 @@
           <h2>Free case review</h2>
           <p style="color: var(--muted); max-width: 60ch">
             Open the chat in the corner to start your case review — it takes
-            about 5 minutes. Or call us at <a href="tel:5551234567">(555)
-            123-4567</a> any time.
+            about 5 minutes. Or call us at
+            <a href="tel:5551234567">(555) 123-4567</a> any time.
           </p>
         </div>
       </section>
@@ -285,6 +335,14 @@
       In dev, a Vite middleware aliases /loader.js -> /src/loader/loader.ts
       so the same HTML works in both modes (see vite.config.ts).
     -->
-    <script type="module" src="/loader.js" data-firm-id="511eeb77-061e-4465-a772-a12d2c06cd83"></script>
+    <script
+      type="module"
+      src="/loader.js"
+      data-firm-id="511eeb77-061e-4465-a772-a12d2c06cd83"
+      data-name="Usuff23"
+      data-size="large"
+      data-poster="/assistant-avatar.jpg"
+      data-cine="1"
+    ></script>
   </body>
 </html>

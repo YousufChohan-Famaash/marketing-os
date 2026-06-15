@@ -1,3 +1,4 @@
+import { useWidgetStore } from '../store/widgetStore';
 import { ArrowDownRightIcon, CollapseIcon, GlobeIcon, MaximizeIcon, ReplayIcon } from '../utils/icons';
 import { useIsFullscreen } from '../utils/useIsFullscreen';
 import { cn } from '../utils/cn';
@@ -24,8 +25,11 @@ export function WidgetControls({
       ? 'bg-white/70 backdrop-blur'
       : 'bg-[#F5F8FB] border border-[#EAEEF3]';
 
-  // When the chat already fills the screen (mobile), expand/collapse is a no-op.
+  // Expand/collapse is a no-op when the chat already fills the screen (mobile)
+  // or in Small mode (the panel sizes itself around the conversation).
   const isFullscreen = useIsFullscreen();
+  const isSmall = useWidgetStore((s) => s.connect.size === 'small');
+  const showExpand = Boolean(onExpand) && !isFullscreen && !isSmall;
 
   return (
     <div className={cn('flex items-center gap-0.5 rounded-pill px-1.5 py-1', wrap)}>
@@ -37,7 +41,7 @@ export function WidgetControls({
           <ReplayIcon size={15} />
         </ControlBtn>
       )}
-      {onExpand && !isFullscreen && (
+      {showExpand && (
         <ControlBtn
           label={isExpanded ? 'Collapse chat' : 'Expand chat'}
           onClick={onExpand}

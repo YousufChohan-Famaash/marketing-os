@@ -23,6 +23,7 @@ export interface IframeBridgeHandlers {
   onOpen?: () => void;
   onClose?: () => void;
   onMinimize?: () => void;
+  onSetView?: (view: string) => void;
   onSetContext?: (metadata: Record<string, unknown>) => void;
   onIdentify?: (user: IdentifyPayload) => void;
 }
@@ -32,6 +33,7 @@ export interface HostBridgeClient {
   requestMinimize(): Promise<void>;
   requestExpand(): Promise<void>;
   requestShrink(): Promise<void>;
+  requestCompact(): Promise<void>;
   getHostContext(): Promise<HostContext | null>;
   notifyEvent(event: AnalyticsEvent): void;
   destroy(): void;
@@ -73,6 +75,9 @@ export function createHostBridge(
     },
     async minimize() {
       handlers.onMinimize?.();
+    },
+    async setView(view: string) {
+      handlers.onSetView?.(view);
     },
     async setContext(metadata: Record<string, unknown>) {
       handlers.onSetContext?.(metadata);
@@ -119,6 +124,10 @@ export function createHostBridge(
       const r = await ready;
       await r?.requestShrink();
     },
+    async requestCompact() {
+      const r = await ready;
+      await r?.requestCompact();
+    },
     async getHostContext() {
       const r = await ready;
       if (!r) return null;
@@ -151,6 +160,7 @@ function makeNoOpClient(): HostBridgeClient {
     requestMinimize: async () => undefined,
     requestExpand: async () => undefined,
     requestShrink: async () => undefined,
+    requestCompact: async () => undefined,
     getHostContext: async () => null,
     notifyEvent: () => undefined,
     destroy: () => undefined,

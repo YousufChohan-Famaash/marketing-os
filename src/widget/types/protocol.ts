@@ -273,6 +273,8 @@ export interface IframeBridge {
   open(): Promise<void>;
   close(): Promise<void>;
   minimize(): Promise<void>;
+  /** Route the panel to a Connect view (e.g. a teaser channel deep-link). */
+  setView(view: string): Promise<void>;
   setContext(metadata: Record<string, unknown>): Promise<void>;
   identify(user: IdentifyPayload): Promise<void>;
 }
@@ -283,6 +285,8 @@ export interface HostBridge {
   requestMinimize(): Promise<void>;
   requestExpand(): Promise<void>;
   requestShrink(): Promise<void>;
+  /** Shrink the iframe to the compact Small-mode home height. */
+  requestCompact(): Promise<void>;
   getHostContext(): Promise<HostContext>;
   notifyEvent(event: { type: string; data: unknown }): Promise<void>;
 }

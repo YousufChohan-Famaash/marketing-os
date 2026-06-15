@@ -19,6 +19,8 @@ export default {
           light: 'var(--famaash-brand-light)',
           soft: 'var(--famaash-brand-soft)',
           border: 'var(--famaash-brand-border)',
+          stroke: 'var(--famaash-brand-stroke)',
+          'on-brand': 'var(--famaash-on-brand)',
         },
         obsidian: 'var(--obsidian)',
         ink: {

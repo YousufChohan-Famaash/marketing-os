@@ -1,4 +1,5 @@
 import { useWidgetStore } from '../store/widgetStore';
+import { ChevronLeftIcon } from '../utils/icons';
 import { FamaashMark } from './BrandAssets';
 import { WidgetControls } from './WidgetControls';
 
@@ -7,13 +8,25 @@ interface ChatHeaderProps {
   onMinimize: () => void;
   onExpand: () => void;
   isExpanded: boolean;
+  /** Return to the Connect home menu (conversation is preserved). */
+  onBack?: () => void;
 }
 
-export function ChatHeader({ onClose, onMinimize, onExpand, isExpanded }: ChatHeaderProps) {
+export function ChatHeader({ onClose, onMinimize, onExpand, isExpanded, onBack }: ChatHeaderProps) {
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
 
   return (
-    <header className="flex shrink-0 items-center justify-between px-3 py-2.5">
+    <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2.5">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to all options"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+        >
+          <ChevronLeftIcon size={18} />
+        </button>
+      )}
       {agentTakeover ? (
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success-soft text-success">

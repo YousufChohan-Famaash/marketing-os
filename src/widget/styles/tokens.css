@@ -4,6 +4,10 @@
   --famaash-brand-light: #EEF0FE;
   --famaash-brand-soft: rgba(83, 79, 235, 0.08);
   --famaash-brand-border: rgba(83, 79, 235, 0.22);
+  /* Visible brand-tinted stroke for option chips (themes with the host color). */
+  --famaash-brand-stroke: rgba(83, 79, 235, 0.4);
+  /* Readable text on top of the brand color (flips to dark for light brands). */
+  --famaash-on-brand: #FFFFFF;
 
   /* Base palette */
   --obsidian: #0F172A;

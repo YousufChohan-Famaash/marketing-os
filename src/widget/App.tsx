@@ -5,6 +5,8 @@ import { ModalHost } from './components/ModalHost';
 import { SigningSheet } from './components/SigningSheet';
 import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
+import { applyTheme } from './config/theme';
+import { shouldShowCinematic } from './config/connect';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
 import {
@@ -26,6 +28,19 @@ function readFirmIdFromQuery(): string {
   return params.get('firm_id') ?? DEFAULT_FIRM_ID;
 }
 
+const CONNECT_VIEWS = ['home', 'call', 'chat', 'text', 'schedule'] as const;
+type RoutableView = (typeof CONNECT_VIEWS)[number];
+
+/** Validate an external view string (teaser deep-link / ?view=) to a routable view. */
+function normalizeView(raw: string | null | undefined): RoutableView | null {
+  return raw && (CONNECT_VIEWS as readonly string[]).includes(raw) ? (raw as RoutableView) : null;
+}
+
+function readInitialView(): RoutableView | null {
+  if (typeof window === 'undefined') return null;
+  return normalizeView(new URLSearchParams(window.location.search).get('view'));
+}
+
 export function App() {
   const setBootConfig = useWidgetStore((s) => s.setBootConfig);
   const setBootStatus = useWidgetStore((s) => s.setBootStatus);
@@ -42,9 +57,38 @@ export function App() {
   // Lives in the store so message rendering can nudge font size when expanded.
   const isExpanded = useWidgetStore((s) => s.isExpanded);
   const setExpanded = useWidgetStore((s) => s.setExpanded);
+  const connectSize = useWidgetStore((s) => s.connect.size);
+  const connectView = useWidgetStore((s) => s.connectView);
+  const conversationStarted = useWidgetStore((s) => s.conversationStarted);
+  const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
+  const [bridgeReady, setBridgeReady] = useState(false);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
+
+  // Honor a ?view= deep-link (teaser channel tap, first iframe load) once.
+  useEffect(() => {
+    const v = readInitialView();
+    if (v && v !== 'home') useWidgetStore.getState().setConnectView(v);
+  }, []);
+
+  // Drive the iframe size: Small-mode home is compact and expands to full the
+  // moment a conversation/channel opens; everything else uses the full size.
+  useEffect(() => {
+    if (!bridgeReady) return;
+    const bridge = bridgeRef.current;
+    if (!bridge) return;
+    // The cinematic open needs the full panel even on a Small-mode home.
+    const cinematic = shouldShowCinematic(useWidgetStore.getState().connect, {
+      connectView,
+      conversationStarted,
+      cinematicDismissed,
+    });
+    const compact =
+      connectSize === 'small' && connectView === 'home' && !conversationStarted && !cinematic;
+    if (compact) void bridge.requestCompact();
+    else void bridge.requestExpand();
+  }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
 
   // Boot runs two independent tracks IN PARALLEL so the agent connection isn't
   // gated behind /config:
@@ -96,6 +140,14 @@ export function App() {
         const config = await loadBootConfig(firmId, abort.signal);
         if (disposed) return;
         setBootConfig(config);
+        // Theme precedence: an explicit admin 'custom' palette overrides the
+        // host-site colors already applied at boot. 'inherit' (default) keeps them.
+        if (config.branding?.themeSource === 'custom' && config.branding.primaryColor) {
+          applyTheme({
+            primary: config.branding.primaryColor,
+            accent: config.branding.accentColor,
+          });
+        }
         if (returning) {
           await rehydrateFromHistory(conversationId, abort.signal);
           if (disposed) return;
@@ -113,12 +165,17 @@ export function App() {
             onOpen: () => openWidget(),
             onClose: () => closeWidget(),
             onMinimize: () => closeWidget(),
+            // Teaser channel deep-link: route the panel to the requested view.
+            onSetView: (view) => {
+              const v = normalizeView(view);
+              if (v) useWidgetStore.getState().setConnectView(v);
+              openWidget();
+            },
           },
           config.allowedOrigins ?? [],
         );
-        // Default to the expanded size — match the `isExpanded` initial state by
-        // telling the host to grow the iframe as soon as the bridge is live.
-        void bridgeRef.current.requestExpand();
+        // Bridge is live — let the sizing effect drive expand vs. compact.
+        setBridgeReady(true);
       } catch (err) {
         if (disposed) return;
         const message = err instanceof Error ? err.message : 'Unknown error';

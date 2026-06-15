@@ -162,6 +162,12 @@ export interface FirmBranding {
   logoUrl?: string;
   primaryColor: string;
   accentColor: string;
+  /**
+   * Where the widget's theme comes from (set in the Branding Studio / Law App):
+   *   'inherit' (default) — adopt the host site's detected colors
+   *   'custom'            — use `primaryColor` / `accentColor` verbatim
+   */
+  themeSource?: 'inherit' | 'custom';
   launcherPosition: LauncherPosition;
   launcherIcon?: string;
   greetingMessage: string;
@@ -199,12 +205,49 @@ export interface ComplianceConfig {
   termsUrl: string;
 }
 
+/** A contact channel offered on the Connect launcher home menu. */
+export type ConnectChannel = 'call' | 'chat' | 'text' | 'schedule' | 'email';
+
+/** Admin-selectable panel size. */
+export type WidgetSize = 'large' | 'small';
+
+/** Which attorney video plays on the launcher (or none → branded avatar). */
+export type VideoMode = 'intro' | 'story' | 'none';
+
+/**
+ * Connect launcher configuration. Owned by the Branding Studio (Law App) and
+ * delivered on the boot config; the widget resolves it with defaults + URL
+ * overrides (see config/connect.ts).
+ */
+export interface ConnectSettings {
+  size: WidgetSize;
+  /** Enabled channels in admin order. UI still demotes 'email' to a link. */
+  channels: ConnectChannel[];
+  videoMode: VideoMode;
+  /** Autoplay the launcher video muted (true) vs. show it paused (false). */
+  autoplay: boolean;
+  /** Open into a full-screen video that settles into the panel. */
+  fullscreenOpen: boolean;
+  /** Text methods offered under the Text channel. */
+  textMethods: Array<'sms' | 'whatsapp'>;
+  /** Local business hours [open, close) in 24h; used for time-aware ranking. */
+  businessHours?: { open: number; close: number };
+  /** Firm phone (tap-to-call) and email (demoted email link). */
+  phone?: string;
+  email?: string;
+  /** Optional second "story" video URL/poster when videoMode === 'story'. */
+  storyVideoUrl?: string;
+  storyVideoPoster?: string;
+}
+
 export interface WidgetBootConfig {
   firmId: string;
   firmName: string;
   plan: Plan;
   features: FeatureFlags;
   branding: FirmBranding;
+  /** Connect launcher settings (size, channels, video). Resolved with defaults. */
+  connect?: Partial<ConnectSettings>;
   flowId: string;
   compliance: ComplianceConfig;
   /** Case-type chips for the opener. Falls back to branding.practiceAreas when empty. */

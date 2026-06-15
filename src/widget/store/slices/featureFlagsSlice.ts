@@ -2,11 +2,13 @@ import type { StateCreator } from 'zustand';
 import type {
   CaseType,
   ComplianceConfig,
+  ConnectSettings,
   FeatureFlags,
   FirmBranding,
   Plan,
   WidgetBootConfig,
 } from '../../types/domain';
+import { resolveConnectSettings } from '../../config/connect';
 import type { WidgetStore } from '../widgetStore';
 
 export interface FeatureFlagsSlice {
@@ -21,6 +23,8 @@ export interface FeatureFlagsSlice {
   dropboxSignClientId: string | null;
   dropboxSignTestMode: boolean;
   allowedOrigins: string[];
+  /** Resolved Connect launcher settings (size, channels, video). */
+  connect: ConnectSettings;
   setBootConfig: (config: WidgetBootConfig) => void;
 }
 
@@ -40,6 +44,7 @@ export const createFeatureFlagsSlice: StateCreator<
   dropboxSignClientId: null,
   dropboxSignTestMode: false,
   allowedOrigins: [],
+  connect: resolveConnectSettings(null),
   setBootConfig: (config) =>
     set({
       firmId: config.firmId,
@@ -52,5 +57,6 @@ export const createFeatureFlagsSlice: StateCreator<
       dropboxSignClientId: config.dropboxSignClientId ?? null,
       dropboxSignTestMode: config.dropboxSignTestMode ?? false,
       allowedOrigins: config.allowedOrigins ?? [],
+      connect: resolveConnectSettings(config),
     }),
 });

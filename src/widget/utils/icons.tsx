@@ -8,7 +8,7 @@ import type { SVGProps } from 'react';
  * which tree-shake fine with Vite. For now we ship exactly what we use.
  */
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+export type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
 function Base({ size = 18, children, ...rest }: IconProps & { children: React.ReactNode }) {
   return (
@@ -350,5 +350,12 @@ export const SlidersIcon = (p: IconProps) => (
     <line x1="4" y1="17" x2="20" y2="17" />
     <circle cx="9" cy="7" r="2.4" fill="currentColor" stroke="none" />
     <circle cx="15" cy="17" r="2.4" fill="currentColor" stroke="none" />
+  </Base>
+);
+
+export const MailIcon = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-10 6L2 7" />
   </Base>
 );
