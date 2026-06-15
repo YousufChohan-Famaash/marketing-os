@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
-import { CheckIcon, ChevronLeftIcon } from '../utils/icons';
+import { CalendarIcon, CheckIcon, ChevronLeftIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CalendarPicker, type DateSelection } from './CalendarPicker';
 import { CallbackForm } from './CallbackForm';
@@ -24,6 +24,23 @@ const TITLES: Record<ChannelViewProps['channel'], string> = {
 };
 
 const TIME_SLOTS = ['09:00', '12:00', '15:00', '18:00'];
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** Quick day chips: Today, Tomorrow, then the next two days by weekday name —
+ * each labelled with its short date (e.g. "Wed / Jun 17"). */
+function quickDays(): Array<{ top: string; sub: string; sel: DateSelection }> {
+  return [0, 1, 2, 3].map((offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const top =
+      offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' });
+    const sub = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return { top, sub, sel: { iso, label } };
+  });
+}
 
 /** Pull a previously captured phone, if any, so channels never re-ask. */
 function capturedPhone(fields: Record<string, { type: string; value: string | null }>): string | undefined {
@@ -57,12 +74,23 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(settings.textMethods[0] ?? 'sms');
   const [date, setDate] = useState<DateSelection | null>(null);
   const [slot, setSlot] = useState<string>(TIME_SLOTS[1]);
+  const [showCalendar, setShowCalendar] = useState(false);
+  // Live callback countdown after "Call me now" (seconds remaining, null = inactive).
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [callTarget, setCallTarget] = useState<{ phone: string; name?: string } | null>(null);
+
+  useEffect(() => {
+    if (countdown === null || countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   const back = () => setConnectView('home');
 
-  const finishCall = (phone: string) => {
-    socket?.send({ type: 'request_human', method: 'immediate', phone });
-    setDone(`We'll call you at ${phone} in under a minute.`);
+  const finishCall = (phone: string, name?: string) => {
+    socket?.send({ type: 'request_human', method: 'immediate', phone, name });
+    setCallTarget({ phone, name });
+    setCountdown(60);
   };
 
   const finishText = (phone: string) => {
@@ -80,15 +108,16 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     setDone(`We'll ${label} you at ${phone} shortly.`);
   };
 
-  const finishSchedule = (phone: string) => {
+  const finishSchedule = (phone: string, name?: string) => {
     if (!date) return;
     socket?.send({
       type: 'request_human',
       method: 'scheduled',
       phone,
+      name,
       scheduledAt: `${date.iso} ${slot}`,
     });
-    setDone(`You're booked for ${date.label} at ${slot}. We'll call ${phone}.`);
+    setDone(`You're booked for ${date.label} at ${slot}. We'll call ${name ? `${name} ` : ''}at ${phone}.`);
   };
 
   return (
@@ -107,7 +136,14 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {done ? (
+        {countdown !== null ? (
+          <CallCountdown
+            seconds={countdown}
+            phone={callTarget?.phone ?? ''}
+            name={callTarget?.name}
+            onBack={back}
+          />
+        ) : done ? (
           <Confirmation message={done} onBack={back} />
         ) : (
           <>
@@ -124,6 +160,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                 heading="Where should we call you?"
                 body="We start the callback the moment you confirm — usually under a minute."
                 cta="Call me now"
+                collectName
                 consentLabel={consentLabel}
                 onSubmit={finishCall}
               />
@@ -164,11 +201,75 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
 
             {channel === 'schedule' && (
               <div className="space-y-4">
-                <div>
-                  <h3 className="text-[16px] font-bold text-ink">Pick a time that works</h3>
-                  <p className="mt-1 text-[13px] text-muted">Choose a day, then a window. We'll confirm the call.</p>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
+                    <CalendarIcon size={20} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="text-[16px] font-bold text-ink">Pick a time</h3>
+                    <p className="mt-1 text-[13px] leading-relaxed text-muted">
+                      Times in your local timezone. We'll send a confirmation and a reminder.
+                    </p>
+                  </div>
                 </div>
-                <CalendarPicker mode="future" onSubmit={setDate} />
+
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
+                    Choose a day
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {quickDays().map((q) => {
+                      const active = !showCalendar && date?.iso === q.sel.iso;
+                      return (
+                        <button
+                          key={q.sel.iso}
+                          type="button"
+                          onClick={() => {
+                            setShowCalendar(false);
+                            setDate(q.sel);
+                          }}
+                          aria-pressed={active}
+                          className={cn(
+                            'flex flex-col items-center rounded-2xl border px-4 py-2 transition-colors',
+                            active
+                              ? 'border-famaash bg-famaash-soft'
+                              : 'border-famaash-stroke bg-white hover:bg-subtle',
+                          )}
+                        >
+                          <span className={cn('text-[13px] font-bold', active ? 'text-famaash' : 'text-ink')}>
+                            {q.top}
+                          </span>
+                          <span className="text-[11px] text-muted-soft">{q.sub}</span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setShowCalendar((v) => !v)}
+                      aria-pressed={showCalendar}
+                      className={cn(
+                        'flex flex-col items-center rounded-2xl border px-4 py-2 transition-colors',
+                        showCalendar
+                          ? 'border-famaash bg-famaash-soft text-famaash'
+                          : 'border-famaash-stroke bg-white text-ink hover:bg-subtle',
+                      )}
+                    >
+                      <CalendarIcon size={17} aria-hidden="true" className="text-famaash" />
+                      <span className="mt-0.5 text-[11px] font-semibold">Pick date</span>
+                    </button>
+                  </div>
+                </div>
+
+                {showCalendar && (
+                  <CalendarPicker
+                    mode="future"
+                    onSubmit={(d) => {
+                      setDate(d);
+                      setShowCalendar(false);
+                    }}
+                  />
+                )}
+
                 {date && (
                   <>
                     <div className="flex flex-wrap gap-2">
@@ -194,6 +295,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                       heading={`Confirm ${date.label} at ${slot}`}
                       body="Where should we call you at that time?"
                       cta="Book my callback"
+                      collectName
                       consentLabel={consentLabel}
                       onSubmit={finishSchedule}
                     />
@@ -206,6 +308,74 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       </div>
 
       <PoweredByFooter />
+    </div>
+  );
+}
+
+function CallCountdown({
+  seconds,
+  phone,
+  name,
+  onBack,
+}: {
+  seconds: number;
+  phone: string;
+  name?: string;
+  onBack: () => void;
+}) {
+  const R = 46;
+  const C = 2 * Math.PI * R;
+  const offset = C * (1 - Math.max(0, Math.min(60, seconds)) / 60);
+  const mmss = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const connecting = seconds <= 0;
+
+  return (
+    <div className="flex flex-col items-center py-6 text-center">
+      <div className="relative h-[120px] w-[120px]">
+        <svg viewBox="0 0 110 110" className="h-full w-full -rotate-90">
+          <circle cx="55" cy="55" r={R} fill="none" stroke="var(--hairline)" strokeWidth="6" />
+          <circle
+            cx="55"
+            cy="55"
+            r={R}
+            fill="none"
+            stroke="var(--famaash-brand)"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={C}
+            strokeDashoffset={offset}
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {connecting ? (
+            <PhoneIcon size={26} className="text-famaash" aria-hidden="true" />
+          ) : (
+            <>
+              <span className="text-[26px] font-bold tabular-nums text-ink">{mmss}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-soft">
+                until we call
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <h3 className="mt-5 text-[18px] font-bold text-ink">
+        {connecting ? 'Connecting your call…' : `Calling you ${name ? name.split(' ')[0] : 'shortly'}`}
+      </h3>
+      <p className="mt-2 max-w-[32ch] text-[13.5px] leading-relaxed text-muted">
+        {connecting
+          ? `Your phone should ring at ${phone} any moment now.`
+          : `Hang tight — we'll ring ${phone} in under a minute. Keep your phone nearby.`}
+      </p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
+      >
+        Back to options
+      </button>
     </div>
   );
 }

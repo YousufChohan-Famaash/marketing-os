@@ -214,6 +214,8 @@ export interface RequestHumanClientEvent {
   method?: 'immediate' | 'delayed' | 'scheduled' | 'emergency';
   /** Callback number the lead entered. */
   phone?: string;
+  /** Lead's name, when collected (Call / Schedule). */
+  name?: string;
   /** For `delayed`: minutes from now (15 / 30 / 45 / 60). */
   delayMinutes?: number;
   /** For `scheduled`: `YYYY-MM-DD HH:mm` (24h) of the requested call. */

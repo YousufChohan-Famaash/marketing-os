@@ -11,7 +11,9 @@ interface CallbackFormProps {
   /** TCPA consent text. When set, a required checkbox gates the CTA before we
    * ever capture the phone number. */
   consentLabel?: string;
-  onSubmit: (phone: string) => void;
+  /** Also collect the lead's name (used by Call + Schedule). */
+  collectName?: boolean;
+  onSubmit: (phone: string, name?: string) => void;
 }
 
 /**
@@ -26,12 +28,15 @@ export function CallbackForm({
   cta,
   variant = 'alert',
   consentLabel,
+  collectName,
   onSubmit,
 }: CallbackFormProps) {
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [agreed, setAgreed] = useState(false);
   const phoneValid = phone.replace(/\D/g, '').length >= 7;
-  const valid = phoneValid && (!consentLabel || agreed);
+  const nameValid = !collectName || name.trim().length >= 2;
+  const valid = phoneValid && nameValid && (!consentLabel || agreed);
   const brand = variant === 'brand';
   const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
@@ -50,6 +55,26 @@ export function CallbackForm({
         <h3 className="text-[16px] font-bold text-ink">{heading}</h3>
         <p className="mt-1 text-[13px] leading-relaxed text-muted">{body}</p>
       </div>
+
+      {collectName && (
+        <div>
+          <label
+            htmlFor="callback-name"
+            className="mb-1.5 block text-[12px] font-medium text-ink-soft"
+          >
+            Your name
+          </label>
+          <input
+            id="callback-name"
+            type="text"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="First and last name"
+            className="w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none"
+          />
+        </div>
+      )}
 
       <div>
         <label
@@ -84,7 +109,7 @@ export function CallbackForm({
 
       <button
         type="button"
-        onClick={() => valid && onSubmit(phone.trim())}
+        onClick={() => valid && onSubmit(phone.trim(), collectName ? name.trim() : undefined)}
         disabled={!valid}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
       >
