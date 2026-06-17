@@ -31,7 +31,7 @@ export type ActiveModal =
   | 'text-handoff'
   | null;
 
-export type BootStatus = 'idle' | 'loading' | 'ready' | 'error';
+export type BootStatus = 'idle' | 'loading' | 'ready' | 'error' | 'disabled';
 
 export interface AgentTakeover {
   agentName: string;
@@ -65,11 +65,16 @@ export interface UiSlice {
   conversationStarted: boolean;
   /** True once the cinematic full-screen open has played / been skipped. */
   cinematicDismissed: boolean;
+  /** The just-sent lead message that can still be undone (null = none). */
+  undoableMessageId: string | null;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
   setConnectView: (view: ConnectView) => void;
   setConversationStarted: (started: boolean) => void;
   dismissCinematic: () => void;
+  /** Mark a message undoable for the configured grace window, then auto-clear. */
+  setUndoable: (id: string) => void;
+  clearUndoable: () => void;
   setExpanded: (expanded: boolean) => void;
   setConversationId: (id: string | null) => void;
   setCaseTypePicked: (picked: boolean) => void;
@@ -86,8 +91,11 @@ export interface UiSlice {
   setAgentTakeover: (takeover: AgentTakeover | null) => void;
 }
 
+let undoTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   set,
+  get,
 ) => ({
   bootStatus: 'idle',
   bootError: null,
@@ -105,11 +113,28 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   connectView: 'home',
   conversationStarted: false,
   cinematicDismissed: false,
+  undoableMessageId: null,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
   setConnectView: (view) => set({ connectView: view }),
   setConversationStarted: (started) => set({ conversationStarted: started }),
   dismissCinematic: () => set({ cinematicDismissed: true }),
+  setUndoable: (id) => {
+    if (undoTimer) clearTimeout(undoTimer);
+    set({ undoableMessageId: id });
+    const ms = get().connect?.undoWindowMs ?? 5000;
+    undoTimer = setTimeout(() => {
+      undoTimer = null;
+      set({ undoableMessageId: null });
+    }, ms);
+  },
+  clearUndoable: () => {
+    if (undoTimer) {
+      clearTimeout(undoTimer);
+      undoTimer = null;
+    }
+    set({ undoableMessageId: null });
+  },
   setExpanded: (expanded) => set({ isExpanded: expanded }),
   setConversationId: (id) => set({ conversationId: id }),
   setCaseTypePicked: (picked) => set({ caseTypePicked: picked }),

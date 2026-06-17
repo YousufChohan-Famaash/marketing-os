@@ -28,8 +28,8 @@ export function WidgetControls({
   // Expand/collapse is a no-op when the chat already fills the screen (mobile)
   // or in Small mode (the panel sizes itself around the conversation).
   const isFullscreen = useIsFullscreen();
-  const isSmall = useWidgetStore((s) => s.connect.size === 'small');
-  const showExpand = Boolean(onExpand) && !isFullscreen && !isSmall;
+  const isCompact = useWidgetStore((s) => s.connect.size !== 'large');
+  const showExpand = Boolean(onExpand) && !isFullscreen && !isCompact;
 
   return (
     <div className={cn('flex items-center gap-0.5 rounded-pill px-1.5 py-1', wrap)}>

@@ -10,6 +10,7 @@ import { DocumentUploadCard } from './DocumentUploadCard';
 import { EmailInput, NameInput, NumberInput, PhoneInput } from './FieldInputs';
 import { FileUploadZone } from './FileUploadZone';
 import { LinkCard } from './LinkCard';
+import { MediaMessageBubble } from './MediaMessageBubble';
 import { MessageBubble } from './MessageBubble';
 import { QuickReplyChips } from './QuickReplyChips';
 import { RetainerCard } from './RetainerCard';
@@ -102,8 +103,9 @@ export function MessageList() {
     if (!socket) return;
     // Collapse the picker; show the friendly label, but send ISO to the backend.
     updateMessage(msg.id, { selectedOption: value.label });
+    const leadId = generateId('msg_lead');
     useWidgetStore.getState().addMessage({
-      id: generateId('msg_lead'),
+      id: leadId,
       role: 'lead',
       type: 'text',
       content: value.label,
@@ -111,12 +113,9 @@ export function MessageList() {
       status: 'sent',
     });
     // Date fields expect an unambiguous ISO YYYY-MM-DD reply.
-    socket.send({
-      type: 'lead_message',
-      content: value.iso,
-      clientMessageId: generateId('msg_lead'),
-    });
+    socket.send({ type: 'lead_message', content: value.iso, clientMessageId: leadId });
     useWidgetStore.getState().beginTyping();
+    useWidgetStore.getState().setUndoable(leadId);
   };
 
   // Generic answer for typed widgets (name/phone/email/number) and quick-date
@@ -124,16 +123,18 @@ export function MessageList() {
   const sendLeadAnswer = (msg: Message, content: string) => {
     if (!socket) return;
     updateMessage(msg.id, { selectedOption: content });
+    const leadId = generateId('msg_lead');
     useWidgetStore.getState().addMessage({
-      id: generateId('msg_lead'),
+      id: leadId,
       role: 'lead',
       type: 'text',
       content,
       timestamp: Date.now(),
       status: 'sent',
     });
-    socket.send({ type: 'lead_message', content, clientMessageId: generateId('msg_lead') });
+    socket.send({ type: 'lead_message', content, clientMessageId: leadId });
     useWidgetStore.getState().beginTyping();
+    useWidgetStore.getState().setUndoable(leadId);
   };
 
   const handleFilesUploaded = (msg: Message, files: Message['files'] = []) => {
@@ -172,6 +173,9 @@ export function MessageList() {
           const m = item.data;
           if (m.type === 'video_intro' || m.type === 'video_message') {
             return <VideoMessage key={m.id} message={m} />;
+          }
+          if (m.type === 'media') {
+            return <MediaMessageBubble key={m.id} message={m} />;
           }
           if (m.type === 'link_card' && m.linkCard) {
             return <LinkCard key={m.id} card={m.linkCard} />;

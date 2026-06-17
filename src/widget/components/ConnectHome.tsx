@@ -48,7 +48,8 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   const firmName = branding?.name ?? 'our team';
   const ranked = rankChannels(settings);
   const hasEmail = settings.channels.includes('email');
-  const isSmall = settings.size === 'small';
+  // Both 'medium' and 'small' open into the compact card; only 'large' is the hero.
+  const compact = settings.size !== 'large';
 
   const go = (id: ConnectChannel) => {
     if (id === 'email') {
@@ -60,8 +61,8 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
     setConnectView(id);
   };
 
-  // ── Small: compact horizontal card ─────────────────────────────────────────
-  if (isSmall) {
+  // ── Compact card (medium + small) ──────────────────────────────────────────
+  if (compact) {
     return (
       <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`Contact ${firmName}`}>
         <header className="flex shrink-0 items-center justify-end px-3 py-2">

@@ -57,6 +57,11 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // Fail closed: the firm doesn't have the chat_widget module — render nothing.
+  if (bootStatus === 'disabled') {
+    return null;
+  }
+
   if (bootStatus === 'loading' || bootStatus === 'idle') {
     return (
       <div className="flex h-full items-center justify-center bg-bg p-6 text-center text-muted">

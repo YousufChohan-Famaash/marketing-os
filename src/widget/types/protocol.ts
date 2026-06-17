@@ -222,6 +222,24 @@ export interface RequestHumanClientEvent {
   scheduledAt?: string;
 }
 
+/** Lead retracts (undoes) a message they just sent. */
+export interface RetractMessageClientEvent {
+  type: 'retract_message';
+  clientMessageId: string;
+}
+
+/** Lead sends a recorded voice / video note (WhatsApp-style). */
+export interface LeadMediaMessageClientEvent {
+  type: 'lead_media_message';
+  clientMessageId: string;
+  kind: 'audio' | 'video';
+  /** Hosted playback URL from POST /media/upload (null until upload succeeds). */
+  url: string | null;
+  mediaId?: string;
+  mimeType?: string;
+  durationMs?: number;
+}
+
 export type ClientEvent =
   | LeadMessageEvent
   | QuickReplySelectedEvent
@@ -234,7 +252,9 @@ export type ClientEvent =
   | DeferDocumentsClientEvent
   | RetainerSignedClientEvent
   | DocumentSignedClientEvent
-  | RequestHumanClientEvent;
+  | RequestHumanClientEvent
+  | RetractMessageClientEvent
+  | LeadMediaMessageClientEvent;
 
 // ─────────────────────────────────────────────────────────────────────
 // Socket interface — RealSocket implements this

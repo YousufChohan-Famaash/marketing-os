@@ -1,5 +1,6 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import type { Message } from '../types/domain';
+import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar } from '../config/demoMedia';
 import { cn } from '../utils/cn';
@@ -56,6 +57,15 @@ export const MessageBubble = memo(function MessageBubble({
 
   // The lead gets their Gravatar on the right — but only if one actually exists
   // for the email they gave us (otherwise the avatar renders nothing).
+  const socket = useSocket();
+  const undoableMessageId = useWidgetStore((s) => s.undoableMessageId);
+  const canUndo = isLead && undoableMessageId === message.id;
+  const undo = () => {
+    socket?.send({ type: 'retract_message', clientMessageId: message.id });
+    useWidgetStore.getState().removeMessage(message.id);
+    useWidgetStore.getState().clearUndoable();
+  };
+
   const capturedFields = useWidgetStore((s) => s.capturedFields);
   const messages = useWidgetStore((s) => s.messages);
   const leadEmail = useMemo(
@@ -111,6 +121,15 @@ export const MessageBubble = memo(function MessageBubble({
           {isFailed && <span className="text-danger">Failed to send</span>}
           {!isSending && !isFailed && <time dateTime={new Date(message.timestamp).toISOString()}>{formatTime(message.timestamp)}</time>}
         </div>
+        {canUndo && (
+          <button
+            type="button"
+            onClick={undo}
+            className="self-end px-2 text-[11px] font-semibold text-famaash hover:underline"
+          >
+            Undo
+          </button>
+        )}
       </div>
       {isLead && leadAvatar && (
         <Avatar src={leadAvatar} size={28} fallback="none" className="mt-0.5" />

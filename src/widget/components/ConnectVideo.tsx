@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar, resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
+import { postVideoEvent } from '../services/api';
 import { PlayIcon, ReplayIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { Avatar } from './Avatar';
@@ -25,10 +26,16 @@ interface ConnectVideoProps {
 export function ConnectVideo({ className, compact }: ConnectVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
+  const firmId = useWidgetStore((s) => s.firmId);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [soundOn, setSoundOn] = useState(false);
+  // Analytics: fire `play` once on first play, `complete` once near the end
+  // (timeupdate-based so a looping teaser still reports completion).
+  const playedRef = useRef(false);
+  const completedRef = useRef(false);
 
   const mode = settings.videoMode;
+  const analyticsKind = mode === 'story' ? 'story' : 'intro';
   const introUrl = resolveIntroVideo(branding?.introVideoUrl);
   const src =
     mode === 'none'
@@ -97,6 +104,19 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
         preload="metadata"
         className="h-full w-full object-cover"
         aria-label="Attorney introduction video"
+        onPlay={() => {
+          if (playedRef.current || !firmId) return;
+          playedRef.current = true;
+          postVideoEvent(firmId, analyticsKind, 'play');
+        }}
+        onTimeUpdate={(e) => {
+          const v = e.currentTarget;
+          if (completedRef.current || !firmId || !v.duration) return;
+          if (v.currentTime / v.duration >= 0.98) {
+            completedRef.current = true;
+            postVideoEvent(firmId, analyticsKind, 'complete');
+          }
+        }}
       />
       {/* Live presence */}
       <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur">

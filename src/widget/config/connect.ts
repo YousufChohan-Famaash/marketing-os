@@ -21,6 +21,9 @@ const DEFAULTS: ConnectSettings = {
   fullscreenOpen: false,
   textMethods: ['sms', 'whatsapp'],
   businessHours: { open: 9, close: 18 },
+  undoWindowMs: 5000,
+  allowVoiceNotes: false,
+  allowVideoNotes: false,
 };
 
 const ALL_CHANNELS: ConnectChannel[] = ['call', 'chat', 'text', 'schedule', 'email'];
@@ -35,7 +38,7 @@ export function resolveConnectSettings(config?: WidgetBootConfig | null): Connec
 
   // ── URL overrides (testing only) ─────────────────────────────────────────
   const size = query('size');
-  if (size === 'large' || size === 'small') merged.size = size;
+  if (size === 'large' || size === 'medium' || size === 'small') merged.size = size;
 
   const video = query('video');
   if (video === 'intro' || video === 'story' || video === 'none') merged.videoMode = video;
@@ -47,6 +50,12 @@ export function resolveConnectSettings(config?: WidgetBootConfig | null): Connec
   const cine = query('cine');
   if (cine === '0' || cine === 'false') merged.fullscreenOpen = false;
   if (cine === '1' || cine === 'true') merged.fullscreenOpen = true;
+
+  const media = query('media');
+  if (media === '1' || media === 'true') {
+    merged.allowVoiceNotes = true;
+    merged.allowVideoNotes = true;
+  }
 
   const channels = query('channels');
   if (channels) {

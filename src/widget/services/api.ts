@@ -83,6 +83,17 @@ export interface DocumentUploadResponse {
   documentUrl: string | null;
 }
 
+/** POST /media/upload — lead voice/video note (proxy upload, like documents). */
+export interface MediaUploadResponse {
+  mediaId: string;
+  kind: 'audio' | 'video';
+  url: string;
+  mimeType?: string;
+  durationMs?: number;
+  /** Server-side transcript so the AI can act on the recording (optional). */
+  transcript?: string | null;
+}
+
 /** GET /conversations/{id}/messages — cold-load rehydration. */
 export interface ConversationHistoryResponse {
   conversationId: string;
@@ -139,6 +150,28 @@ export class ApiError extends Error {
 // ─────────────────────────────────────────────────────────────────────
 // Endpoints
 // ─────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /video-event — public attorney-video analytics (fire-and-forget).
+ * `play` on first play, `complete` on ended. Feeds the dashboard's plays /
+ * completion pills. No auth; failures are swallowed.
+ */
+export function postVideoEvent(
+  firmId: string,
+  kind: 'intro' | 'story',
+  event: 'play' | 'complete',
+): void {
+  try {
+    void fetch(`${getApiBase()}/video-event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firm_id: firmId, kind, event }),
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    /* never block playback on analytics */
+  }
+}
 
 /** GET /config?firm_id=... — boot config + transport hints. */
 export function fetchWidgetConfig(
@@ -250,6 +283,41 @@ export function uploadDocument(
       }
     };
     xhr.onerror = () => reject(new ApiError(0, 'document upload network error'));
+    xhr.send(fd);
+  });
+}
+
+/**
+ * POST /media/upload — backend-proxied voice/video note upload (no browser→S3,
+ * no CORS). Returns a playable URL (and optionally a transcript for the AI).
+ */
+export function uploadMedia(
+  conversationId: string,
+  kind: 'audio' | 'video',
+  blob: Blob,
+  durationMs?: number,
+): Promise<MediaUploadResponse> {
+  return new Promise<MediaUploadResponse>((resolve, reject) => {
+    const fd = new FormData();
+    fd.append('conversation_id', conversationId);
+    fd.append('kind', kind);
+    if (durationMs != null) fd.append('durationMs', String(Math.round(durationMs)));
+    fd.append('file', blob, `note-${kind}.webm`);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${getApiBase()}/media/upload`, true);
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as MediaUploadResponse);
+        } catch {
+          reject(new ApiError(xhr.status, 'media upload response was not JSON', xhr.responseText));
+        }
+      } else {
+        reject(new ApiError(xhr.status, `POST /media/upload → ${xhr.status}`, xhr.responseText));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'media upload network error'));
     xhr.send(fd);
   });
 }

@@ -15,6 +15,7 @@ export type MessageType =
   | 'video_intro'
   | 'video_message'
   | 'voice_clip'
+  | 'media'
   | 'link_card'
   | 'rich_text';
 
@@ -82,6 +83,10 @@ export interface Message {
   document?: DocumentRef;
   video?: VideoPayload;
   linkCard?: LinkCardPayload;
+  /** For `media` (lead voice/video note): playback URL + kind + duration. */
+  mediaKind?: 'audio' | 'video';
+  mediaUrl?: string;
+  mediaDurationMs?: number;
   hasMarkdown?: boolean;
   isStreaming?: boolean;
   /** Client-assigned arrival order for the transcript (see store/seq.ts). */
@@ -208,8 +213,13 @@ export interface ComplianceConfig {
 /** A contact channel offered on the Connect launcher home menu. */
 export type ConnectChannel = 'call' | 'chat' | 'text' | 'schedule' | 'email';
 
-/** Admin-selectable panel size. */
-export type WidgetSize = 'large' | 'small';
+/**
+ * Admin-selectable presentation size:
+ *   large  — hero video + stacked channel cards
+ *   medium — compact card (video tile + channel row)
+ *   small  — picture-only launcher (attorney photo + greeting bubble)
+ */
+export type WidgetSize = 'small' | 'medium' | 'large';
 
 /** Which attorney video plays on the launcher (or none → branded avatar). */
 export type VideoMode = 'intro' | 'story' | 'none';
@@ -238,6 +248,11 @@ export interface ConnectSettings {
   /** Optional second "story" video URL/poster when videoMode === 'story'. */
   storyVideoUrl?: string;
   storyVideoPoster?: string;
+  /** Grace window (ms) to undo a just-sent message. default 5000. */
+  undoWindowMs?: number;
+  /** Allow leads to record voice / video notes (gated until backend ships). */
+  allowVoiceNotes?: boolean;
+  allowVideoNotes?: boolean;
 }
 
 export interface WidgetBootConfig {

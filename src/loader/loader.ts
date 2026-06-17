@@ -51,6 +51,10 @@ const styles = `
   --fa-accent: ${FALLBACK_ACCENT};
 }
 #${DOCK_ID}.is-hidden { display: none; }
+#${DOCK_ID}.fa-pos-left { right: auto; left: 24px; align-items: flex-start; }
+#${DOCK_ID}.fa-pos-center { right: auto; left: 50%; transform: translateX(-50%); align-items: center; }
+#${IFRAME_ID}.fa-pos-left { right: auto; left: 20px; }
+#${IFRAME_ID}.fa-pos-center { right: auto; left: 50%; transform: translateX(-50%); }
 
 /* ---- expressive teaser (shared) ---- */
 .fa-teaser {
@@ -123,6 +127,28 @@ const styles = `
 .fa-teaser.fa-sm .fa-status { margin-top: 12px; }
 .fa-teaser.fa-sm .fa-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
 .fa-teaser.fa-sm .fa-foot b { color: #64748b; font-weight: 600; }
+
+/* ---- SMALL: picture-only launcher (attorney photo + greeting bubble) ---- */
+.fa-pic { display: flex; align-items: center; gap: 10px; cursor: pointer; background: none; border: none; padding: 0; }
+.fa-pic:focus-visible { outline: 3px solid var(--fa-accent); outline-offset: 4px; border-radius: 40px; }
+.fa-pic-bubble {
+  background: #fff; border: 1px solid rgba(15, 23, 42, 0.08); border-radius: 16px; padding: 10px 14px;
+  box-shadow: 0 14px 32px -14px rgba(15, 23, 42, 0.4); font-size: 14px; font-weight: 600; color: #0f172a;
+  position: relative; white-space: nowrap;
+}
+.fa-pic-bubble::after {
+  content: ""; position: absolute; right: -5px; top: 50%; width: 11px; height: 11px; background: #fff;
+  border-right: 1px solid rgba(15, 23, 42, 0.08); border-top: 1px solid rgba(15, 23, 42, 0.08);
+  transform: translateY(-50%) rotate(45deg);
+}
+.fa-pic-ava {
+  width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; position: relative;
+  background: var(--fa-accent) center/cover no-repeat; color: #fff; display: grid; place-items: center;
+  box-shadow: 0 16px 34px -12px rgba(15, 23, 42, 0.5); transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fa-pic:hover .fa-pic-ava { transform: scale(1.05); }
+.fa-pic-ava svg { width: 26px; height: 26px; }
+.fa-pic-ava .fa-bdot { position: absolute; right: 1px; bottom: 1px; width: 14px; height: 14px; border-radius: 50%; background: #22C55E; border: 3px solid #fff; }
 
 /* ---- minimized bubble ---- */
 .fa-bubble {
@@ -382,7 +408,7 @@ const MIN_STORAGE_KEY = 'famaash:launcher-min';
  */
 function makeDock(
   onOpen: (view?: string) => void,
-  opts: { size: 'large' | 'small'; name: string; poster?: string },
+  opts: { size: 'small' | 'medium' | 'large'; name: string; poster?: string },
 ): {
   dock: HTMLDivElement;
   setHidden: (hidden: boolean) => void;
@@ -394,7 +420,39 @@ function makeDock(
   const accent = getHostTheme()?.primary;
   if (accent) dock.style.setProperty('--fa-accent', accent);
 
-  const large = opts.size !== 'small';
+  const setHidden = (hidden: boolean) => dock.classList.toggle('is-hidden', hidden);
+
+  // ── SMALL: just the attorney's photo + a greeting bubble ──────────────────
+  if (opts.size === 'small') {
+    const pic = document.createElement('button');
+    pic.className = 'fa-pic';
+    pic.id = LAUNCHER_ID;
+    pic.type = 'button';
+    pic.setAttribute('aria-haspopup', 'dialog');
+    pic.setAttribute('aria-label', 'Open chat');
+    const avaStyle = opts.poster
+      ? ` style="background-image:url('${opts.poster.replace(/'/g, '%27')}')"`
+      : '';
+    pic.innerHTML = `
+      <span class="fa-pic-bubble">How can I help you?</span>
+      <span class="fa-pic-ava"${avaStyle}>${opts.poster ? '' : SVG.chat}<span class="fa-bdot"></span></span>`;
+    pic.addEventListener('click', () => onOpen());
+    dock.appendChild(pic);
+    return {
+      dock,
+      setHidden,
+      applyConfig: ({ poster }) => {
+        if (!poster) return;
+        const ava = pic.querySelector<HTMLElement>('.fa-pic-ava');
+        if (ava) {
+          ava.style.backgroundImage = `url('${poster.replace(/'/g, '%27')}')`;
+          ava.innerHTML = '<span class="fa-bdot"></span>';
+        }
+      },
+    };
+  }
+
+  const large = opts.size === 'large';
   const teaser = document.createElement('div');
   teaser.className = `fa-teaser ${large ? 'fa-lg' : 'fa-sm'}`;
   teaser.setAttribute('role', 'button');
@@ -483,7 +541,7 @@ function makeDock(
 
   return {
     dock,
-    setHidden: (hidden: boolean) => dock.classList.toggle('is-hidden', hidden),
+    setHidden,
     // Upgrade the teaser with the firm's real config (poster, attorney name)
     // once /config resolves, so the embed snippet doesn't have to hardcode them.
     applyConfig: ({ poster, name }) => {
@@ -506,7 +564,7 @@ function makeDock(
 function readScriptConfig(): {
   firmId: string;
   widgetOrigin: string;
-  size: 'large' | 'small';
+  size: 'small' | 'medium' | 'large';
   name: string;
   poster?: string;
   cine: boolean;
@@ -525,7 +583,7 @@ function readScriptConfig(): {
   // size/video from /config; these style the host-page teaser and forward a
   // cinematic-open hint for testing.
   const sizeAttr = script.getAttribute('data-size');
-  const size = sizeAttr === 'small' ? 'small' : 'large';
+  const size = sizeAttr === 'small' ? 'small' : sizeAttr === 'medium' ? 'medium' : 'large';
   const name = script.getAttribute('data-name') ?? 'our team';
   const poster = script.getAttribute('data-poster') ?? undefined;
   const cineAttr = script.getAttribute('data-cine');
@@ -540,6 +598,11 @@ function readScriptConfig(): {
 
   let iframe: HTMLIFrameElement | null = null;
   let setDockHidden: (hidden: boolean) => void = () => undefined;
+  let launcherPos: 'bottom-left' | 'bottom-center' | 'bottom-right' | undefined;
+  const positionEl = (el: HTMLElement) => {
+    if (launcherPos === 'bottom-left') el.classList.add('fa-pos-left');
+    else if (launcherPos === 'bottom-center') el.classList.add('fa-pos-center');
+  };
   let iframeRemote: IframeMethods | null = null;
   let connection: Connection<IframeMethods> | null = null;
   let iframeReady: Promise<IframeMethods> | null = null;
@@ -596,6 +659,7 @@ function readScriptConfig(): {
     const viewParam = view && view !== 'home' ? `&view=${encodeURIComponent(view)}` : '';
     const cineParam = cine ? '&cine=1' : '';
     el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}`;
+    positionEl(el);
     document.body.appendChild(el);
     iframe = el;
 
@@ -648,22 +712,43 @@ function readScriptConfig(): {
   setDockHidden = dockApi.setHidden;
   document.body.appendChild(dockApi.dock);
 
-  // Forward the firm's real launcher media from /config (non-blocking): the
-  // teaser renders instantly with the embed defaults, then upgrades its
-  // thumbnail + attorney name once the Law App's config arrives. Skip when the
-  // embed already hardcodes a poster.
-  if (!poster) {
-    fetch(`${apiBase}/config?firm_id=${encodeURIComponent(firmId)}`, { credentials: 'omit' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((cfg: { branding?: { introVideoPoster?: string; assistantName?: string; name?: string } } | null) => {
+  // Hydrate the launcher from /config (non-blocking): the teaser renders
+  // instantly with the embed defaults, then upgrades its thumbnail, attorney
+  // name, and position once the Law App's config arrives. Also fail closed if
+  // the firm lacks the chat_widget module (403).
+  fetch(`${apiBase}/config?firm_id=${encodeURIComponent(firmId)}`, { credentials: 'omit' })
+    .then((r) => {
+      if (r.status === 403) {
+        // Module not enabled — don't show the launcher at all.
+        setDockHidden(true);
+        return null;
+      }
+      return r.ok ? r.json() : null;
+    })
+    .then(
+      (
+        cfg: {
+          branding?: {
+            introVideoPoster?: string;
+            assistantName?: string;
+            name?: string;
+            launcherPosition?: 'bottom-left' | 'bottom-center' | 'bottom-right';
+          };
+        } | null,
+      ) => {
         if (!cfg?.branding) return;
-        dockApi.applyConfig({
-          poster: cfg.branding.introVideoPoster,
-          name: cfg.branding.assistantName ?? cfg.branding.name,
-        });
-      })
-      .catch(() => undefined);
-  }
+        launcherPos = cfg.branding.launcherPosition;
+        positionEl(dockApi.dock);
+        if (iframe) positionEl(iframe);
+        if (!poster) {
+          dockApi.applyConfig({
+            poster: cfg.branding.introVideoPoster,
+            name: cfg.branding.assistantName ?? cfg.branding.name,
+          });
+        }
+      },
+    )
+    .catch(() => undefined);
 
   type FamaashApi = {
     open(): void;

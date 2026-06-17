@@ -7,7 +7,9 @@ import {
 } from "react";
 import { useSocket } from "../services/socketContext";
 import { useWidgetStore } from "../store/widgetStore";
+import { uploadMedia } from "../services/api";
 import { generateId } from "../utils/id";
+import { canRecordMedia, useMediaNote, type MediaKind } from "../utils/useMediaNote";
 import {
   MicIcon,
   SendArrowIcon,
@@ -28,9 +30,60 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const beginTyping = useWidgetStore((s) => s.beginTyping);
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const conversationEnded = useWidgetStore((s) => s.conversationEnded);
+  const allowVoiceNotes = useWidgetStore((s) => s.connect.allowVoiceNotes);
+  const allowVideoNotes = useWidgetStore((s) => s.connect.allowVideoNotes);
   const socket = useSocket();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLVideoElement>(null);
   const [value, setValue] = useState("");
+
+  // WhatsApp-style voice/video note: record → optimistic bubble → upload → send.
+  const sendMedia = (blob: Blob, kind: MediaKind, durationMs: number) => {
+    const store = useWidgetStore.getState();
+    const clientId = generateId("msg_media");
+    const localUrl = URL.createObjectURL(blob);
+    store.addMessage({
+      id: clientId,
+      role: "lead",
+      type: "media",
+      content: "",
+      mediaKind: kind,
+      mediaUrl: localUrl,
+      mediaDurationMs: durationMs,
+      timestamp: Date.now(),
+      status: "sending",
+    });
+    store.setUndoable(clientId);
+    const conversationId = store.conversationId;
+    if (!conversationId || !socket) {
+      store.updateMessage(clientId, { status: "failed" });
+      return;
+    }
+    uploadMedia(conversationId, kind, blob, durationMs)
+      .then((res) => {
+        store.updateMessage(clientId, { mediaUrl: res.url || localUrl, status: "sent" });
+        socket.send({
+          type: "lead_media_message",
+          clientMessageId: clientId,
+          kind,
+          url: res.url,
+          mediaId: res.mediaId,
+          mimeType: res.mimeType,
+          durationMs: res.durationMs ?? Math.round(durationMs),
+        });
+        store.beginTyping();
+      })
+      .catch(() => store.updateMessage(clientId, { status: "failed" }));
+  };
+
+  const note = useMediaNote(sendMedia);
+  const startVideoNote = () =>
+    void note.start("video", (stream) => {
+      if (previewRef.current) {
+        previewRef.current.srcObject = stream;
+        void previewRef.current.play();
+      }
+    });
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -62,6 +115,8 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
     });
     // Show the typing dots immediately while we wait for the AI's reply.
     beginTyping();
+    // Offer an Undo for the grace window.
+    useWidgetStore.getState().setUndoable(clientId);
     setValue("");
     requestAnimationFrame(autoResize);
   };
@@ -79,6 +134,47 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
     return (
       <div className="shrink-0 bg-white px-3 py-3 text-center">
         <p className="text-[12px] text-muted">This conversation has ended.</p>
+      </div>
+    );
+  }
+
+  if (note.recording) {
+    const secs = Math.floor(note.elapsedMs / 1000);
+    const mmss = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+    return (
+      <div className="shrink-0 bg-white px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded-pill bg-[#EEEEFF] px-3 py-2">
+          {note.recording === "video" && (
+            <video
+              ref={previewRef}
+              muted
+              playsInline
+              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+            />
+          )}
+          <span className="flex items-center gap-2 text-[13px] font-semibold tabular-nums text-[#1A1A1A]">
+            <span className="h-2.5 w-2.5 rounded-full bg-danger animate-pulse" aria-hidden="true" />
+            {mmss}
+          </span>
+          <span className="flex-1 truncate text-[12px] text-muted">
+            {note.recording === "video" ? "Recording video…" : "Recording voice note…"}
+          </span>
+          <button
+            type="button"
+            onClick={note.cancel}
+            className="rounded-full px-3 py-1 text-[12px] font-semibold text-muted hover:bg-white/70"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={note.stop}
+            aria-label="Send recording"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-famaash text-white"
+          >
+            <SendArrowIcon size={15} />
+          </button>
+        </div>
       </div>
     );
   }
@@ -106,21 +202,29 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
               canSend ? "max-w-0 opacity-0" : "max-w-[72px] opacity-100",
             )}
           >
-            {flags?.voice && (
-              <ComposerIcon
-                label="Voice input"
-                onClick={() => setActiveModal("voice")}
-              >
+            {/* Voice/video notes (WhatsApp-style). Prefer recording when the
+                firm enables it; otherwise fall back to the legacy modals. */}
+            {allowVoiceNotes && canRecordMedia() ? (
+              <ComposerIcon label="Record a voice note" onClick={() => void note.start("audio")}>
                 <MicIcon size={17} />
               </ComposerIcon>
+            ) : (
+              flags?.voice && (
+                <ComposerIcon label="Voice input" onClick={() => setActiveModal("voice")}>
+                  <MicIcon size={17} />
+                </ComposerIcon>
+              )
             )}
-            {flags?.video_record && (
-              <ComposerIcon
-                label="Record a video"
-                onClick={() => setActiveModal("video")}
-              >
+            {allowVideoNotes && canRecordMedia() ? (
+              <ComposerIcon label="Record a video note" onClick={startVideoNote}>
                 <VideoIcon size={17} />
               </ComposerIcon>
+            ) : (
+              flags?.video_record && (
+                <ComposerIcon label="Record a video" onClick={() => setActiveModal("video")}>
+                  <VideoIcon size={17} />
+                </ComposerIcon>
+              )
             )}
           </div>
         </div>

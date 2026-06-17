@@ -7,6 +7,7 @@ import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
 import { applyTheme } from './config/theme';
 import { shouldShowCinematic } from './config/connect';
+import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
 import {
@@ -85,7 +86,7 @@ export function App() {
       cinematicDismissed,
     });
     const compact =
-      connectSize === 'small' && connectView === 'home' && !conversationStarted && !cinematic;
+      connectSize !== 'large' && connectView === 'home' && !conversationStarted && !cinematic;
     if (compact) void bridge.requestCompact();
     else void bridge.requestExpand();
   }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
@@ -178,6 +179,11 @@ export function App() {
         setBridgeReady(true);
       } catch (err) {
         if (disposed) return;
+        // Fail closed: firm lacks the chat_widget module → don't render at all.
+        if (err instanceof ApiError && err.status === 403) {
+          setBootStatus('disabled');
+          return;
+        }
         const message = err instanceof Error ? err.message : 'Unknown error';
         setBootStatus('error', message);
       }
