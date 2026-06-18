@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
-import { PlayIcon } from '../utils/icons';
+import { ChevronLeftIcon, PlayIcon } from '../utils/icons';
+import { WidgetControls } from './WidgetControls';
+
+/** Header controls overlaid on the intro video (so they scroll away with it). */
+export interface IntroControls {
+  onClose: () => void;
+  onMinimize: () => void;
+  onExpand: () => void;
+  isExpanded: boolean;
+  onBack?: () => void;
+}
 
 /**
  * The intro video pinned at the top of the conversation scroll. It keeps its
  * full opener size (565:728) and simply scrolls up as messages accumulate —
  * it does NOT shrink into a message bubble. A play button lets the lead scroll
- * back up and replay it in the chat.
+ * back up and replay it in the chat. When `controls` is passed they overlay the
+ * video (instead of a separate header bar) and scroll out of view with it.
  */
-export function ConversationIntro() {
+export function ConversationIntro({ controls }: { controls?: IntroControls }) {
   const branding = useWidgetStore((s) => s.branding);
   const firmName = branding?.name ?? 'our team';
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +75,30 @@ export function ConversationIntro() {
               <PlayIcon size={24} aria-hidden="true" />
             </span>
           </button>
+        )}
+        {/* Controls overlay the video and scroll away with it. */}
+        {controls && (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">
+            {controls.onBack ? (
+              <button
+                type="button"
+                onClick={controls.onBack}
+                aria-label="Back to all options"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-ink-soft backdrop-blur transition-colors hover:bg-white/90"
+              >
+                <ChevronLeftIcon size={18} />
+              </button>
+            ) : (
+              <span className="h-8 w-8" />
+            )}
+            <WidgetControls
+              tone="overlay"
+              onClose={controls.onClose}
+              onMinimize={controls.onMinimize}
+              onExpand={controls.onExpand}
+              isExpanded={controls.isExpanded}
+            />
+          </div>
         )}
       </div>
       <div className="w-full">

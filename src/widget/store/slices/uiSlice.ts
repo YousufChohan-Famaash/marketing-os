@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
 import type { ConnectChannel, ConsentModal } from '../../types/domain';
-import type { ClientEvent } from '../../types/protocol';
+import type { ClientEvent, ConnectCallStatus } from '../../types/protocol';
 import type { WidgetStore } from '../widgetStore';
 
 /** Which Connect surface is showing: the home menu or a specific channel. */
@@ -67,6 +67,8 @@ export interface UiSlice {
   cinematicDismissed: boolean;
   /** The just-sent lead message that can still be undone (null = none). */
   undoableMessageId: string | null;
+  /** Live status of an in-progress "Call now" outbound call (null = none). */
+  connectCallStatus: ConnectCallStatus | null;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
   setConnectView: (view: ConnectView) => void;
@@ -75,6 +77,7 @@ export interface UiSlice {
   /** Mark a message undoable for the configured grace window, then auto-clear. */
   setUndoable: (id: string) => void;
   clearUndoable: () => void;
+  setConnectCallStatus: (status: ConnectCallStatus | null) => void;
   setExpanded: (expanded: boolean) => void;
   setConversationId: (id: string | null) => void;
   setCaseTypePicked: (picked: boolean) => void;
@@ -114,6 +117,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   conversationStarted: false,
   cinematicDismissed: false,
   undoableMessageId: null,
+  connectCallStatus: null,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
   setConnectView: (view) => set({ connectView: view }),
@@ -135,6 +139,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
     }
     set({ undoableMessageId: null });
   },
+  setConnectCallStatus: (status) => set({ connectCallStatus: status }),
   setExpanded: (expanded) => set({ isExpanded: expanded }),
   setConversationId: (id) => set({ conversationId: id }),
   setCaseTypePicked: (picked) => set({ caseTypePicked: picked }),

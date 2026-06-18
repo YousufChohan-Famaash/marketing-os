@@ -129,6 +129,11 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
       stopTyping();
       store.getState().setConversationEnded(true);
     }),
+
+    // Live "Call now" status (connecting → connected / couldn't-reach).
+    socket.on('connect_call_status', (e) => {
+      store.getState().setConnectCallStatus(e.status);
+    }),
   ];
 
   return () => {

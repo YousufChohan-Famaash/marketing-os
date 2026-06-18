@@ -90,7 +90,13 @@ const styles = `
 
 /* video surface (CSS-only; the real clip plays inside the panel on open) */
 .fa-vid { position: relative; overflow: hidden; background: linear-gradient(158deg, #3a5560 0%, #21343d 48%, #122229 100%); }
-.fa-vid::after { content: ""; position: absolute; inset: 0; background: radial-gradient(48% 60% at 30% 24%, rgba(255, 255, 255, 0.32), transparent 60%); }
+/* The card background fades onto the bottom of the photo (matches the teaser's
+   tinted bg so there's no white seam against the brand-colored card). */
+.fa-vfade {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 48%; z-index: 2; pointer-events: none;
+  background: linear-gradient(180deg, transparent, #fff);
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--fa-accent) 12%, #fff));
+}
 .fa-vlive { position: absolute; left: 11px; top: 11px; z-index: 3; display: inline-flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: #fff; background: rgba(8, 10, 14, 0.5); padding: 4px 8px; border-radius: 20px; }
 .fa-vlive i { width: 5px; height: 5px; border-radius: 50%; background: #5BD6A0; display: inline-block; }
 .fa-vplay { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; display: grid; place-items: center; border-radius: 50%; background: rgba(8, 10, 14, 0.36); border: 1.5px solid rgba(255, 255, 255, 0.42); color: #fff; backdrop-filter: blur(4px); }
@@ -104,31 +110,42 @@ const styles = `
 .fa-h em { font-style: normal; color: var(--fa-accent); }
 .fa-ways { display: flex; gap: 7px; }
 .fa-way { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 2px 8px; border-radius: 12px; background: #fff; border: 1px solid rgba(15, 23, 42, 0.1); transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
-.fa-teaser:hover .fa-way { border-color: rgba(15, 23, 42, 0.16); }
+.fa-way:hover { border-color: var(--fa-accent); background: color-mix(in srgb, var(--fa-accent) 10%, #fff); transform: translateY(-1px); }
 .fa-way svg { width: 18px; height: 18px; color: var(--fa-accent); }
 .fa-way span { font-size: 11px; font-weight: 600; color: #334155; }
 .fa-status { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; color: #16a34a; }
 .fa-status i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16); }
 
-/* ---- LARGE: hero video on top, stacked ---- */
+/* ---- LARGE: portrait video, headline overlapping, icon+label pills ---- */
 .fa-teaser.fa-lg { width: 344px; }
 .fa-teaser.fa-lg .fa-vid { aspect-ratio: 16 / 9; }
 .fa-teaser.fa-lg .fa-vplay { width: 52px; height: 52px; }
-.fa-teaser.fa-lg .fa-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 13px; }
-.fa-teaser.fa-lg .fa-foot { display: flex; align-items: center; gap: 7px; padding-top: 12px; border-top: 1px solid rgba(15, 23, 42, 0.08); }
+/* Pull the body up so the headline overlaps the video's faded bottom. */
+.fa-teaser.fa-lg .fa-body { position: relative; z-index: 2; margin-top: -30px; padding: 0 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+/* Channels as a single row of equal-width icon + label pills (no wrap). */
+.fa-teaser.fa-lg .fa-ways { flex-wrap: nowrap; gap: 6px; }
+.fa-teaser.fa-lg .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; border-radius: 20px; }
+.fa-teaser.fa-lg .fa-way svg { width: 14px; height: 14px; }
+.fa-teaser.fa-lg .fa-way span { font-size: 11.5px; color: #0f172a; }
+.fa-teaser.fa-lg .fa-foot { display: flex; justify-content: center; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
+.fa-teaser.fa-lg .fa-foot b { color: #64748b; font-weight: 600; }
 
-/* ---- SMALL: compact card, video tile on the left ---- */
-.fa-teaser.fa-sm { width: 372px; padding: 14px; }
+/* ---- MEDIUM: compact card, tall video tile on the left ---- */
+.fa-teaser.fa-sm { width: 424px; padding: 14px; }
 .fa-teaser.fa-sm .fa-sm-row { display: flex; gap: 13px; align-items: stretch; }
-.fa-teaser.fa-sm .fa-vid { flex: 0 0 96px; width: 96px; align-self: stretch; min-height: 96px; border-radius: 14px; }
+.fa-teaser.fa-sm .fa-vid { flex: 0 0 104px; width: 104px; align-self: stretch; min-height: 104px; border-radius: 14px; }
 .fa-teaser.fa-sm .fa-vplay { width: 38px; height: 38px; }
 .fa-teaser.fa-sm .fa-vplay svg { width: 13px; height: 13px; }
 .fa-teaser.fa-sm .fa-vlive { left: 8px; top: 8px; }
-.fa-teaser.fa-sm .fa-sm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 11px; }
-.fa-teaser.fa-sm .fa-sm-head { display: flex; align-items: flex-start; gap: 8px; }
-.fa-teaser.fa-sm .fa-min { position: static; }
-.fa-teaser.fa-sm .fa-status { margin-top: 12px; }
-.fa-teaser.fa-sm .fa-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
+.fa-teaser.fa-sm .fa-sm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 9px; }
+.fa-teaser.fa-sm .fa-sm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.fa-teaser.fa-sm .fa-min { position: static; flex-shrink: 0; }
+/* Channels as a single row of icon + label pills (matches the large teaser). */
+.fa-teaser.fa-sm .fa-ways { flex-wrap: nowrap; gap: 6px; }
+.fa-teaser.fa-sm .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; border-radius: 20px; }
+.fa-teaser.fa-sm .fa-way svg { width: 14px; height: 14px; }
+.fa-teaser.fa-sm .fa-way span { font-size: 11.5px; color: #0f172a; }
+.fa-teaser.fa-sm .fa-foot { display: flex; justify-content: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
 .fa-teaser.fa-sm .fa-foot b { color: #64748b; font-weight: 600; }
 
 /* ---- SMALL: picture-only launcher (attorney photo + greeting bubble) ---- */
@@ -392,20 +409,19 @@ const CHANNELS_HTML = `
   <span class="fa-way" data-channel="text">${SVG.text}<span>Text</span></span>
   <span class="fa-way" data-channel="schedule">${SVG.calendar}<span>Book</span></span>`;
 
-function videoSurfaceHTML(name: string, large: boolean, poster?: string): string {
-  const caption = large
-    ? `<div class="fa-vcap"><b>Meet ${name}</b><span>A quick hello, tap to watch</span></div>`
-    : '';
-  // A real thumbnail when the embed provides one, dimmed for text legibility;
-  // otherwise the CSS gradient surface from the stylesheet.
+function videoSurfaceHTML(large: boolean, poster?: string): string {
+  // A real thumbnail when the embed provides one (lightly dimmed); otherwise the
+  // CSS gradient surface from the stylesheet.
   const style = poster
-    ? ` style="background-image:linear-gradient(rgba(8,6,3,.18),rgba(8,6,3,.5)),url('${poster.replace(/'/g, "%27")}');background-size:cover;background-position:center"`
+    ? ` style="background-image:linear-gradient(rgba(8,6,3,.12),rgba(8,6,3,.28)),url('${poster.replace(/'/g, "%27")}');background-size:cover;background-position:center"`
     : '';
+  // Large gets a bottom fade so the headline can overlap the photo.
+  const fade = large ? '<span class="fa-vfade"></span>' : '';
   return `
     <div class="fa-vid"${style}>
       <span class="fa-vlive"><i></i>LIVE</span>
       <span class="fa-vplay">${SVG.play}</span>
-      ${caption}
+      ${fade}
     </div>`;
 }
 
@@ -477,22 +493,23 @@ function makeDock(
   teaser.innerHTML = large
     ? `
       ${minBtnHTML('on-vid')}
-      ${videoSurfaceHTML(opts.name, true, opts.poster)}
+      ${videoSurfaceHTML(true, opts.poster)}
       <div class="fa-body">
         ${headline}
+        <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
         <div class="fa-ways">${CHANNELS_HTML}</div>
-        <div class="fa-foot"><span class="fa-status"><i></i>We answer in seconds, day or night</span></div>
+        <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>
       </div>`
     : `
       <div class="fa-sm-row">
-        ${videoSurfaceHTML(opts.name, false, opts.poster)}
+        ${videoSurfaceHTML(false, opts.poster)}
         <div class="fa-sm-main">
           <div class="fa-sm-head">${headline}${minBtnHTML('on-card')}</div>
+          <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
           <div class="fa-ways">${CHANNELS_HTML}</div>
         </div>
       </div>
-      <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
-      <div class="fa-foot"><span><b>Powered by Famaash</b></span><span>Available 24/7</span></div>`;
+      <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>`;
 
   const bubble = document.createElement('button');
   bubble.className = 'fa-bubble';

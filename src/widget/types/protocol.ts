@@ -111,6 +111,21 @@ export interface FileUploadAckEvent {
   progress: number;
 }
 
+/** Live status of a "Call now" outbound call, pushed over the chat data channel. */
+export type ConnectCallStatus =
+  | 'calling'
+  | 'connected'
+  | 'no_answer'
+  | 'busy'
+  | 'failed'
+  | 'completed';
+
+export interface ConnectCallStatusEvent {
+  type: 'connect_call_status';
+  status: ConnectCallStatus;
+  call_id?: string;
+}
+
 export type ServerEvent =
   | ReadyEvent
   | ConsentModalEvent
@@ -126,7 +141,8 @@ export type ServerEvent =
   | ConversationEndedEvent
   | VideoMessageEvent
   | LinkCardEvent
-  | FileUploadAckEvent;
+  | FileUploadAckEvent
+  | ConnectCallStatusEvent;
 
 // ─────────────────────────────────────────────────────────────────────
 // Client → server events

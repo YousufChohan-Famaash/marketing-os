@@ -4,7 +4,7 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { CalendarPicker } from './CalendarPicker';
-import { ConversationIntro } from './ConversationIntro';
+import { ConversationIntro, type IntroControls } from './ConversationIntro';
 import { DocumentSignCard } from './DocumentSignCard';
 import { DocumentUploadCard } from './DocumentUploadCard';
 import { EmailInput, NameInput, NumberInput, PhoneInput } from './FieldInputs';
@@ -44,7 +44,7 @@ function normalizeOptions(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-export function MessageList() {
+export function MessageList({ introControls }: { introControls?: IntroControls } = {}) {
   const messages = useWidgetStore((s) => s.messages);
   const chips = useWidgetStore((s) => s.chips);
   const isAiTyping = useWidgetStore((s) => s.isAiTyping);
@@ -160,7 +160,7 @@ export function MessageList() {
       aria-atomic="false"
       aria-label="Conversation"
     >
-      <ConversationIntro />
+      <ConversationIntro controls={introControls} />
       <div className="mt-2 flex flex-col gap-3">
         {timeline.map((item) => {
           if (item.kind === 'chip') {

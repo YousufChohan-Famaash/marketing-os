@@ -5,6 +5,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar } from '../config/demoMedia';
 import { cn } from '../utils/cn';
 import { findLeadEmail, useGravatar } from '../utils/useGravatar';
+import { UndoIcon } from '../utils/icons';
 import { Avatar } from './Avatar';
 import { matchPracticeIcon } from './BrandAssets';
 import { RichText } from './RichText';
@@ -82,6 +83,18 @@ export const MessageBubble = memo(function MessageBubble({
       )}
     >
       {isAi && <Avatar src={avatarSrc} name={avatarName} size={28} className="mt-0.5" />}
+      {/* Undo lives beside the (last) lead message — only the latest is undoable. */}
+      {isLead && canUndo && (
+        <button
+          type="button"
+          onClick={undo}
+          aria-label="Undo message"
+          title="Undo"
+          className="flex h-7 w-7 shrink-0 items-center justify-center self-center rounded-full text-muted-soft transition-colors hover:bg-subtle hover:text-ink"
+        >
+          <UndoIcon size={15} />
+        </button>
+      )}
       <div
         className={cn(
           'flex min-w-0 max-w-[88%] flex-col gap-1',
@@ -121,15 +134,6 @@ export const MessageBubble = memo(function MessageBubble({
           {isFailed && <span className="text-danger">Failed to send</span>}
           {!isSending && !isFailed && <time dateTime={new Date(message.timestamp).toISOString()}>{formatTime(message.timestamp)}</time>}
         </div>
-        {canUndo && (
-          <button
-            type="button"
-            onClick={undo}
-            className="self-end px-2 text-[11px] font-semibold text-famaash hover:underline"
-          >
-            Undo
-          </button>
-        )}
       </div>
       {isLead && leadAvatar && (
         <Avatar src={leadAvatar} size={28} fallback="none" className="mt-0.5" />

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { useWidgetStore } from '../store/widgetStore';
-import { resolveIntroVideo } from '../config/demoMedia';
-import { CHANNEL_META, rankChannels } from '../config/connect';
-import type { ConnectChannel } from '../types/domain';
+import { useEffect, useRef, useState } from "react";
+import { useWidgetStore } from "../store/widgetStore";
+import { resolveIntroVideo } from "../config/demoMedia";
+import { CHANNEL_META, rankChannels } from "../config/connect";
+import type { ConnectChannel } from "../types/domain";
 import {
   CalendarIcon,
   ChatIcon,
@@ -12,8 +12,8 @@ import {
   SmartphoneIcon,
   VolumeOffIcon,
   VolumeOnIcon,
-} from '../utils/icons';
-import { cn } from '../utils/cn';
+} from "../utils/icons";
+import { cn } from "../utils/cn";
 
 const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
   call: PhoneIcon,
@@ -23,11 +23,11 @@ const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
   email: MailIcon,
 };
 const SHORT: Record<ConnectChannel, string> = {
-  call: 'Call',
-  chat: 'Chat',
-  text: 'Text',
-  schedule: 'Book',
-  email: 'Email',
+  call: "Call",
+  chat: "Chat",
+  text: "Text",
+  schedule: "Schedule",
+  email: "Email",
 };
 
 /**
@@ -48,10 +48,10 @@ export function CinematicOpen() {
   const [closing, setClosing] = useState(false);
 
   const src =
-    settings.videoMode === 'story'
-      ? settings.storyVideoUrl ?? resolveIntroVideo(branding?.introVideoUrl)
+    settings.videoMode === "story"
+      ? (settings.storyVideoUrl ?? resolveIntroVideo(branding?.introVideoUrl))
       : resolveIntroVideo(branding?.introVideoUrl);
-  const name = branding?.assistantName ?? branding?.name ?? 'our team';
+  const name = branding?.assistantName ?? branding?.name ?? "our team";
   const channels = rankChannels(settings).slice(0, 4);
 
   useEffect(() => {
@@ -83,8 +83,8 @@ export function CinematicOpen() {
   return (
     <div
       className={cn(
-        'absolute inset-0 z-[60] overflow-hidden bg-black transition-[opacity,transform] duration-[380ms] ease-out',
-        closing ? 'scale-[1.04] opacity-0' : 'opacity-100',
+        "absolute inset-0 z-[60] overflow-hidden bg-black transition-[opacity,transform] duration-[380ms] ease-out",
+        closing ? "scale-[1.04] opacity-0" : "opacity-100",
       )}
       role="dialog"
       aria-label={`Welcome video from ${name}`}
@@ -115,7 +115,7 @@ export function CinematicOpen() {
       <button
         type="button"
         onClick={toggleSound}
-        aria-label={soundOn ? 'Mute' : 'Unmute'}
+        aria-label={soundOn ? "Mute" : "Unmute"}
         className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur hover:bg-black/60"
       >
         {soundOn ? <VolumeOnIcon size={15} /> : <VolumeOffIcon size={15} />}
@@ -123,8 +123,12 @@ export function CinematicOpen() {
 
       {/* Caption + next-step quick actions */}
       <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 to-transparent px-4 pb-4 pt-16">
-        <p className="text-[19px] font-bold leading-tight text-white">Meet {name}</p>
-        <p className="mt-0.5 text-[12.5px] text-white/80">A quick hello — pick how you'd like to talk.</p>
+        <p className="text-[19px] font-bold leading-tight text-white">
+          Meet {name}
+        </p>
+        <p className="mt-0.5 text-[12.5px] text-white/80">
+          A quick hello — pick how you'd like to talk.
+        </p>
         <div className="mt-3 flex gap-2">
           {channels.map((id) => {
             const Icon = CHANNEL_ICON[id];
@@ -146,7 +150,10 @@ export function CinematicOpen() {
 
       {/* Progress */}
       <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-white/20">
-        <div className="h-full bg-famaash transition-[width] duration-200" style={{ width: `${progress}%` }} />
+        <div
+          className="h-full bg-famaash transition-[width] duration-200"
+          style={{ width: `${progress}%` }}
+        />
       </div>
     </div>
   );

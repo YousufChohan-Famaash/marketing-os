@@ -366,3 +366,10 @@ export const SmartphoneIcon = (p: IconProps) => (
     <line x1="10.5" y1="18" x2="13.5" y2="18" />
   </Base>
 );
+
+export const UndoIcon = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M9 14 4 9l5-5" />
+    <path d="M4 9h11a5 5 0 0 1 0 10h-3" />
+  </Base>
+);

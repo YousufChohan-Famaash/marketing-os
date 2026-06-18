@@ -3,7 +3,7 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { ApiError, errorDetail, placeCallNow } from '../services/api';
 import { generateId } from '../utils/id';
-import { CalendarIcon, CheckIcon, ChevronLeftIcon, PhoneIcon } from '../utils/icons';
+import { CalendarIcon, CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CalendarPicker, type DateSelection } from './CalendarPicker';
 import { CallbackForm } from './CallbackForm';
@@ -77,19 +77,54 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const [date, setDate] = useState<DateSelection | null>(null);
   const [slot, setSlot] = useState<string>(TIME_SLOTS[1]);
   const [showCalendar, setShowCalendar] = useState(false);
-  // Live callback countdown after "Call me now" (seconds remaining, null = inactive).
+  // Call-now lifecycle: calling → connected | failed. The backend pushes the
+  // live status over the chat data channel (connectCallStatus in the store).
+  const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
+  const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
+  const [callPhase, setCallPhase] = useState<'calling' | 'connected' | 'failed' | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [callTarget, setCallTarget] = useState<{ phone: string; name?: string } | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
 
+  // Tick the connecting countdown.
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;
     const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 1000);
     return () => clearTimeout(t);
   }, [countdown]);
 
-  const back = () => setConnectView('home');
+  // React to the pushed call status while we're connecting.
+  useEffect(() => {
+    if (callPhase !== 'calling' || !connectCallStatus) return;
+    if (connectCallStatus === 'connected' || connectCallStatus === 'completed') {
+      setCallPhase('connected');
+      setCountdown(null);
+    } else if (
+      connectCallStatus === 'no_answer' ||
+      connectCallStatus === 'busy' ||
+      connectCallStatus === 'failed'
+    ) {
+      setCallPhase('failed');
+      setCountdown(null);
+    }
+  }, [connectCallStatus, callPhase]);
+
+  // No status within the window → assume we couldn't reach them.
+  useEffect(() => {
+    if (callPhase === 'calling' && countdown === 0) setCallPhase('failed');
+  }, [callPhase, countdown]);
+
+  const resetCall = () => {
+    setCallPhase(null);
+    setCountdown(null);
+    setCallError(null);
+    setConnectCallStatus(null);
+  };
+  const back = () => {
+    resetCall();
+    setConnectView('home');
+  };
 
   // Call now → backend places an immediate outbound AI voice call (REST, not the
   // old request_human event). On success we show the live countdown.
@@ -102,7 +137,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     setPlacing(true);
     try {
       await placeCallNow({ conversationId, phone, name, consentText: consentLabel });
+      setConnectCallStatus(null); // clear any prior status before this call
       setCallTarget({ phone, name });
+      setCallPhase('calling');
       setCountdown(60);
     } catch (err) {
       const detail = errorDetail(err);
@@ -159,11 +196,19 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {countdown !== null ? (
+        {callPhase === 'calling' ? (
           <CallCountdown
-            seconds={countdown}
+            seconds={countdown ?? 0}
             phone={callTarget?.phone ?? ''}
             name={callTarget?.name}
+            onBack={back}
+          />
+        ) : callPhase === 'connected' ? (
+          <CallConnected phone={callTarget?.phone ?? ''} name={callTarget?.name} onBack={back} />
+        ) : callPhase === 'failed' ? (
+          <CallFailed
+            phone={callTarget?.phone ?? ''}
+            onRetry={() => callTarget && void finishCall(callTarget.phone, callTarget.name)}
             onBack={back}
           />
         ) : done ? (
@@ -406,6 +451,67 @@ function CallCountdown({
       >
         Back to options
       </button>
+    </div>
+  );
+}
+
+function CallConnected({ phone, name, onBack }: { phone: string; name?: string; onBack: () => void }) {
+  const first = name?.trim().split(/\s+/)[0];
+  return (
+    <div className="flex flex-col items-center py-8 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
+        <PhoneIcon size={26} aria-hidden="true" />
+      </span>
+      <h3 className="mt-4 text-[18px] font-bold text-ink">You&apos;re connected</h3>
+      <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
+        {first ? `${first}, you're` : "You're"} on the line with our team
+        {phone ? ` at ${phone}` : ''}.
+      </p>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
+      >
+        Back to options
+      </button>
+    </div>
+  );
+}
+
+function CallFailed({
+  phone,
+  onRetry,
+  onBack,
+}: {
+  phone: string;
+  onRetry: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center py-8 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft text-danger">
+        <PhoneOffIcon size={26} aria-hidden="true" />
+      </span>
+      <h3 className="mt-4 text-[18px] font-bold text-ink">We couldn&apos;t reach you</h3>
+      <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
+        We tried calling {phone || 'your number'} but couldn&apos;t connect. Want us to try again?
+      </p>
+      <div className="mt-6 flex gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-pill bg-famaash px-5 py-2 text-[13px] font-semibold text-white hover:opacity-95"
+        >
+          Try again
+        </button>
+      </div>
     </div>
   );
 }
