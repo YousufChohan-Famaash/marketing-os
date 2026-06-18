@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
+import { ApiError, errorDetail, placeCallNow } from '../services/api';
 import { generateId } from '../utils/id';
 import { CalendarIcon, CheckIcon, ChevronLeftIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
@@ -59,6 +60,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const socket = useSocket();
   const settings = useWidgetStore((s) => s.connect);
   const compliance = useWidgetStore((s) => s.compliance);
+  const conversationId = useWidgetStore((s) => s.conversationId);
   const capturedFields = useWidgetStore((s) => s.capturedFields);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
 
@@ -78,6 +80,8 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // Live callback countdown after "Call me now" (seconds remaining, null = inactive).
   const [countdown, setCountdown] = useState<number | null>(null);
   const [callTarget, setCallTarget] = useState<{ phone: string; name?: string } | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
 
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;
@@ -87,10 +91,29 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
 
   const back = () => setConnectView('home');
 
-  const finishCall = (phone: string, name?: string) => {
-    socket?.send({ type: 'request_human', method: 'immediate', phone, name });
-    setCallTarget({ phone, name });
-    setCountdown(60);
+  // Call now → backend places an immediate outbound AI voice call (REST, not the
+  // old request_human event). On success we show the live countdown.
+  const finishCall = async (phone: string, name?: string) => {
+    setCallError(null);
+    if (!conversationId) {
+      setCallError("We couldn't start the call. Please try again.");
+      return;
+    }
+    setPlacing(true);
+    try {
+      await placeCallNow({ conversationId, phone, name, consentText: consentLabel });
+      setCallTarget({ phone, name });
+      setCountdown(60);
+    } catch (err) {
+      const detail = errorDetail(err);
+      setCallError(
+        err instanceof ApiError && err.status === 400 && detail
+          ? detail
+          : "We couldn't start the call. Please try again.",
+      );
+    } finally {
+      setPlacing(false);
+    }
   };
 
   const finishText = (phone: string) => {
@@ -155,15 +178,22 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             )}
 
             {channel === 'call' && (
-              <CallbackForm
-                variant="alert"
-                heading="Where should we call you?"
-                body="We start the callback the moment you confirm — usually under a minute."
-                cta="Call me now"
-                collectName
-                consentLabel={consentLabel}
-                onSubmit={finishCall}
-              />
+              <>
+                {callError && (
+                  <p className="mb-3 rounded-lg bg-danger-soft px-3 py-2 text-[12px] text-danger">
+                    {callError}
+                  </p>
+                )}
+                <CallbackForm
+                  variant="alert"
+                  heading="Where should we call you?"
+                  body="We start the callback the moment you confirm — usually under a minute."
+                  cta={placing ? 'Starting your call…' : 'Call me now'}
+                  collectName
+                  consentLabel={consentLabel}
+                  onSubmit={finishCall}
+                />
+              </>
             )}
 
             {channel === 'text' && (

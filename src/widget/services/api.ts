@@ -173,6 +173,48 @@ export function postVideoEvent(
   }
 }
 
+/** POST /connect/call-now — places an immediate outbound AI voice call. */
+export interface CallNowResponse {
+  ok: boolean;
+  status: string; // 'calling'
+  chip?: { kind: string; label: string };
+  call_id?: string;
+  room_name?: string;
+}
+
+export function placeCallNow(args: {
+  conversationId: string;
+  phone: string;
+  name?: string;
+  consentText?: string;
+  copyVersion?: string;
+}): Promise<CallNowResponse> {
+  return request<CallNowResponse>('/connect/call-now', {
+    method: 'POST',
+    body: JSON.stringify({
+      conversationId: args.conversationId,
+      phone: args.phone,
+      name: args.name,
+      consent: {
+        agreed: true,
+        copyVersion: args.copyVersion ?? 'v1',
+        text: args.consentText,
+      },
+    }),
+  });
+}
+
+/** Pull the human-readable `detail` out of an ApiError's JSON body, if present. */
+export function errorDetail(err: unknown): string | null {
+  if (!(err instanceof ApiError) || !err.detail) return null;
+  try {
+    const parsed = JSON.parse(err.detail) as { detail?: unknown };
+    return typeof parsed.detail === 'string' ? parsed.detail : null;
+  } catch {
+    return null;
+  }
+}
+
 /** GET /config?firm_id=... — boot config + transport hints. */
 export function fetchWidgetConfig(
   firmId: string,

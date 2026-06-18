@@ -7,8 +7,9 @@ import {
   CalendarIcon,
   ChatIcon,
   CloseIcon,
-  MessageSquareIcon,
+  MailIcon,
   PhoneIcon,
+  SmartphoneIcon,
   VolumeOffIcon,
   VolumeOnIcon,
 } from '../utils/icons';
@@ -17,9 +18,9 @@ import { cn } from '../utils/cn';
 const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
   call: PhoneIcon,
   chat: ChatIcon,
-  text: MessageSquareIcon,
+  text: SmartphoneIcon,
   schedule: CalendarIcon,
-  email: MessageSquareIcon,
+  email: MailIcon,
 };
 const SHORT: Record<ConnectChannel, string> = {
   call: 'Call',

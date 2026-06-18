@@ -307,8 +307,10 @@ export interface HostBridge {
   requestMinimize(): Promise<void>;
   requestExpand(): Promise<void>;
   requestShrink(): Promise<void>;
-  /** Shrink the iframe to the compact Small-mode home height. */
+  /** Shrink the iframe to the compact home height (medium/small). */
   requestCompact(): Promise<void>;
+  /** Grow the iframe taller for conversations / channel forms. */
+  requestTall(): Promise<void>;
   getHostContext(): Promise<HostContext>;
   notifyEvent(event: { type: string; data: unknown }): Promise<void>;
 }

@@ -100,7 +100,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   bootStatus: 'idle',
   bootError: null,
   isWidgetOpen: false,
-  isExpanded: true,
+  isExpanded: false,
   isCaptureDrawerOpen: false,
   activeModal: null,
   unreadCount: 0,

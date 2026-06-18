@@ -359,3 +359,10 @@ export const MailIcon = (p: IconProps) => (
     <path d="m22 7-10 6L2 7" />
   </Base>
 );
+
+export const SmartphoneIcon = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="5" y="2" width="14" height="20" rx="2.5" />
+    <line x1="10.5" y1="18" x2="13.5" y2="18" />
+  </Base>
+);

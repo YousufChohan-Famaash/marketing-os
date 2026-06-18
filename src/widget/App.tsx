@@ -85,10 +85,15 @@ export function App() {
       conversationStarted,
       cinematicDismissed,
     });
-    const compact =
-      connectSize !== 'large' && connectView === 'home' && !conversationStarted && !cinematic;
-    if (compact) void bridge.requestCompact();
-    else void bridge.requestExpand();
+    // Size the portrait panel to its content:
+    //   medium/small home → short compact card
+    //   a conversation / channel view → taller (scrolling chat, forms)
+    //   large home (or cinematic) → the default portrait card (fits video + grid)
+    const isHome = connectView === 'home';
+    const compactHome = connectSize !== 'large' && isHome && !conversationStarted && !cinematic;
+    if (compactHome) void bridge.requestCompact();
+    else if (!isHome || conversationStarted) void bridge.requestTall();
+    else void bridge.requestShrink();
   }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
 
   // Boot runs two independent tracks IN PARALLEL so the agent connection isn't

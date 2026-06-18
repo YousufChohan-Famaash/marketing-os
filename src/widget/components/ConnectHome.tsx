@@ -1,14 +1,7 @@
 import { useWidgetStore } from '../store/widgetStore';
 import { CHANNEL_META, rankChannels } from '../config/connect';
 import type { ConnectChannel } from '../types/domain';
-import {
-  CalendarIcon,
-  ChatIcon,
-  ChevronRightIcon,
-  MailIcon,
-  MessageSquareIcon,
-  PhoneIcon,
-} from '../utils/icons';
+import { CalendarIcon, ChatIcon, ChevronRightIcon, MailIcon, PhoneIcon, SmartphoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { ConnectVideo } from './ConnectVideo';
 import { PoweredByFooter } from './PoweredByFooter';
@@ -24,21 +17,20 @@ interface ConnectHomeProps {
 const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
   call: PhoneIcon,
   chat: ChatIcon,
-  text: MessageSquareIcon,
+  text: SmartphoneIcon,
   schedule: CalendarIcon,
   email: MailIcon,
 };
 
-/** ~60s style hint shown on the call card; others get a chevron. */
-const CHANNEL_TAG: Partial<Record<ConnectChannel, string>> = { call: '~60s' };
+const HEADLINE_LEAD = 'Hurt? Talk to us';
+const HEADLINE_ACCENT = 'your way.';
 
 /**
- * The Connect launcher home menu. Renders the intent-ranked contact channels in
- * one of two admin-selected sizes:
- *   Large — hero attorney video, stacked option cards, then chat.
- *   Small — compact card: video tile on the left, headline, channel buttons in
- *           a row, and a status line.
- * Channels route into their own view (reversible); email is demoted to a link.
+ * The Connect launcher home menu, in one of the admin-selected sizes:
+ *   Large  — hero attorney video, then a 2×2 grid of channel cards.
+ *   Medium — compact card: video tile on the left, headline, channel row.
+ *   (Small is the host-page picture FAB, handled in the loader.)
+ * Channels route into their own view (reversible); email is a demoted link.
  */
 export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: ConnectHomeProps) {
   const branding = useWidgetStore((s) => s.branding);
@@ -46,9 +38,8 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   const setConnectView = useWidgetStore((s) => s.setConnectView);
 
   const firmName = branding?.name ?? 'our team';
-  const ranked = rankChannels(settings);
+  const ranked = rankChannels(settings).slice(0, 4);
   const hasEmail = settings.channels.includes('email');
-  // Both 'medium' and 'small' open into the compact card; only 'large' is the hero.
   const compact = settings.size !== 'large';
 
   const go = (id: ConnectChannel) => {
@@ -61,20 +52,27 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
     setConnectView(id);
   };
 
-  // ── Compact card (medium + small) ──────────────────────────────────────────
+  const headline = (
+    <h2 className="text-[18px] font-bold leading-tight tracking-[-0.02em] text-ink">
+      {HEADLINE_LEAD} <span className="text-famaash">{HEADLINE_ACCENT}</span>
+    </h2>
+  );
+
+  // ── Medium: compact horizontal card ────────────────────────────────────────
   if (compact) {
     return (
       <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`Contact ${firmName}`}>
-        <header className="flex shrink-0 items-center justify-end px-3 py-2">
-          <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
-        </header>
-        <div className="flex gap-3 px-4 pb-2">
-          <ConnectVideo compact className="aspect-square h-[92px] w-[92px] shrink-0 rounded-xl" />
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
-            <h2 className="text-[16px] font-bold leading-tight tracking-[-0.02em] text-ink">
-              How can we help?
-            </h2>
-            <div className="flex gap-1.5">
+        <div className="flex gap-3 px-4 pt-4">
+          <ConnectVideo compact className="aspect-square w-[92px] shrink-0 rounded-2xl" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <h2 className="text-[16px] font-bold leading-tight tracking-[-0.02em] text-ink">
+                {HEADLINE_LEAD} <span className="text-famaash">{HEADLINE_ACCENT}</span>
+              </h2>
+              <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+            </div>
+            <StatusLine />
+            <div className="mt-0.5 flex gap-1.5">
               {ranked.map((id) => {
                 const Icon = CHANNEL_ICON[id];
                 return (
@@ -93,9 +91,8 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
             </div>
           </div>
         </div>
-        <StatusLine className="px-4 pt-2" />
         {hasEmail && (
-          <div className="px-4 pb-1 pt-2">
+          <div className="px-4 pt-3">
             <EmailLink onClick={() => go('email')} />
           </div>
         )}
@@ -106,37 +103,42 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
     );
   }
 
-  // ── Large: hero video + stacked cards ──────────────────────────────────────
+  // ── Large: hero video + 2×2 channel grid ───────────────────────────────────
   return (
     <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`Contact ${firmName}`}>
-      <header className="flex shrink-0 items-center justify-end px-3 py-2">
-        <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-4 pb-3">
-        <ConnectVideo className="aspect-[16/10] w-full rounded-2xl" />
-
-        <StatusLine className="mt-3" />
-
-        <h2 className="mt-3 text-[19px] font-bold leading-tight tracking-[-0.02em] text-ink">
-          How can we help?
-        </h2>
-
-        <div className="mt-3 flex flex-col gap-2.5">
-          {ranked.map((id, i) => (
-            <ChannelCard key={id} id={id} primary={i === 0} onClick={() => go(id)} />
-          ))}
+      <div className="relative shrink-0">
+        {/* Full-width cover video; only the expanded view gets a taller frame. */}
+        <ConnectVideo className={cn('w-full', isExpanded ? 'h-[400px]' : 'aspect-[16/11] max-h-[248px]')} />
+        <div className="absolute right-2.5 top-2.5">
+          <WidgetControls tone="overlay" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
         </div>
+      </div>
 
-        {hasEmail && (
-          <div className="mt-3.5 text-center">
-            <EmailLink onClick={() => go('email')} />
+      <div className="flex-1 overflow-y-auto px-4 pb-3 pt-3">
+        {headline}
+        <StatusLine className="mt-2.5" />
+
+        {isExpanded ? (
+          // Expanded: a stacked list of full-width channel rows.
+          <div className="mt-3.5 flex flex-col gap-2.5">
+            {ranked.map((id) => (
+              <RowChannelCard key={id} id={id} onClick={() => go(id)} />
+            ))}
+          </div>
+        ) : (
+          // Portrait: a compact 2×2 grid.
+          <div className="mt-3.5 grid grid-cols-2 gap-2.5">
+            {ranked.map((id) => (
+              <GridChannelCard key={id} id={id} onClick={() => go(id)} />
+            ))}
           </div>
         )}
 
-        <p className="mt-4 text-center text-[11px] text-muted-soft">
-          AI-assisted intake for {firmName}. A team member can join anytime.
-        </p>
+        {hasEmail && (
+          <div className="mt-3 text-center">
+            <EmailLink onClick={() => go('email')} />
+          </div>
+        )}
       </div>
 
       <PoweredByFooter />
@@ -144,55 +146,43 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   );
 }
 
-function ChannelCard({
-  id,
-  primary,
-  onClick,
-}: {
-  id: ConnectChannel;
-  primary: boolean;
-  onClick: () => void;
-}) {
+function RowChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => void }) {
   const meta = CHANNEL_META[id];
   const Icon = CHANNEL_ICON[id];
-  const tag = CHANNEL_TAG[id];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-transform hover:translate-x-0.5',
-        primary
-          ? 'border-transparent bg-famaash text-[color:var(--famaash-on-brand)]'
-          : 'border-hairline bg-white text-ink hover:border-famaash-stroke',
-      )}
+      className="flex w-full items-center gap-3 rounded-2xl border border-hairline bg-white px-4 py-3 text-left transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
     >
-      <span
-        className={cn(
-          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-          primary ? 'bg-white/15 text-[color:var(--famaash-on-brand)]' : 'bg-famaash-soft text-famaash',
-        )}
-      >
-        <Icon size={20} aria-hidden="true" />
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+        <Icon size={19} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[14.5px] font-semibold">{meta.label}</span>
-        <span className={cn('block text-[12.5px]', primary ? 'opacity-80' : 'text-muted')}>
-          {meta.sublabel}
-        </span>
+        <span className="block text-[14.5px] font-semibold leading-tight text-ink">{meta.label}</span>
+        <span className="mt-0.5 block text-[12.5px] text-muted">{meta.sublabel}</span>
       </span>
-      {tag ? (
-        <span
-          className={cn(
-            'shrink-0 rounded-full px-2 py-1 text-[10px] font-bold',
-            primary ? 'bg-white/20 text-[color:var(--famaash-on-brand)]' : 'bg-famaash-soft text-famaash',
-          )}
-        >
-          {tag}
-        </span>
-      ) : (
-        <ChevronRightIcon size={17} className={cn('shrink-0', primary ? 'opacity-80' : 'text-muted-soft')} />
-      )}
+      <ChevronRightIcon size={17} className="shrink-0 text-muted-soft" aria-hidden="true" />
+    </button>
+  );
+}
+
+function GridChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => void }) {
+  const meta = CHANNEL_META[id];
+  const Icon = CHANNEL_ICON[id];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2.5 rounded-2xl border border-hairline bg-white p-2.5 text-left transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+        <Icon size={16} aria-hidden="true" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[12.5px] font-semibold leading-tight text-ink">{meta.label}</span>
+        <span className="mt-0.5 line-clamp-2 block text-[11px] leading-snug text-muted">{meta.sublabel}</span>
+      </span>
     </button>
   );
 }
@@ -201,7 +191,7 @@ function StatusLine({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center gap-2 text-[12.5px] font-medium text-success', className)}>
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-      Online now, we answer in seconds
+      A real person in ~60 sec &middot; 24/7
     </div>
   );
 }
@@ -219,5 +209,5 @@ function EmailLink({ onClick }: { onClick: () => void }) {
 }
 
 function shortLabel(id: ConnectChannel): string {
-  return id === 'call' ? 'Call' : id === 'chat' ? 'Chat' : id === 'text' ? 'Text' : id === 'schedule' ? 'Schedule' : 'Email';
+  return id === 'call' ? 'Call' : id === 'chat' ? 'Chat' : id === 'text' ? 'Text' : id === 'schedule' ? 'Book' : 'Email';
 }

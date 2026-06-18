@@ -27,6 +27,7 @@ interface HostMethods {
   requestExpand(): void;
   requestShrink(): void;
   requestCompact(): void;
+  requestTall(): void;
   getHostContext(): { url: string; referrer: string; utm: Record<string, string> };
   notifyEvent(event: { type: string; data: unknown }): void;
 }
@@ -59,7 +60,9 @@ const styles = `
 /* ---- expressive teaser (shared) ---- */
 .fa-teaser {
   max-width: calc(100vw - 32px);
-  background: #fff;
+  background: #fff; /* fallback when color-mix is unsupported */
+  /* Subtle gradient tinted by the inherited host brand color. */
+  background: linear-gradient(135deg, #fff 0%, color-mix(in srgb, var(--fa-accent) 16%, #fff) 100%);
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 22px;
   box-shadow: 0 24px 56px -18px rgba(15, 23, 42, 0.44), 0 5px 16px -7px rgba(15, 23, 42, 0.2);
@@ -142,13 +145,13 @@ const styles = `
   transform: translateY(-50%) rotate(45deg);
 }
 .fa-pic-ava {
-  width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; position: relative;
+  width: 60px; height: 60px; border-radius: 18px; flex-shrink: 0; position: relative;
   background: var(--fa-accent) center/cover no-repeat; color: #fff; display: grid; place-items: center;
   box-shadow: 0 16px 34px -12px rgba(15, 23, 42, 0.5); transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .fa-pic:hover .fa-pic-ava { transform: scale(1.05); }
 .fa-pic-ava svg { width: 26px; height: 26px; }
-.fa-pic-ava .fa-bdot { position: absolute; right: 1px; bottom: 1px; width: 14px; height: 14px; border-radius: 50%; background: #22C55E; border: 3px solid #fff; }
+.fa-pic-ava .fa-bdot { position: absolute; right: -3px; bottom: -3px; width: 15px; height: 15px; border-radius: 50%; background: #22C55E; border: 3px solid #fff; }
 
 /* ---- minimized bubble ---- */
 .fa-bubble {
@@ -165,11 +168,13 @@ const styles = `
 
 #${IFRAME_ID} {
   position: fixed;
-  bottom: 90px;
+  bottom: 20px;
   right: 20px;
   width: 410px;
-  height: 650px;
-  max-height: calc(100vh - 110px);
+  /* Portrait card for the large home; sits near the corner (the launcher is
+     hidden while open, so we don't reserve space for it). */
+  height: 540px;
+  max-height: calc(100vh - 36px);
   border: none;
   border-radius: 16px;
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
@@ -178,21 +183,26 @@ const styles = `
   color-scheme: light;
 }
 #${IFRAME_ID}.is-hidden { display: none; }
+/* Conversations + channel views need more room (scrolling chat, forms). */
+#${IFRAME_ID}.is-tall {
+  height: min(700px, calc(100vh - 36px));
+}
+/* Opt-in wide mode via the header expand control. */
 #${IFRAME_ID}.is-expanded {
   width: min(680px, calc(100vw - 40px));
   height: min(80vh, 800px);
 }
-/* Small-mode home: a compact panel that expands (to the rules above) the moment
-   a conversation or channel opens. */
+/* Medium/small home: a compact panel that grows the moment a conversation opens. */
 #${IFRAME_ID}.is-compact {
   width: 372px;
   height: 384px;
 }
-/* On phones the widget is always full-screen — this overrides the expanded /
-   compact sizes too (declared last + equal-or-higher specificity). 100dvh
-   tracks the dynamic viewport so the bottom isn't hidden behind browser chrome. */
+/* On phones the widget is always full-screen — this overrides every size above
+   (declared last + equal-or-higher specificity). 100dvh tracks the dynamic
+   viewport so the bottom isn't hidden behind browser chrome. */
 @media (max-width: 640px) {
   #${IFRAME_ID},
+  #${IFRAME_ID}.is-tall,
   #${IFRAME_ID}.is-expanded,
   #${IFRAME_ID}.is-compact {
     inset: 0;
@@ -370,7 +380,7 @@ function getHostTheme(): DetectedTheme | null {
 const SVG = {
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
-  text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8z"/></svg>',
+  text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><line x1="10.5" y1="18" x2="13.5" y2="18"/></svg>',
   calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
   minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
@@ -434,7 +444,7 @@ function makeDock(
       ? ` style="background-image:url('${opts.poster.replace(/'/g, '%27')}')"`
       : '';
     pic.innerHTML = `
-      <span class="fa-pic-bubble">How can I help you?</span>
+      <span class="fa-pic-bubble">Hurt? Talk to us your way.</span>
       <span class="fa-pic-ava"${avaStyle}>${opts.poster ? '' : SVG.chat}<span class="fa-bdot"></span></span>`;
     pic.addEventListener('click', () => onOpen());
     dock.appendChild(pic);
@@ -618,15 +628,18 @@ function readScriptConfig(): {
     },
     requestExpand: () => {
       iframe?.classList.add('is-expanded');
-      iframe?.classList.remove('is-compact');
+      iframe?.classList.remove('is-compact', 'is-tall');
     },
     requestShrink: () => {
-      iframe?.classList.remove('is-expanded');
-      iframe?.classList.remove('is-compact');
+      iframe?.classList.remove('is-expanded', 'is-compact', 'is-tall');
     },
     requestCompact: () => {
       iframe?.classList.add('is-compact');
-      iframe?.classList.remove('is-expanded');
+      iframe?.classList.remove('is-expanded', 'is-tall');
+    },
+    requestTall: () => {
+      iframe?.classList.add('is-tall');
+      iframe?.classList.remove('is-expanded', 'is-compact');
     },
     getHostContext: () => ({
       url: window.location.href,

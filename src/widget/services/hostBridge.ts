@@ -34,6 +34,7 @@ export interface HostBridgeClient {
   requestExpand(): Promise<void>;
   requestShrink(): Promise<void>;
   requestCompact(): Promise<void>;
+  requestTall(): Promise<void>;
   getHostContext(): Promise<HostContext | null>;
   notifyEvent(event: AnalyticsEvent): void;
   destroy(): void;
@@ -128,6 +129,10 @@ export function createHostBridge(
       const r = await ready;
       await r?.requestCompact();
     },
+    async requestTall() {
+      const r = await ready;
+      await r?.requestTall();
+    },
     async getHostContext() {
       const r = await ready;
       if (!r) return null;
@@ -161,6 +166,7 @@ function makeNoOpClient(): HostBridgeClient {
     requestExpand: async () => undefined,
     requestShrink: async () => undefined,
     requestCompact: async () => undefined,
+    requestTall: async () => undefined,
     getHostContext: async () => null,
     notifyEvent: () => undefined,
     destroy: () => undefined,
