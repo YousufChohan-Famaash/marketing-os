@@ -373,3 +373,22 @@ export const UndoIcon = (p: IconProps) => (
     <path d="M4 9h11a5 5 0 0 1 0 10h-3" />
   </Base>
 );
+
+/** Plus — opens the composer's attachment menu (voice note / dictation / video). */
+export const PlusIcon = (p: IconProps) => (
+  <Base {...p}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </Base>
+);
+
+/** Audio waveform — used for "talk to type" dictation (distinct from the voice-note mic). */
+export const WaveformIcon = (p: IconProps) => (
+  <Base {...p}>
+    <line x1="3" y1="10" x2="3" y2="14" />
+    <line x1="7.5" y1="6" x2="7.5" y2="18" />
+    <line x1="12" y1="3" x2="12" y2="21" />
+    <line x1="16.5" y1="6" x2="16.5" y2="18" />
+    <line x1="21" y1="10" x2="21" y2="14" />
+  </Base>
+);

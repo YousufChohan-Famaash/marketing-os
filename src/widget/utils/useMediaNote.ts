@@ -22,6 +22,9 @@ export function useMediaNote(
 ) {
   const [recording, setRecording] = useState<MediaKind | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  // Exposed so a video preview can attach the live feed *after* the recording UI
+  // has rendered (the onStream callback fires before React re-renders).
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -32,6 +35,7 @@ export function useMediaNote(
   const teardownStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setStream(null);
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -51,6 +55,7 @@ export function useMediaNote(
       return; // permission denied / no device
     }
     streamRef.current = stream;
+    setStream(stream);
     onStream?.(stream);
 
     const rec = new MediaRecorder(stream);
@@ -90,5 +95,5 @@ export function useMediaNote(
   // Clean up the camera/mic if the component unmounts mid-recording.
   useEffect(() => () => teardownStream(), []);
 
-  return { recording, elapsedMs, start, stop, cancel };
+  return { recording, elapsedMs, stream, start, stop, cancel };
 }

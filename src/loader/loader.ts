@@ -113,6 +113,9 @@ const styles = `
 .fa-way:hover { border-color: var(--fa-accent); background: color-mix(in srgb, var(--fa-accent) 10%, #fff); transform: translateY(-1px); }
 .fa-way svg { width: 18px; height: 18px; color: var(--fa-accent); }
 .fa-way span { font-size: 11px; font-weight: 600; color: #334155; }
+.fa-lbl { white-space: nowrap; }
+/* Long label, collapsed everywhere by default; the medium teaser expands it on hover. */
+.fa-lbl-full { display: inline-block; max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; }
 .fa-status { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; color: #16a34a; }
 .fa-status i { width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16); }
 
@@ -122,11 +125,18 @@ const styles = `
 .fa-teaser.fa-lg .fa-vplay { width: 52px; height: 52px; }
 /* Pull the body up so the headline overlaps the video's faded bottom. */
 .fa-teaser.fa-lg .fa-body { position: relative; z-index: 2; margin-top: -30px; padding: 0 16px 14px; display: flex; flex-direction: column; gap: 10px; }
-/* Channels as a single row of equal-width icon + label pills (no wrap). */
+/* Channels as a single row of icon + label pills (no wrap), with the same accordion hover as the medium teaser. */
 .fa-teaser.fa-lg .fa-ways { flex-wrap: nowrap; gap: 6px; }
-.fa-teaser.fa-lg .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; border-radius: 20px; }
-.fa-teaser.fa-lg .fa-way svg { width: 14px; height: 14px; }
+.fa-teaser.fa-lg .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 0; padding: 8px 4px; border-radius: 20px; overflow: hidden; transition: flex-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s ease, border-color 0.15s ease; }
+.fa-teaser.fa-lg .fa-way svg { width: 14px; height: 14px; flex-shrink: 0; }
 .fa-teaser.fa-lg .fa-way span { font-size: 11.5px; color: #0f172a; }
+.fa-teaser.fa-lg .fa-lbl { margin-left: 5px; max-width: 70px; opacity: 1; transition: max-width 0.45s ease, opacity 0.3s ease, margin-left 0.45s ease; }
+.fa-teaser.fa-lg .fa-lbl-full { transition: max-width 0.45s ease, opacity 0.4s ease 0.1s, margin-left 0.45s ease; }
+/* Hover any pill: the others ease down to even icon-chips, the hovered one takes a fair share and reveals its full label. */
+.fa-teaser.fa-lg .fa-ways:hover .fa-way { flex-grow: 1; }
+.fa-teaser.fa-lg .fa-ways:hover .fa-way .fa-lbl { max-width: 0; opacity: 0; margin-left: 0; }
+.fa-teaser.fa-lg .fa-ways:hover .fa-way:hover { flex-grow: 5; }
+.fa-teaser.fa-lg .fa-ways:hover .fa-way:hover .fa-lbl-full { max-width: 150px; opacity: 1; margin-left: 5px; }
 .fa-teaser.fa-lg .fa-foot { display: flex; justify-content: center; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
 .fa-teaser.fa-lg .fa-foot b { color: #64748b; font-weight: 600; }
 
@@ -142,9 +152,16 @@ const styles = `
 .fa-teaser.fa-sm .fa-min { position: static; flex-shrink: 0; }
 /* Channels as a single row of icon + label pills (matches the large teaser). */
 .fa-teaser.fa-sm .fa-ways { flex-wrap: nowrap; gap: 6px; }
-.fa-teaser.fa-sm .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 5px; padding: 8px 4px; border-radius: 20px; }
-.fa-teaser.fa-sm .fa-way svg { width: 14px; height: 14px; }
+.fa-teaser.fa-sm .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 0; padding: 8px 4px; border-radius: 20px; overflow: hidden; transition: flex-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s ease, border-color 0.15s ease; }
+.fa-teaser.fa-sm .fa-way svg { width: 15px; height: 15px; flex-shrink: 0; }
 .fa-teaser.fa-sm .fa-way span { font-size: 11.5px; color: #0f172a; }
+.fa-teaser.fa-sm .fa-lbl { margin-left: 6px; max-width: 70px; opacity: 1; transition: max-width 0.45s ease, opacity 0.3s ease, margin-left 0.45s ease; }
+.fa-teaser.fa-sm .fa-lbl-full { transition: max-width 0.45s ease, opacity 0.4s ease 0.1s, margin-left 0.45s ease; }
+/* Hover any pill: the others ease down to even icon-chips, the hovered one takes a fair share and reveals its full label. */
+.fa-teaser.fa-sm .fa-ways:hover .fa-way { flex-grow: 1; }
+.fa-teaser.fa-sm .fa-ways:hover .fa-way .fa-lbl { max-width: 0; opacity: 0; margin-left: 0; }
+.fa-teaser.fa-sm .fa-ways:hover .fa-way:hover { flex-grow: 5; }
+.fa-teaser.fa-sm .fa-ways:hover .fa-way:hover .fa-lbl-full { max-width: 160px; opacity: 1; margin-left: 6px; }
 .fa-teaser.fa-sm .fa-foot { display: flex; justify-content: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
 .fa-teaser.fa-sm .fa-foot b { color: #64748b; font-weight: 600; }
 
@@ -232,7 +249,7 @@ const styles = `
   .fa-teaser { width: 300px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .fa-teaser, .fa-bubble { transition: none; }
+  .fa-teaser, .fa-bubble, .fa-way, .fa-lbl, .fa-lbl-full { transition: none; }
   .fa-teaser:hover, .fa-bubble:hover { transform: none; }
 }
 `;
@@ -404,10 +421,10 @@ const SVG = {
 };
 
 const CHANNELS_HTML = `
-  <span class="fa-way" data-channel="call">${SVG.phone}<span>Call</span></span>
-  <span class="fa-way" data-channel="chat">${SVG.chat}<span>Chat</span></span>
-  <span class="fa-way" data-channel="text">${SVG.text}<span>Text</span></span>
-  <span class="fa-way" data-channel="schedule">${SVG.calendar}<span>Book</span></span>`;
+  <span class="fa-way" data-channel="call">${SVG.phone}<span class="fa-lbl">Call</span><span class="fa-lbl-full">Call me now</span></span>
+  <span class="fa-way" data-channel="chat">${SVG.chat}<span class="fa-lbl">Chat</span><span class="fa-lbl-full">Start a conversation</span></span>
+  <span class="fa-way" data-channel="text">${SVG.text}<span class="fa-lbl">Text</span><span class="fa-lbl-full">Text me on my phone</span></span>
+  <span class="fa-way" data-channel="schedule">${SVG.calendar}<span class="fa-lbl">Book</span><span class="fa-lbl-full">Schedule a call</span></span>`;
 
 function videoSurfaceHTML(large: boolean, poster?: string): string {
   // A real thumbnail when the embed provides one (lightly dimmed); otherwise the
@@ -595,6 +612,7 @@ function readScriptConfig(): {
   name: string;
   poster?: string;
   cine: boolean;
+  media: boolean;
   apiBase: string;
 } {
   const script = (document.currentScript ?? document.querySelector('script[data-firm-id]')) as
@@ -615,12 +633,14 @@ function readScriptConfig(): {
   const poster = script.getAttribute('data-poster') ?? undefined;
   const cineAttr = script.getAttribute('data-cine');
   const cine = cineAttr === '1' || cineAttr === 'true';
+  const mediaAttr = script.getAttribute('data-media');
+  const media = mediaAttr === '1' || mediaAttr === 'true';
   const apiBase = (script.getAttribute('data-api-base') ?? 'https://api.catafleet.com/api/v1/widget').replace(/\/+$/, '');
-  return { firmId, widgetOrigin, size, name, poster, cine, apiBase };
+  return { firmId, widgetOrigin, size, name, poster, cine, media, apiBase };
 }
 
 (function boot() {
-  const { firmId, widgetOrigin, size, name, poster, cine, apiBase } = readScriptConfig();
+  const { firmId, widgetOrigin, size, name, poster, cine, media, apiBase } = readScriptConfig();
   injectStyles();
 
   let iframe: HTMLIFrameElement | null = null;
@@ -688,7 +708,8 @@ function readScriptConfig(): {
     // Deep-link the very first open (before the bridge handshake is ready).
     const viewParam = view && view !== 'home' ? `&view=${encodeURIComponent(view)}` : '';
     const cineParam = cine ? '&cine=1' : '';
-    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}`;
+    const mediaParam = media ? '&media=1' : '';
+    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}`;
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;

@@ -46,6 +46,9 @@ export function CinematicOpen() {
   const [progress, setProgress] = useState(0);
   const [soundOn, setSoundOn] = useState(false);
   const [closing, setClosing] = useState(false);
+  // Accordion hover: the hovered channel widens to its full label while the
+  // others ease down to icon-only (same idea as the launcher teasers).
+  const [hovered, setHovered] = useState<ConnectChannel | null>(null);
 
   const src =
     settings.videoMode === "story"
@@ -129,19 +132,34 @@ export function CinematicOpen() {
         <p className="mt-0.5 text-[12.5px] text-white/80">
           A quick hello — pick how you'd like to talk.
         </p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex gap-2" onMouseLeave={() => setHovered(null)}>
           {channels.map((id) => {
             const Icon = CHANNEL_ICON[id];
+            const expanded = hovered === id;
+            const collapsed = hovered !== null && !expanded;
             return (
               <button
                 key={id}
                 type="button"
                 onClick={() => pick(id)}
+                onMouseEnter={() => setHovered(id)}
+                onFocus={() => setHovered(id)}
+                onBlur={() => setHovered(null)}
                 aria-label={CHANNEL_META[id].label}
-                className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-white/25 bg-white/10 px-1 py-2 text-white backdrop-blur transition-colors hover:bg-white/20"
+                style={{ flexGrow: expanded ? 4 : 1 }}
+                className="flex min-w-0 items-center justify-center overflow-hidden rounded-xl border border-white/25 bg-white/10 px-2 py-2.5 text-white backdrop-blur transition-[flex-grow,background-color] duration-300 ease-out hover:bg-white/20"
               >
-                <Icon size={18} aria-hidden="true" />
-                <span className="text-[10px] font-semibold">{SHORT[id]}</span>
+                <Icon size={18} aria-hidden="true" className="shrink-0" />
+                <span
+                  style={{
+                    maxWidth: collapsed ? 0 : expanded ? 170 : 64,
+                    opacity: collapsed ? 0 : 1,
+                    marginLeft: collapsed ? 0 : 6,
+                  }}
+                  className="overflow-hidden whitespace-nowrap text-[11px] font-semibold transition-all duration-300 ease-out"
+                >
+                  {expanded ? CHANNEL_META[id].label : SHORT[id]}
+                </span>
               </button>
             );
           })}

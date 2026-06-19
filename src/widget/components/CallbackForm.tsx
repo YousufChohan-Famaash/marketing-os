@@ -13,7 +13,17 @@ interface CallbackFormProps {
   consentLabel?: string;
   /** Also collect the lead's name (used by Call + Schedule). */
   collectName?: boolean;
-  onSubmit: (phone: string, name?: string) => void;
+  /** Also collect the lead's email (required by Schedule for the confirmation). */
+  collectEmail?: boolean;
+  /** Prefill from what the lead already shared in the chat session. */
+  initialName?: string;
+  initialPhone?: string;
+  initialEmail?: string;
+  /** Disable the CTA while a submit is in flight. */
+  busy?: boolean;
+  /** Inline error to show on the email field (e.g. a server 400). */
+  emailError?: string | null;
+  onSubmit: (phone: string, name?: string, email?: string) => void;
 }
 
 /**
@@ -29,14 +39,22 @@ export function CallbackForm({
   variant = 'alert',
   consentLabel,
   collectName,
+  collectEmail,
+  initialName,
+  initialPhone,
+  initialEmail,
+  busy,
+  emailError,
   onSubmit,
 }: CallbackFormProps) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(initialName ?? '');
+  const [phone, setPhone] = useState(initialPhone ?? '');
+  const [email, setEmail] = useState(initialEmail ?? '');
   const [agreed, setAgreed] = useState(false);
   const phoneValid = phone.replace(/\D/g, '').length >= 7;
   const nameValid = !collectName || name.trim().length >= 2;
-  const valid = phoneValid && nameValid && (!consentLabel || agreed);
+  const emailValid = !collectEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const valid = phoneValid && nameValid && emailValid && (!consentLabel || agreed);
   const brand = variant === 'brand';
   const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
@@ -95,6 +113,31 @@ export function CallbackForm({
         />
       </div>
 
+      {collectEmail && (
+        <div>
+          <label
+            htmlFor="callback-email"
+            className="mb-1.5 block text-[12px] font-medium text-ink-soft"
+          >
+            Email <span className="text-muted-soft">(for your confirmation)</span>
+          </label>
+          <input
+            id="callback-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className={cn(
+              'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+              emailError ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
+            )}
+          />
+          {emailError && <p className="mt-1 text-[11.5px] text-danger">{emailError}</p>}
+        </div>
+      )}
+
       {consentLabel && (
         <label className="flex items-start gap-2.5 rounded-lg border border-hairline bg-subtle px-3 py-2.5">
           <input
@@ -109,8 +152,16 @@ export function CallbackForm({
 
       <button
         type="button"
-        onClick={() => valid && onSubmit(phone.trim(), collectName ? name.trim() : undefined)}
-        disabled={!valid}
+        onClick={() =>
+          valid &&
+          !busy &&
+          onSubmit(
+            phone.trim(),
+            collectName ? name.trim() : undefined,
+            collectEmail ? email.trim() : undefined,
+          )
+        }
+        disabled={!valid || busy}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <CtaIcon size={16} aria-hidden="true" />

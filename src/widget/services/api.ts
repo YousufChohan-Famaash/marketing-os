@@ -204,6 +204,61 @@ export function placeCallNow(args: {
   });
 }
 
+/** GET /connect/availability — the firm's real, hour-filtered calendar slots. */
+export interface AvailabilitySlot {
+  start: string; // UTC ISO
+  end: string;
+}
+export interface AvailabilityResponse {
+  available: boolean;
+  reason: string | null; // 'not_configured' | 'unavailable' | null
+  tz: string | null;
+  slots: AvailabilitySlot[];
+}
+
+export function fetchAvailability(
+  firmId: string,
+  opts: { from?: string; days?: number; tz: string },
+  signal?: AbortSignal,
+): Promise<AvailabilityResponse> {
+  const p = new URLSearchParams({ firm_id: firmId, tz: opts.tz });
+  if (opts.from) p.set('from', opts.from);
+  if (opts.days) p.set('days', String(opts.days));
+  return request<AvailabilityResponse>(`/connect/availability?${p.toString()}`, undefined, signal);
+}
+
+/** POST /connect/schedule-callback — books a slot; the AI calls at that time. */
+export interface ScheduleCallbackResponse {
+  ok: boolean;
+  status: string; // 'scheduled'
+  chip?: { kind: string; label: string };
+  slotStart?: string;
+  booking_id?: string;
+}
+
+export function scheduleCallback(args: {
+  conversationId: string;
+  name?: string;
+  phone: string;
+  email: string;
+  slotStart: string;
+  timezone: string;
+  consentText?: string;
+}): Promise<ScheduleCallbackResponse> {
+  return request<ScheduleCallbackResponse>('/connect/schedule-callback', {
+    method: 'POST',
+    body: JSON.stringify({
+      conversationId: args.conversationId,
+      name: args.name,
+      phone: args.phone,
+      email: args.email,
+      slotStart: args.slotStart,
+      timezone: args.timezone,
+      consent: { agreed: true, copyVersion: 'v1', text: args.consentText },
+    }),
+  });
+}
+
 /** Pull the human-readable `detail` out of an ApiError's JSON body, if present. */
 export function errorDetail(err: unknown): string | null {
   if (!(err instanceof ApiError) || !err.detail) return null;

@@ -3,10 +3,10 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { ApiError, errorDetail, placeCallNow } from '../services/api';
 import { generateId } from '../utils/id';
-import { CalendarIcon, CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
+import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
-import { CalendarPicker, type DateSelection } from './CalendarPicker';
 import { CallbackForm } from './CallbackForm';
+import { ScheduleCallback } from './ScheduleCallback';
 import { PoweredByFooter } from './PoweredByFooter';
 import { WidgetControls } from './WidgetControls';
 
@@ -24,29 +24,28 @@ const TITLES: Record<ChannelViewProps['channel'], string> = {
   schedule: 'Schedule a callback',
 };
 
-const TIME_SLOTS = ['09:00', '12:00', '15:00', '18:00'];
-
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** Quick day chips: Today, Tomorrow, then the next two days by weekday name —
- * each labelled with its short date (e.g. "Wed / Jun 17"). */
-function quickDays(): Array<{ top: string; sub: string; sel: DateSelection }> {
-  return [0, 1, 2, 3].map((offset) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const top =
-      offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' });
-    const sub = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return { top, sub, sel: { iso, label } };
-  });
-}
+type CapturedFieldMap = Record<string, { type: string; value: string | null }>;
 
 /** Pull a previously captured phone, if any, so channels never re-ask. */
-function capturedPhone(fields: Record<string, { type: string; value: string | null }>): string | undefined {
+function capturedPhone(fields: CapturedFieldMap): string | undefined {
   for (const f of Object.values(fields)) {
     if (f.value && (f.type === 'phone' || /\+?\d[\d\s()-]{6,}/.test(f.value))) return f.value;
+  }
+  return undefined;
+}
+
+/** Pull a previously captured email, if any. */
+function capturedEmail(fields: CapturedFieldMap): string | undefined {
+  for (const f of Object.values(fields)) {
+    if (f.value && (f.type === 'email' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.value))) return f.value;
+  }
+  return undefined;
+}
+
+/** Pull a previously captured name, if any (matched by field id). */
+function capturedName(fields: CapturedFieldMap): string | undefined {
+  for (const [id, f] of Object.entries(fields)) {
+    if (f.value && /name/i.test(id)) return f.value;
   }
   return undefined;
 }
@@ -74,9 +73,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
 
   const [done, setDone] = useState<string | null>(null);
   const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(settings.textMethods[0] ?? 'sms');
-  const [date, setDate] = useState<DateSelection | null>(null);
-  const [slot, setSlot] = useState<string>(TIME_SLOTS[1]);
-  const [showCalendar, setShowCalendar] = useState(false);
   // Call-now lifecycle: calling → connected | failed. The backend pushes the
   // live status over the chat data channel (connectCallStatus in the store).
   const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
@@ -166,18 +162,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     });
     socket?.send({ type: 'lead_message', content, clientMessageId: generateId('msg_lead') });
     setDone(`We'll ${label} you at ${phone} shortly.`);
-  };
-
-  const finishSchedule = (phone: string, name?: string) => {
-    if (!date) return;
-    socket?.send({
-      type: 'request_human',
-      method: 'scheduled',
-      phone,
-      name,
-      scheduledAt: `${date.iso} ${slot}`,
-    });
-    setDone(`You're booked for ${date.label} at ${slot}. We'll call ${name ? `${name} ` : ''}at ${phone}.`);
   };
 
   return (
@@ -275,108 +259,15 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             )}
 
             {channel === 'schedule' && (
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
-                    <CalendarIcon size={20} aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3 className="text-[16px] font-bold text-ink">Pick a time</h3>
-                    <p className="mt-1 text-[13px] leading-relaxed text-muted">
-                      Times in your local timezone. We'll send a confirmation and a reminder.
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
-                    Choose a day
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {quickDays().map((q) => {
-                      const active = !showCalendar && date?.iso === q.sel.iso;
-                      return (
-                        <button
-                          key={q.sel.iso}
-                          type="button"
-                          onClick={() => {
-                            setShowCalendar(false);
-                            setDate(q.sel);
-                          }}
-                          aria-pressed={active}
-                          className={cn(
-                            'flex flex-col items-center rounded-2xl border px-4 py-2 transition-colors',
-                            active
-                              ? 'border-famaash bg-famaash-soft'
-                              : 'border-famaash-stroke bg-white hover:bg-subtle',
-                          )}
-                        >
-                          <span className={cn('text-[13px] font-bold', active ? 'text-famaash' : 'text-ink')}>
-                            {q.top}
-                          </span>
-                          <span className="text-[11px] text-muted-soft">{q.sub}</span>
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => setShowCalendar((v) => !v)}
-                      aria-pressed={showCalendar}
-                      className={cn(
-                        'flex flex-col items-center rounded-2xl border px-4 py-2 transition-colors',
-                        showCalendar
-                          ? 'border-famaash bg-famaash-soft text-famaash'
-                          : 'border-famaash-stroke bg-white text-ink hover:bg-subtle',
-                      )}
-                    >
-                      <CalendarIcon size={17} aria-hidden="true" className="text-famaash" />
-                      <span className="mt-0.5 text-[11px] font-semibold">Pick date</span>
-                    </button>
-                  </div>
-                </div>
-
-                {showCalendar && (
-                  <CalendarPicker
-                    mode="future"
-                    onSubmit={(d) => {
-                      setDate(d);
-                      setShowCalendar(false);
-                    }}
-                  />
-                )}
-
-                {date && (
-                  <>
-                    <div className="flex flex-wrap gap-2">
-                      {TIME_SLOTS.map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setSlot(t)}
-                          aria-pressed={slot === t}
-                          className={cn(
-                            'rounded-pill border px-4 py-2 text-[13px] font-medium transition-colors',
-                            slot === t
-                              ? 'border-famaash bg-famaash-soft text-famaash'
-                              : 'border-famaash-stroke bg-white text-ink hover:bg-subtle',
-                          )}
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                    <CallbackForm
-                      variant="alert"
-                      heading={`Confirm ${date.label} at ${slot}`}
-                      body="Where should we call you at that time?"
-                      cta="Book my callback"
-                      collectName
-                      consentLabel={consentLabel}
-                      onSubmit={finishSchedule}
-                    />
-                  </>
-                )}
-              </div>
+              <ScheduleCallback
+                consentLabel={consentLabel}
+                prefill={{
+                  name: capturedName(capturedFields),
+                  phone: knownPhone,
+                  email: capturedEmail(capturedFields),
+                }}
+                onFallback={() => setConnectView('call')}
+              />
             )}
           </>
         )}

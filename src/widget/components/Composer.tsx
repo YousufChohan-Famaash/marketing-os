@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -10,11 +11,13 @@ import { useWidgetStore } from "../store/widgetStore";
 import { uploadMedia } from "../services/api";
 import { generateId } from "../utils/id";
 import { canRecordMedia, useMediaNote, type MediaKind } from "../utils/useMediaNote";
+import { useSpeechToText } from "../utils/useSpeechToText";
 import {
   MicIcon,
+  PlusIcon,
   SendArrowIcon,
-  TextFormatIcon,
   VideoIcon,
+  WaveformIcon,
 } from "../utils/icons";
 import { cn } from "../utils/cn";
 
@@ -35,7 +38,26 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const socket = useSocket();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the attachment menu on an outside click or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   // WhatsApp-style voice/video note: record → optimistic bubble → upload → send.
   const sendMedia = (blob: Blob, kind: MediaKind, durationMs: number) => {
@@ -77,13 +99,35 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   };
 
   const note = useMediaNote(sendMedia);
-  const startVideoNote = () =>
-    void note.start("video", (stream) => {
-      if (previewRef.current) {
-        previewRef.current.srcObject = stream;
-        void previewRef.current.play();
-      }
-    });
+  const startVideoNote = () => {
+    stt.stop();
+    void note.start("video");
+  };
+
+  // Attach the live camera feed once the recording view has rendered. Doing this
+  // in an effect (not the start callback) guarantees the <video> element exists.
+  useEffect(() => {
+    const v = previewRef.current;
+    if (note.recording === "video" && v && note.stream) {
+      v.srcObject = note.stream;
+      void v.play();
+    }
+  }, [note.recording, note.stream]);
+
+  // "Talk instead of type" dictation: final phrases drop into the textarea; the
+  // live interim phrase shows as a preview strip above the composer.
+  const stt = useSpeechToText({
+    onText: (chunk) => {
+      const clean = chunk.trim();
+      if (!clean) return;
+      setValue((prev) => (prev && !/\s$/.test(prev) ? `${prev} ${clean}` : `${prev}${clean}`));
+      requestAnimationFrame(autoResize);
+    },
+  });
+  const startVoiceNote = () => {
+    stt.stop();
+    void note.start("audio");
+  };
 
   useImperativeHandle(ref, () => ({
     focus: () => textareaRef.current?.focus(),
@@ -99,6 +143,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const submit = () => {
     const trimmed = value.trim();
     if (!trimmed || !socket) return;
+    stt.stop();
     const clientId = generateId("msg_lead");
     addMessage({
       id: clientId,
@@ -130,6 +175,11 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
 
   const canSend = value.trim().length > 0;
 
+  // What the attachment (+) menu can offer, given firm config + browser support.
+  const voiceAvailable = (allowVoiceNotes && canRecordMedia()) || Boolean(flags?.voice);
+  const videoAvailable = (allowVideoNotes && canRecordMedia()) || Boolean(flags?.video_record);
+  const hasAttachments = voiceAvailable || videoAvailable || stt.supported;
+
   if (conversationEnded) {
     return (
       <div className="shrink-0 bg-white px-3 py-3 text-center">
@@ -141,23 +191,34 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   if (note.recording) {
     const secs = Math.floor(note.elapsedMs / 1000);
     const mmss = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+    const isVideo = note.recording === "video";
     return (
       <div className="shrink-0 bg-white px-3 py-2.5">
-        <div className="flex items-center gap-3 rounded-pill bg-[#EEEEFF] px-3 py-2">
-          {note.recording === "video" && (
+        {isVideo && (
+          // Live camera preview so the lead sees exactly what's being recorded.
+          <div className="relative mb-2 overflow-hidden rounded-2xl bg-black">
             <video
               ref={previewRef}
               muted
               playsInline
-              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+              autoPlay
+              className="aspect-video w-full -scale-x-100 object-cover"
             />
+            <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-pill bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+              <span className="h-2 w-2 rounded-full bg-danger animate-pulse" aria-hidden="true" />
+              REC {mmss}
+            </span>
+          </div>
+        )}
+        <div className="flex items-center gap-3 rounded-pill bg-[#EEEEFF] px-3 py-2">
+          {!isVideo && (
+            <span className="flex items-center gap-2 text-[13px] font-semibold tabular-nums text-[#1A1A1A]">
+              <span className="h-2.5 w-2.5 rounded-full bg-danger animate-pulse" aria-hidden="true" />
+              {mmss}
+            </span>
           )}
-          <span className="flex items-center gap-2 text-[13px] font-semibold tabular-nums text-[#1A1A1A]">
-            <span className="h-2.5 w-2.5 rounded-full bg-danger animate-pulse" aria-hidden="true" />
-            {mmss}
-          </span>
           <span className="flex-1 truncate text-[12px] text-muted">
-            {note.recording === "video" ? "Recording video…" : "Recording voice note…"}
+            {isVideo ? "Recording video — tap send when done." : "Recording voice note…"}
           </span>
           <button
             type="button"
@@ -181,6 +242,24 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
 
   return (
     <div className="shrink-0 bg-white px-3 py-2.5">
+      {stt.listening && (
+        <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5">
+          <span className="flex items-center gap-1.5 text-[12px] font-semibold text-famaash">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden="true" />
+            Listening
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12px] italic text-muted">
+            {stt.interim || "Speak now — your words will appear in the box."}
+          </span>
+          <button
+            type="button"
+            onClick={stt.stop}
+            className="rounded-full px-2.5 py-0.5 text-[12px] font-semibold text-muted hover:bg-white/70"
+          >
+            Done
+          </button>
+        </div>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -188,46 +267,67 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
         }}
         className="flex items-center gap-2"
       >
-        {/* Left icon group */}
-        <div className="flex shrink-0 items-center gap-0.5 rounded-pill bg-[#EEEEFF] px-1.5 py-1.5">
-          <ComposerIcon
-            label="Format text"
-            onClick={() => textareaRef.current?.focus()}
-          >
-            <TextFormatIcon size={17} />
-          </ComposerIcon>
-          <div
-            className={cn(
-              "flex items-center gap-0.5 overflow-hidden transition-all duration-150",
-              canSend ? "max-w-0 opacity-0" : "max-w-[72px] opacity-100",
-            )}
-          >
-            {/* Voice/video notes (WhatsApp-style). Prefer recording when the
-                firm enables it; otherwise fall back to the legacy modals. */}
-            {allowVoiceNotes && canRecordMedia() ? (
-              <ComposerIcon label="Record a voice note" onClick={() => void note.start("audio")}>
-                <MicIcon size={17} />
-              </ComposerIcon>
-            ) : (
-              flags?.voice && (
-                <ComposerIcon label="Voice input" onClick={() => setActiveModal("voice")}>
-                  <MicIcon size={17} />
-                </ComposerIcon>
-              )
-            )}
-            {allowVideoNotes && canRecordMedia() ? (
-              <ComposerIcon label="Record a video note" onClick={startVideoNote}>
-                <VideoIcon size={17} />
-              </ComposerIcon>
-            ) : (
-              flags?.video_record && (
-                <ComposerIcon label="Record a video" onClick={() => setActiveModal("video")}>
-                  <VideoIcon size={17} />
-                </ComposerIcon>
-              )
+        {/* Attachment menu: voice note, talk-to-type, video — behind a plus button. */}
+        {hasAttachments && (
+          <div ref={menuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Add voice, dictation, or video"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
+                menuOpen ? "bg-famaash text-white" : "bg-[#EEEEFF] text-[#6B6B8A] hover:text-famaash",
+              )}
+            >
+              <PlusIcon size={18} className={cn("transition-transform duration-200", menuOpen && "rotate-45")} />
+            </button>
+
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute bottom-full left-0 z-20 mb-2 w-52 overflow-hidden rounded-2xl border border-hairline bg-white py-1.5 shadow-lg"
+              >
+                {voiceAvailable && (
+                  <AttachmentItem
+                    icon={<MicIcon size={17} />}
+                    label="Voice note"
+                    hint="Record and send audio"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (allowVoiceNotes && canRecordMedia()) startVoiceNote();
+                      else setActiveModal("voice");
+                    }}
+                  />
+                )}
+                {stt.supported && (
+                  <AttachmentItem
+                    icon={<WaveformIcon size={17} />}
+                    label="Speech to text"
+                    hint="Talk and we'll type it"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      stt.toggle();
+                    }}
+                  />
+                )}
+                {videoAvailable && (
+                  <AttachmentItem
+                    icon={<VideoIcon size={17} />}
+                    label="Video"
+                    hint="Record and send video"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (allowVideoNotes && canRecordMedia()) startVideoNote();
+                      else setActiveModal("video");
+                    }}
+                  />
+                )}
+              </div>
             )}
           </div>
-        </div>
+        )}
 
         <label htmlFor="composer-textarea" className="sr-only">
           Type your message
@@ -241,7 +341,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
             autoResize();
           }}
           onKeyDown={onKeyDown}
-          placeholder="Type a message…"
+          placeholder={stt.listening ? "Listening…" : "Type a message…"}
           rows={1}
           className="font-message min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] leading-relaxed placeholder:text-muted-soft focus:outline-none"
           style={{ maxHeight: MAX_HEIGHT_PX }}
@@ -280,23 +380,31 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   );
 });
 
-function ComposerIcon({
+function AttachmentItem({
+  icon,
   label,
+  hint,
   onClick,
-  children,
 }: {
+  icon: React.ReactNode;
   label: string;
+  hint: string;
   onClick: () => void;
-  children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
-      aria-label={label}
-      className="flex h-7 w-7 items-center justify-center rounded-full text-[#6B6B8A] transition-colors hover:bg-white/70"
+      className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-subtle"
     >
-      {children}
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EEEEFF] text-famaash">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[13px] font-semibold text-ink">{label}</span>
+        <span className="block text-[11px] text-muted">{hint}</span>
+      </span>
     </button>
   );
 }
