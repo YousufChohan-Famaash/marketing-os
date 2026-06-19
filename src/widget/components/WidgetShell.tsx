@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { shouldShowCinematic } from '../config/connect';
+import { resolveIntroVideo } from '../config/demoMedia';
 import { CaptureDrawer } from './CaptureDrawer';
 import { CaptureProgress } from './CaptureProgress';
 import { ChannelView } from './ChannelView';
@@ -40,6 +41,14 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     conversationStarted,
     cinematicDismissed,
   });
+
+  // Scroll-aware chat header: transparent (overlaid on the intro video) while
+  // the video is in view, solid white once it scrolls away. Only the chat with
+  // an intro video overlays; without a video the header is always solid.
+  const branding = useWidgetStore((s) => s.branding);
+  const hasIntroVideo = Boolean(resolveIntroVideo(branding?.introVideoUrl));
+  const [pastVideo, setPastVideo] = useState(false);
+  const headerSolid = !hasIntroVideo || pastVideo;
 
   // Focus management — push focus to the composer once we're into the chat.
   useEffect(() => {
@@ -118,13 +127,30 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-bg">
-      <ChatHeader onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} onBack={backToHome} />
-      <div className="flex justify-center pb-1">
-        <CaptureProgress />
-      </div>
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-bg">
+      <ChatHeader
+        onClose={onClose}
+        onMinimize={onMinimize}
+        onExpand={onExpand}
+        isExpanded={isExpanded}
+        onBack={backToHome}
+        solid={headerSolid}
+        className={hasIntroVideo ? 'absolute inset-x-0 top-0 z-30' : undefined}
+      />
+      {hasIntroVideo ? (
+        // Capture pill floats below the overlay header so it doesn't take space.
+        <div className="pointer-events-none absolute inset-x-0 top-[52px] z-20 flex justify-center">
+          <div className="pointer-events-auto">
+            <CaptureProgress />
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-center pb-1">
+          <CaptureProgress />
+        </div>
+      )}
       <CaptureDrawer />
-      <MessageList />
+      <MessageList onScrolledChange={hasIntroVideo ? setPastVideo : undefined} />
       <SafetyButtons />
       <Composer ref={composerRef} />
       <PoweredByFooter />

@@ -44,7 +44,15 @@ function normalizeOptions(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-export function MessageList({ introControls }: { introControls?: IntroControls } = {}) {
+export function MessageList({
+  introControls,
+  onScrolledChange,
+}: {
+  introControls?: IntroControls;
+  /** Fires true once the intro video has scrolled out of view (drives the
+   * scroll-aware chat header: transparent over the video, solid past it). */
+  onScrolledChange?: (scrolled: boolean) => void;
+} = {}) {
   const messages = useWidgetStore((s) => s.messages);
   const chips = useWidgetStore((s) => s.chips);
   const isAiTyping = useWidgetStore((s) => s.isAiTyping);
@@ -89,6 +97,8 @@ export function MessageList({ introControls }: { introControls?: IntroControls }
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setPinned(distanceFromBottom <= SCROLL_TOLERANCE);
+    // The intro video tops out around 370px; treat ~300px scrolled as "past it".
+    onScrolledChange?.(el.scrollTop > 300);
   };
 
   const sendQuickReply = (msg: Message, option: string) => {

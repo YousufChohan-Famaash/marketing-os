@@ -87,11 +87,14 @@ export function App() {
     });
     // Size the portrait panel to its content:
     //   medium/small home → short compact card
-    //   a conversation / channel view → taller (scrolling chat, forms)
+    //   chat opener (case-type chips, before a pick) → shorter card, no whitespace
+    //   a started conversation / channel view → taller (scrolling chat, forms)
     //   large home (or cinematic) → the default portrait card (fits video + grid)
     const isHome = connectView === 'home';
+    const isChatOpener = connectView === 'chat' && !conversationStarted;
     const compactHome = connectSize !== 'large' && isHome && !conversationStarted && !cinematic;
     if (compactHome) void bridge.requestCompact();
+    else if (isChatOpener) void bridge.requestShrink();
     else if (!isHome || conversationStarted) void bridge.requestTall();
     else void bridge.requestShrink();
   }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
