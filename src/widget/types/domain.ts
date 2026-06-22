@@ -87,6 +87,8 @@ export interface Message {
   mediaKind?: 'audio' | 'video';
   mediaUrl?: string;
   mediaDurationMs?: number;
+  /** Server transcript of a voice note (audio only; shown under the bubble). */
+  mediaTranscript?: string;
   hasMarkdown?: boolean;
   isStreaming?: boolean;
   /** Client-assigned arrival order for the transcript (see store/seq.ts). */

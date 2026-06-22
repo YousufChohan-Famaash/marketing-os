@@ -12,6 +12,8 @@ export function MediaMessageBubble({ message }: { message: Message }) {
   const undoableMessageId = useWidgetStore((s) => s.undoableMessageId);
   const canUndo = undoableMessageId === message.id;
   const isVideo = message.mediaKind === 'video';
+  const secs = Math.round((message.mediaDurationMs ?? 0) / 1000);
+  const mmss = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
   const undo = () => {
     socket?.send({ type: 'retract_message', clientMessageId: message.id });
@@ -33,6 +35,11 @@ export function MediaMessageBubble({ message }: { message: Message }) {
           <audio src={message.mediaUrl} controls className="block w-[230px]" />
         )}
       </div>
+      {!isVideo && message.mediaTranscript && (
+        <p className="max-w-[250px] px-2 text-right text-[11px] italic leading-snug text-muted">
+          🎤 {mmss} — &ldquo;{message.mediaTranscript}&rdquo;
+        </p>
+      )}
       <div className="flex items-center gap-2 px-2 text-[10px] text-muted">
         {message.status === 'sending' && <span>Uploading…</span>}
         {message.status === 'failed' && <span className="text-danger">Couldn&apos;t send</span>}

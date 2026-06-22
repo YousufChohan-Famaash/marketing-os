@@ -31,6 +31,7 @@ export function useMediaNote(
   const startRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelRef = useRef(false);
+  const maxMsRef = useRef(0);
 
   const teardownStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -42,9 +43,14 @@ export function useMediaNote(
     }
   };
 
-  const start = async (kind: MediaKind, onStream?: (s: MediaStream) => void) => {
+  const start = async (
+    kind: MediaKind,
+    onStream?: (s: MediaStream) => void,
+    maxMs?: number,
+  ) => {
     if (recording || !canRecordMedia()) return;
     cancelRef.current = false;
+    maxMsRef.current = maxMs ?? 0;
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -81,7 +87,14 @@ export function useMediaNote(
     startRef.current = performance.now();
     setRecording(kind);
     setElapsedMs(0);
-    timerRef.current = setInterval(() => setElapsedMs(performance.now() - startRef.current), 200);
+    timerRef.current = setInterval(() => {
+      const elapsed = performance.now() - startRef.current;
+      setElapsedMs(elapsed);
+      // Auto-stop (and send) once the firm's max clip length is reached.
+      if (maxMsRef.current && elapsed >= maxMsRef.current) {
+        if (recRef.current && recRef.current.state !== 'inactive') recRef.current.stop();
+      }
+    }, 200);
   };
 
   const stop = () => {

@@ -23,6 +23,13 @@ import { cn } from "../utils/cn";
 
 const MAX_HEIGHT_PX = 120;
 
+// Mirror the backend caps (media-messages-guide §5) so we stop/refuse client-side
+// instead of wasting an upload that the server would reject with 413.
+const MEDIA_LIMITS: Record<MediaKind, { maxMs: number; maxBytes: number }> = {
+  audio: { maxMs: 120_000, maxBytes: 15 * 1024 * 1024 },
+  video: { maxMs: 60_000, maxBytes: 50 * 1024 * 1024 },
+};
+
 export interface ComposerHandle {
   focus(): void;
 }
@@ -81,9 +88,18 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
       store.updateMessage(clientId, { status: "failed" });
       return;
     }
+    // Refuse oversized clips before uploading (server would 413 anyway).
+    if (blob.size > MEDIA_LIMITS[kind].maxBytes) {
+      store.updateMessage(clientId, { status: "failed" });
+      return;
+    }
     uploadMedia(conversationId, kind, blob, durationMs)
       .then((res) => {
-        store.updateMessage(clientId, { mediaUrl: res.url || localUrl, status: "sent" });
+        store.updateMessage(clientId, {
+          mediaUrl: res.url || localUrl,
+          mediaTranscript: res.transcript ?? undefined,
+          status: "sent",
+        });
         socket.send({
           type: "lead_media_message",
           clientMessageId: clientId,
@@ -101,7 +117,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const note = useMediaNote(sendMedia);
   const startVideoNote = () => {
     stt.stop();
-    void note.start("video");
+    void note.start("video", undefined, MEDIA_LIMITS.video.maxMs);
   };
 
   // Attach the live camera feed once the recording view has rendered. Doing this
@@ -126,7 +142,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   });
   const startVoiceNote = () => {
     stt.stop();
-    void note.start("audio");
+    void note.start("audio", undefined, MEDIA_LIMITS.audio.maxMs);
   };
 
   useImperativeHandle(ref, () => ({
