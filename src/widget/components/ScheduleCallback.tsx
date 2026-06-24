@@ -157,16 +157,18 @@ export function ScheduleCallback({ consentLabel, prefill, onFallback }: Schedule
     } catch (err) {
       const detail = errorDetail(err);
       const status = err instanceof ApiError ? err.status : 0;
-      if (status === 502) {
-        // The slot was just taken / raced — refresh and ask again.
+      // 502 = slot raced/taken; 400 "too soon" = stale slot under the 60-min
+      // notice. Both mean the grid is stale → silently refresh and re-pick.
+      const tooSoon = status === 400 && /soon|60/i.test(detail ?? '');
+      if (status === 502 || tooSoon) {
         setSelectedStart(null);
-        setNotice('That time was just taken. Please pick another.');
+        setNotice('That time is no longer available. Please pick another.');
         setPhase('loading');
         void loadAvailability();
       } else if (status === 503) {
         setPhase('unavailable');
       } else if (status === 404) {
-        setFormError('Your session expired. Please restart the chat.');
+        setFormError('Your session expired — please reopen the chat and try again.');
       } else if (status === 400 && detail?.toLowerCase().includes('email')) {
         setEmailError(detail);
       } else if (status === 400 && detail) {
