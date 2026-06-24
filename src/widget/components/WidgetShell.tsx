@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { shouldShowCinematic } from '../config/connect';
-import { resolveIntroVideo } from '../config/demoMedia';
+import { resolveCinematicVideo, resolveIntroVideo } from '../config/demoMedia';
 import { CaptureDrawer } from './CaptureDrawer';
 import { CaptureProgress } from './CaptureProgress';
 import { ChannelView } from './ChannelView';
@@ -36,16 +36,23 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   const connect = useWidgetStore((s) => s.connect);
   const conversationStarted = useWidgetStore((s) => s.conversationStarted);
   const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
+  const branding = useWidgetStore((s) => s.branding);
+  // No real video → never play the cinematic; fall straight to the home menu.
+  const cinematicVideo = resolveCinematicVideo(
+    connect.videoMode,
+    branding?.introVideoUrl,
+    connect.storyVideoUrl,
+  );
   const showCinematic = shouldShowCinematic(connect, {
     connectView,
     conversationStarted,
     cinematicDismissed,
+    hasVideo: Boolean(cinematicVideo),
   });
 
   // Scroll-aware chat header: transparent (overlaid on the intro video) while
   // the video is in view, solid white once it scrolls away. Only the chat with
   // an intro video overlays; without a video the header is always solid.
-  const branding = useWidgetStore((s) => s.branding);
   const hasIntroVideo = Boolean(resolveIntroVideo(branding?.introVideoUrl));
   const [pastVideo, setPastVideo] = useState(false);
   const headerSolid = !hasIntroVideo || pastVideo;

@@ -1,5 +1,6 @@
 import { useWidgetStore } from '../store/widgetStore';
 import { CHANNEL_META, rankChannels } from '../config/connect';
+import { resolveCinematicVideo } from '../config/demoMedia';
 import type { ConnectChannel } from '../types/domain';
 import { CalendarIcon, ChatIcon, ChevronRightIcon, MailIcon, PhoneIcon, SmartphoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
@@ -40,7 +41,13 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   const firmName = branding?.name ?? 'our team';
   const ranked = rankChannels(settings).slice(0, 4);
   const hasEmail = settings.channels.includes('email');
-  const compact = settings.size !== 'large';
+  // The compact horizontal card is built around a video tile. With no video it
+  // reads like a bare teaser, so fall through to the grid layout (which shows a
+  // branded avatar header + a 2×2 channel grid) instead.
+  const hasVideo = Boolean(
+    resolveCinematicVideo(settings.videoMode, branding?.introVideoUrl, settings.storyVideoUrl),
+  );
+  const compact = settings.size !== 'large' && hasVideo;
 
   const go = (id: ConnectChannel) => {
     if (id === 'email') {

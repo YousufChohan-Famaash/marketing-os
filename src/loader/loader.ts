@@ -50,6 +50,7 @@ const styles = `
   align-items: flex-end;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
   --fa-accent: ${FALLBACK_ACCENT};
+  --fa-bubble: var(--fa-accent);
 }
 #${DOCK_ID}.is-hidden { display: none; }
 #${DOCK_ID}.fa-pos-left { right: auto; left: 24px; align-items: flex-start; }
@@ -180,7 +181,7 @@ const styles = `
 }
 .fa-pic-ava {
   width: 60px; height: 60px; border-radius: 18px; flex-shrink: 0; position: relative;
-  background: var(--fa-accent) center/cover no-repeat; color: #fff; display: grid; place-items: center;
+  background: var(--fa-bubble) center/cover no-repeat; color: #fff; display: grid; place-items: center;
   box-shadow: 0 16px 34px -12px rgba(15, 23, 42, 0.5); transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .fa-pic:hover .fa-pic-ava { transform: scale(1.05); }
@@ -189,7 +190,7 @@ const styles = `
 
 /* ---- minimized bubble ---- */
 .fa-bubble {
-  display: none; width: 60px; height: 60px; border-radius: 18px; background: var(--fa-accent);
+  display: none; width: 60px; height: 60px; border-radius: 18px; background: var(--fa-bubble);
   border: none; cursor: pointer; position: relative; place-items: center;
   box-shadow: 0 12px 28px -8px rgba(15, 23, 42, 0.4);
   transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
@@ -781,21 +782,54 @@ function readScriptConfig(): {
         cfg: {
           branding?: {
             introVideoPoster?: string;
+            launcherImageUrl?: string;
             assistantName?: string;
             name?: string;
+            primaryColor?: string;
+            themeSource?: 'inherit' | 'custom';
+            bubbleBgColor?: string;
+            fontFamily?: string;
+            launcherOffsetX?: number;
+            launcherOffsetY?: number;
             launcherPosition?: 'bottom-left' | 'bottom-center' | 'bottom-right';
           };
         } | null,
       ) => {
-        if (!cfg?.branding) return;
-        launcherPos = cfg.branding.launcherPosition;
+        const b = cfg?.branding;
+        if (!b) return;
+        launcherPos = b.launcherPosition;
         positionEl(dockApi.dock);
         if (iframe) positionEl(iframe);
+        // Custom theme → repaint the teaser in the firm's brand color (overrides
+        // the host-site color detected at boot). 'inherit' keeps the host color.
+        if (b.themeSource === 'custom' && b.primaryColor) {
+          dockApi.dock.style.setProperty('--fa-accent', b.primaryColor);
+        }
+        // Dedicated bubble/avatar-tile color (distinct from the brand accent).
+        if (b.bubbleBgColor) {
+          dockApi.dock.style.setProperty('--fa-bubble', b.bubbleBgColor);
+        }
+        // Firm font on the host-page teaser (the panel themes itself from /config).
+        if (b.fontFamily) {
+          dockApi.dock.style.fontFamily = `"${b.fontFamily}", -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif`;
+        }
+        // Launcher offsets from the screen edges (default 24px). Respect the side.
+        if (typeof b.launcherOffsetY === 'number') {
+          const y = `${b.launcherOffsetY}px`;
+          dockApi.dock.style.bottom = y;
+          if (iframe) iframe.style.bottom = y;
+        }
+        if (typeof b.launcherOffsetX === 'number' && launcherPos !== 'bottom-center') {
+          const x = `${b.launcherOffsetX}px`;
+          const side = launcherPos === 'bottom-left' ? 'left' : 'right';
+          dockApi.dock.style[side] = x;
+          if (iframe) iframe.style[side] = x;
+        }
+        // Real launcher / mini-bubble photo from config (falls back to the video
+        // poster), unless the embed snippet hardcoded one.
+        const img = b.launcherImageUrl ?? b.introVideoPoster;
         if (!poster) {
-          dockApi.applyConfig({
-            poster: cfg.branding.introVideoPoster,
-            name: cfg.branding.assistantName ?? cfg.branding.name,
-          });
+          dockApi.applyConfig({ poster: img, name: b.assistantName ?? b.name });
         }
       },
     )

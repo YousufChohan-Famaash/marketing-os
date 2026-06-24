@@ -1,37 +1,40 @@
 /**
- * Placeholder intro video used in DEV when a firm's boot config has no
- * `branding.introVideoUrl`, so the video-first opener is visible while
- * building. In production (no DEV flag) firms without a real video fall back
- * to the compact header instead — we never ship this sample to real users.
- *
- * A professional in an office speaking to camera (free Mixkit clip, 720p),
- * so the opener reads like a real intake greeting rather than a cartoon.
+ * Media resolvers — map the firm's boot-config branding to the URLs the widget
+ * renders. No placeholders, no demo/sample assets: when a firm hasn't configured
+ * a video or avatar, the widget shows its real fallback (compact opener /
+ * initials), never stand-in media. These stay as thin functions so there's one
+ * place that maps branding → media.
  */
-export const DEMO_INTRO_VIDEO = 'https://assets.mixkit.co/videos/4834/4834-720.mp4';
-export const DEMO_INTRO_POSTER: string | undefined = undefined;
 
-/** Resolve the intro video to use: the firm's, or the demo one in DEV. */
+/** The firm's intro video URL, or undefined when none is configured. */
 export function resolveIntroVideo(url?: string | null): string | undefined {
-  if (url) return url;
-  return import.meta.env.DEV ? DEMO_INTRO_VIDEO : undefined;
+  return url || undefined;
 }
 
+/** The firm's intro poster — only meaningful when there's a real video. */
 export function resolveIntroPoster(
   poster?: string | null,
   url?: string | null,
 ): string | undefined {
-  if (url) return poster ?? undefined; // real firm video → real (or no) poster
-  return import.meta.env.DEV ? DEMO_INTRO_POSTER : undefined;
+  return url ? (poster ?? undefined) : undefined;
+}
+
+/** The firm's assistant photo, or undefined → Avatar falls back to initials. */
+export function resolveAssistantAvatar(url?: string | null): string | undefined {
+  return url || undefined;
 }
 
 /**
- * Placeholder assistant headshot, served from /public, used until a firm sets
- * `branding.assistantAvatarUrl`. If the file is missing the Avatar falls back
- * to initials, so this is safe even before the image is dropped in.
+ * The video the cinematic full-screen open should play: the story video (or the
+ * intro as a fallback) in story mode, otherwise the intro. Undefined when there
+ * is no real video — callers must then skip the cinematic entirely.
  */
-export const DEFAULT_ASSISTANT_AVATAR = '/assistant-avatar.jpg';
-
-/** The firm's configured assistant photo, or the placeholder headshot. */
-export function resolveAssistantAvatar(url?: string | null): string | undefined {
-  return url || DEFAULT_ASSISTANT_AVATAR;
+export function resolveCinematicVideo(
+  videoMode: string,
+  introVideoUrl?: string | null,
+  storyVideoUrl?: string | null,
+): string | undefined {
+  if (videoMode === 'none') return undefined;
+  if (videoMode === 'story') return storyVideoUrl || resolveIntroVideo(introVideoUrl);
+  return resolveIntroVideo(introVideoUrl);
 }

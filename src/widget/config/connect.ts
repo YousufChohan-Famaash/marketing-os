@@ -99,28 +99,13 @@ export function isMobileViewport(): boolean {
 }
 
 /**
- * Order the enabled primary channels by intent, then nudge by context:
- *  - business hours → Call leads; after hours → Chat / Schedule lead.
- *  - mobile → Call (tap-to-call) is emphasized.
- * 'email' is always handled separately as a demoted link, never ranked here.
+ * The primary channel buttons, in the order the admin configured them in the
+ * Branding Studio (the order of `settings.channels` from `/config`). We honor
+ * that order verbatim — the firm decides whether Call or Chat (etc.) leads.
+ * 'email' is always demoted to a separate link, so it's filtered out here.
  */
-export function rankChannels(
-  settings: ConnectSettings,
-  ctx: { businessHours: boolean; mobile: boolean } = {
-    businessHours: isBusinessHours(settings),
-    mobile: isMobileViewport(),
-  },
-): ConnectChannel[] {
-  const primary = settings.channels.filter((c) => c !== 'email');
-  return [...primary].sort((a, b) => score(a, ctx) - score(b, ctx));
-}
-
-function score(c: ConnectChannel, ctx: { businessHours: boolean; mobile: boolean }): number {
-  let s = CHANNEL_META[c].rank;
-  if (c === 'call') s -= ctx.businessHours ? 1 : -2; // call leads in hours, demoted after
-  if (c === 'call' && ctx.mobile) s -= 2; // tap-to-call on mobile
-  if ((c === 'chat' || c === 'schedule') && !ctx.businessHours) s -= 1.5; // after-hours self-serve
-  return s;
+export function rankChannels(settings: ConnectSettings): ConnectChannel[] {
+  return settings.channels.filter((c) => c !== 'email');
 }
 
 export const SIZE = {
@@ -134,11 +119,18 @@ export const SIZE = {
  */
 export function shouldShowCinematic(
   s: ConnectSettings,
-  ctx: { connectView: string; conversationStarted: boolean; cinematicDismissed: boolean },
+  ctx: {
+    connectView: string;
+    conversationStarted: boolean;
+    cinematicDismissed: boolean;
+    /** There's an actual video to play — no video → never show the cinematic. */
+    hasVideo: boolean;
+  },
 ): boolean {
   return (
     s.fullscreenOpen &&
     s.videoMode !== 'none' &&
+    ctx.hasVideo &&
     ctx.connectView === 'home' &&
     !ctx.conversationStarted &&
     !ctx.cinematicDismissed

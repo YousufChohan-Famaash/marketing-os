@@ -5,8 +5,9 @@ import { ModalHost } from './components/ModalHost';
 import { SigningSheet } from './components/SigningSheet';
 import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
-import { applyTheme } from './config/theme';
+import { applyFont, applyTheme } from './config/theme';
 import { shouldShowCinematic } from './config/connect';
+import { resolveCinematicVideo } from './config/demoMedia';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
@@ -80,10 +81,17 @@ export function App() {
     const bridge = bridgeRef.current;
     if (!bridge) return;
     // The cinematic open needs the full panel even on a Small-mode home.
-    const cinematic = shouldShowCinematic(useWidgetStore.getState().connect, {
+    const st = useWidgetStore.getState();
+    const cinematicVideo = resolveCinematicVideo(
+      st.connect.videoMode,
+      st.branding?.introVideoUrl,
+      st.connect.storyVideoUrl,
+    );
+    const cinematic = shouldShowCinematic(st.connect, {
       connectView,
       conversationStarted,
       cinematicDismissed,
+      hasVideo: Boolean(cinematicVideo),
     });
     // Size the portrait panel to its content:
     //   medium/small home → short compact card
@@ -92,7 +100,14 @@ export function App() {
     //   large home (or cinematic) → the default portrait card (fits video + grid)
     const isHome = connectView === 'home';
     const isChatOpener = connectView === 'chat' && !conversationStarted;
-    const compactHome = connectSize !== 'large' && isHome && !conversationStarted && !cinematic;
+    // Compact home only applies to the compact card (medium/small WITH a video);
+    // with no video the home falls back to the taller grid layout.
+    const compactHome =
+      connectSize !== 'large' &&
+      Boolean(cinematicVideo) &&
+      isHome &&
+      !conversationStarted &&
+      !cinematic;
     if (compactHome) void bridge.requestCompact();
     else if (isChatOpener) void bridge.requestShrink();
     else if (!isHome || conversationStarted) void bridge.requestTall();
@@ -157,6 +172,8 @@ export function App() {
             accent: config.branding.accentColor,
           });
         }
+        // Apply the firm's font across the widget (graceful fallback if unset).
+        applyFont(config.branding?.fontFamily);
         if (returning) {
           await rehydrateFromHistory(conversationId, abort.signal);
           if (disposed) return;

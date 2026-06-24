@@ -108,6 +108,19 @@ export function applyTheme(colors: ThemeColors): boolean {
   return true;
 }
 
+/**
+ * Apply the firm's font across the widget. We override the UI + message font
+ * vars, keeping the existing stack as the fallback so a name the browser can't
+ * resolve degrades gracefully. No-op when unset.
+ */
+export function applyFont(font?: string | null): void {
+  if (typeof document === 'undefined' || !font || !font.trim()) return;
+  const root = document.documentElement;
+  const family = `"${font.trim()}", 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  root.style.setProperty('--font-ui', family);
+  root.style.setProperty('--font-message', family);
+}
+
 /** Read the host-site palette the loader passed via `?theme=<json>`. */
 export function parseHostThemeFromQuery(): ThemeColors | null {
   if (typeof window === 'undefined') return null;

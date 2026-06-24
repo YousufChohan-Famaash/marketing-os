@@ -190,6 +190,15 @@ export interface FirmBranding {
   assistantName?: string;
   /** Headshot/photo for the AI assistant's chat avatar. Falls back to initials. */
   assistantAvatarUrl?: string;
+  /** Dedicated launcher / mini-bubble photo (independent of the video poster). */
+  launcherImageUrl?: string;
+  /** Background color for the launcher bubble / avatar tile (distinct from brand accent). */
+  bubbleBgColor?: string;
+  /** Firm font family applied across the widget UI (falls back to the default stack). */
+  fontFamily?: string;
+  /** Launcher offset from the screen edges, in px (default 24 each). */
+  launcherOffsetX?: number;
+  launcherOffsetY?: number;
 }
 
 export interface FeatureFlags {

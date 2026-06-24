@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useWidgetStore } from "../store/widgetStore";
-import { resolveIntroVideo } from "../config/demoMedia";
+import { resolveCinematicVideo } from "../config/demoMedia";
 import { CHANNEL_META, rankChannels } from "../config/connect";
 import type { ConnectChannel } from "../types/domain";
 import {
@@ -50,19 +50,26 @@ export function CinematicOpen() {
   // others ease down to icon-only (same idea as the launcher teasers).
   const [hovered, setHovered] = useState<ConnectChannel | null>(null);
 
-  const src =
-    settings.videoMode === "story"
-      ? (settings.storyVideoUrl ?? resolveIntroVideo(branding?.introVideoUrl))
-      : resolveIntroVideo(branding?.introVideoUrl);
+  const src = resolveCinematicVideo(
+    settings.videoMode,
+    branding?.introVideoUrl,
+    settings.storyVideoUrl,
+  );
   const name = branding?.assistantName ?? branding?.name ?? "our team";
   const channels = rankChannels(settings).slice(0, 4);
 
+  // Safety net: if there's no video to play, never show a black screen — dismiss
+  // straight to the home menu (the real fallback).
   useEffect(() => {
+    if (!src) {
+      dismissCinematic();
+      return;
+    }
     const v = videoRef.current;
     if (!v) return;
     v.muted = true;
     v.play().catch(() => undefined);
-  }, []);
+  }, [src, dismissCinematic]);
 
   const settle = () => {
     if (closing) return;
