@@ -108,7 +108,12 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   }
 
   // ── Routed contact channels (reversible → back to the menu) ────────────────
-  if (connectView === 'call' || connectView === 'text' || connectView === 'schedule') {
+  if (
+    connectView === 'call' ||
+    connectView === 'text' ||
+    connectView === 'schedule' ||
+    connectView === 'email'
+  ) {
     return (
       <ChannelView
         channel={connectView}

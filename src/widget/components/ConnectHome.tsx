@@ -2,7 +2,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import { CHANNEL_META, rankChannels } from '../config/connect';
 import { resolveCinematicVideo } from '../config/demoMedia';
 import type { ConnectChannel } from '../types/domain';
-import { CalendarIcon, ChatIcon, ChevronRightIcon, MailIcon, PhoneIcon, SmartphoneIcon } from '../utils/icons';
+import { CalendarIcon, ChatIcon, ChevronRightIcon, FileIcon, PhoneIcon, SmartphoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { ConnectVideo } from './ConnectVideo';
 import { PoweredByFooter } from './PoweredByFooter';
@@ -20,7 +20,7 @@ const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
   chat: ChatIcon,
   text: SmartphoneIcon,
   schedule: CalendarIcon,
-  email: MailIcon,
+  email: FileIcon,
 };
 
 const HEADLINE_LEAD = 'Hurt? Talk to us';
@@ -50,12 +50,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   const compact = settings.size !== 'large' && hasVideo;
 
   const go = (id: ConnectChannel) => {
-    if (id === 'email') {
-      if (settings.email && typeof window !== 'undefined') {
-        window.open(`mailto:${settings.email}`, '_blank', 'noopener');
-      }
-      return;
-    }
+    // 'email' now routes to the stepwise "Send your details" form (not mailto).
     setConnectView(id);
   };
 
@@ -100,7 +95,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
         </div>
         {hasEmail && (
           <div className="px-4 pt-3">
-            <EmailLink onClick={() => go('email')} />
+            <RowChannelCard id="email" onClick={() => go('email')} />
           </div>
         )}
         <div className="mt-auto">
@@ -142,8 +137,8 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
         )}
 
         {hasEmail && (
-          <div className="mt-3 text-center">
-            <EmailLink onClick={() => go('email')} />
+          <div className="mt-3">
+            <RowChannelCard id="email" onClick={() => go('email')} />
           </div>
         )}
       </div>
@@ -200,18 +195,6 @@ function StatusLine({ className }: { className?: string }) {
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
       A real person in ~60 sec &middot; 24/7
     </div>
-  );
-}
-
-function EmailLink({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="text-[12.5px] text-muted underline decoration-hairline underline-offset-[3px] hover:text-ink"
-    >
-      Or send us an email
-    </button>
   );
 }
 

@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
-import { ApiError, errorDetail, placeCallNow } from '../services/api';
-import { generateId } from '../utils/id';
+import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
 import { ScheduleCallback } from './ScheduleCallback';
+import { SendDetails } from './SendDetails';
 import { PoweredByFooter } from './PoweredByFooter';
 import { WidgetControls } from './WidgetControls';
 
 interface ChannelViewProps {
-  channel: 'call' | 'text' | 'schedule';
+  channel: 'call' | 'text' | 'schedule' | 'email';
   onClose: () => void;
   onMinimize: () => void;
   onExpand: () => void;
@@ -22,6 +21,7 @@ const TITLES: Record<ChannelViewProps['channel'], string> = {
   call: 'Call me now',
   text: 'Text me',
   schedule: 'Schedule a callback',
+  email: 'Send your details',
 };
 
 type CapturedFieldMap = Record<string, { type: string; value: string | null }>;
@@ -56,7 +56,6 @@ function capturedName(fields: CapturedFieldMap): string | undefined {
  * the shared session and prefill here, with a "we kept what you shared" cue).
  */
 export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded }: ChannelViewProps) {
-  const socket = useSocket();
   const settings = useWidgetStore((s) => s.connect);
   const compliance = useWidgetStore((s) => s.compliance);
   const conversationId = useWidgetStore((s) => s.conversationId);
@@ -82,6 +81,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const [callTarget, setCallTarget] = useState<{ phone: string; name?: string } | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+  // Text-me lifecycle: hand the intake off to the visitor's phone (WhatsApp/SMS).
+  const [texting, setTexting] = useState(false);
+  const [textError, setTextError] = useState<string | null>(null);
 
   // Tick the connecting countdown.
   useEffect(() => {
@@ -149,19 +151,58 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     }
   };
 
-  const finishText = (phone: string) => {
-    const label = textMethod === 'whatsapp' ? 'WhatsApp' : 'SMS';
-    const content = `Please continue this conversation by ${label} at ${phone}.`;
-    useWidgetStore.getState().addMessage({
-      id: generateId('msg_lead'),
-      role: 'lead',
-      type: 'text',
-      content,
-      timestamp: Date.now(),
-      status: 'sent',
-    });
-    socket?.send({ type: 'lead_message', content, clientMessageId: generateId('msg_lead') });
-    setDone(`We'll ${label} you at ${phone} shortly.`);
+  // Text me → backend continues the SAME intake on the visitor's phone over
+  // WhatsApp/SMS. We only fire one call and render a confirmation; the whole
+  // conversation then runs on the phone (nothing more to show in the widget).
+  const finishText = async (phone: string, name?: string) => {
+    setTextError(null);
+    if (!conversationId) {
+      setTextError('Your session expired — please reopen the chat and try again.');
+      return;
+    }
+    setTexting(true);
+    let channel: 'sms' | 'whatsapp' = textMethod;
+    try {
+      let out;
+      try {
+        out = await connectText({ conversationId, phone, name, channel, consentText: consentLabel });
+      } catch (err) {
+        // WhatsApp unreachable for this firm → fall back to SMS automatically.
+        if (err instanceof ApiError && err.status === 503 && channel === 'whatsapp') {
+          channel = 'sms';
+          setTextMethod('sms');
+          out = await connectText({ conversationId, phone, name, channel, consentText: consentLabel });
+        } else {
+          throw err;
+        }
+      }
+      if (out.channel === 'whatsapp') {
+        if (out.waMeLink) {
+          if (typeof window !== 'undefined') window.open(out.waMeLink, '_blank', 'noopener');
+          setDone('Continue in WhatsApp — we opened it with your message ready to send.');
+        } else {
+          setDone("We've messaged you on WhatsApp — check your phone to continue.");
+        }
+      } else {
+        setDone('We just texted you — reply to that message to continue.');
+      }
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0;
+      const detail = errorDetail(err);
+      if (status === 403) {
+        setTextError("Texting isn't available right now. Try another option.");
+      } else if (status === 503) {
+        setTextError("We couldn't send that just now. Try another option.");
+      } else if (status === 404) {
+        setTextError('Your session expired — please reopen the chat and try again.');
+      } else if (status === 400 && detail) {
+        setTextError(detail);
+      } else {
+        setTextError("We couldn't start the text. Please try again.");
+      }
+    } finally {
+      setTexting(false);
+    }
   };
 
   return (
@@ -227,6 +268,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
 
             {channel === 'text' && (
               <div className="space-y-4">
+                {textError && (
+                  <p className="rounded-lg bg-danger-soft px-3 py-2 text-[12px] text-danger">{textError}</p>
+                )}
                 {settings.textMethods.length > 1 && (
                   <div className="flex gap-2">
                     {settings.textMethods.map((m) => (
@@ -251,7 +295,14 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   variant="brand"
                   heading="Pick up this chat by text"
                   body={`Enter your number and we'll ${textMethod === 'whatsapp' ? 'message you on WhatsApp' : 'text you'} so you can continue from your phone.`}
-                  cta={textMethod === 'whatsapp' ? 'Message me on WhatsApp' : 'Text me'}
+                  cta={
+                    texting
+                      ? 'Starting…'
+                      : textMethod === 'whatsapp'
+                        ? 'Message me on WhatsApp'
+                        : 'Text me'
+                  }
+                  busy={texting}
                   consentLabel={consentLabel}
                   onSubmit={finishText}
                 />
@@ -267,6 +318,17 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   email: capturedEmail(capturedFields),
                 }}
                 onFallback={() => setConnectView('call')}
+              />
+            )}
+
+            {channel === 'email' && (
+              <SendDetails
+                consentLabel={consentLabel}
+                prefill={{
+                  name: capturedName(capturedFields),
+                  phone: knownPhone,
+                  email: capturedEmail(capturedFields),
+                }}
               />
             )}
           </>

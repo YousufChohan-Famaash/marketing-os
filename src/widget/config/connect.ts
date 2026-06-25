@@ -84,7 +84,12 @@ export const CHANNEL_META: Record<ConnectChannel, ChannelMeta> = {
   chat: { id: 'chat', label: 'Start a conversation', sublabel: 'Message us now, we reply in seconds', rank: 1 },
   text: { id: 'text', label: 'Text me', sublabel: 'SMS or WhatsApp, on your phone', rank: 2 },
   schedule: { id: 'schedule', label: 'Schedule a callback', sublabel: 'Pick a time that works for you', rank: 3 },
-  email: { id: 'email', label: 'Send us an email', sublabel: 'We reply within one business day', rank: 4 },
+  email: {
+    id: 'email',
+    label: 'Send your details',
+    sublabel: "Fill out a quick form and we'll reach back within the hour.",
+    rank: 4,
+  },
 };
 
 export function isBusinessHours(s: ConnectSettings, now = new Date()): boolean {

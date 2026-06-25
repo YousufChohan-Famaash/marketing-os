@@ -30,7 +30,7 @@ function readFirmIdFromQuery(): string {
   return params.get('firm_id') ?? DEFAULT_FIRM_ID;
 }
 
-const CONNECT_VIEWS = ['home', 'call', 'chat', 'text', 'schedule'] as const;
+const CONNECT_VIEWS = ['home', 'call', 'chat', 'text', 'schedule', 'email'] as const;
 type RoutableView = (typeof CONNECT_VIEWS)[number];
 
 /** Validate an external view string (teaser deep-link / ?view=) to a routable view. */

@@ -204,6 +204,78 @@ export function placeCallNow(args: {
   });
 }
 
+/** POST /connect/text — hand the intake off to the visitor's phone (WhatsApp/SMS). */
+export interface TextConnectResponse {
+  ok: boolean;
+  status: string; // 'texting'
+  channel: 'whatsapp' | 'sms';
+  conversationId: string;
+  /** WhatsApp only, no template configured → open this so the visitor sends the first message. */
+  waMeLink?: string | null;
+  /** WhatsApp only → true when we messaged them directly (approved template); waMeLink is null. */
+  whatsappMessaged?: boolean;
+}
+
+export function connectText(args: {
+  conversationId: string;
+  phone: string;
+  channel: 'whatsapp' | 'sms';
+  name?: string;
+  caseTypeId?: string;
+  consentText?: string;
+  copyVersion?: string;
+}): Promise<TextConnectResponse> {
+  return request<TextConnectResponse>('/connect/text', {
+    method: 'POST',
+    body: JSON.stringify({
+      conversationId: args.conversationId,
+      phone: args.phone,
+      channel: args.channel,
+      name: args.name,
+      caseTypeId: args.caseTypeId,
+      consent: {
+        agreed: true,
+        copyVersion: args.copyVersion ?? 'tcpa-v1',
+        text: args.consentText,
+      },
+    }),
+  });
+}
+
+/** POST /connect/lead-form — the "Send your details" stepwise intake form. */
+export interface LeadFormResponse {
+  ok: boolean;
+  status: string; // 'received'
+  chip?: { kind: string; label: string };
+  lead_id?: string;
+}
+
+export function submitLeadForm(args: {
+  conversationId: string;
+  caseType: { id?: string; slug?: string; label: string };
+  injurySeverity: string;
+  timeline: string;
+  name: string;
+  phone: string;
+  email?: string;
+  consentText?: string;
+  copyVersion?: string;
+}): Promise<LeadFormResponse> {
+  return request<LeadFormResponse>('/connect/lead-form', {
+    method: 'POST',
+    body: JSON.stringify({
+      conversationId: args.conversationId,
+      caseType: args.caseType,
+      injurySeverity: args.injurySeverity,
+      timeline: args.timeline,
+      name: args.name,
+      phone: args.phone,
+      email: args.email,
+      consent: { agreed: true, copyVersion: args.copyVersion ?? 'tcpa-v1', text: args.consentText },
+    }),
+  });
+}
+
 /** GET /connect/availability — the firm's real, hour-filtered calendar slots. */
 export interface AvailabilitySlot {
   start: string; // UTC ISO
