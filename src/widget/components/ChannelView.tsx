@@ -58,6 +58,7 @@ function capturedName(fields: CapturedFieldMap): string | undefined {
 export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded }: ChannelViewProps) {
   const settings = useWidgetStore((s) => s.connect);
   const compliance = useWidgetStore((s) => s.compliance);
+  const branding = useWidgetStore((s) => s.branding);
   const conversationId = useWidgetStore((s) => s.conversationId);
   const capturedFields = useWidgetStore((s) => s.capturedFields);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
@@ -66,6 +67,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const consentLabel =
     compliance?.tcpaConsent ??
     'By providing your number you agree to receive calls and texts about your inquiry. Message and data rates may apply. Reply STOP to opt out.';
+
+  // SMS (TCPA) requires explicit STOP opt-out + rates wording. If the firm's
+  // consent copy already carries it, use it; otherwise use compliant text copy.
+  const firmName = branding?.name ?? 'the firm';
+  const textConsentLabel = /stop/i.test(consentLabel)
+    ? consentLabel
+    : `I agree to receive texts from ${firmName} about my inquiry. Message and data rates may apply. Reply STOP to opt out. Consent isn't a condition of hiring the firm.`;
 
   const knownPhone = capturedPhone(capturedFields);
   const hasContext = Boolean(knownPhone) || useWidgetStore.getState().messages.length > 0;
@@ -165,13 +173,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     try {
       let out;
       try {
-        out = await connectText({ conversationId, phone, name, channel, consentText: consentLabel });
+        out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel });
       } catch (err) {
         // WhatsApp unreachable for this firm → fall back to SMS automatically.
         if (err instanceof ApiError && err.status === 503 && channel === 'whatsapp') {
           channel = 'sms';
           setTextMethod('sms');
-          out = await connectText({ conversationId, phone, name, channel, consentText: consentLabel });
+          out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel });
         } else {
           throw err;
         }
@@ -303,7 +311,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                         : 'Text me'
                   }
                   busy={texting}
-                  consentLabel={consentLabel}
+                  consentLabel={textConsentLabel}
                   onSubmit={finishText}
                 />
               </div>
