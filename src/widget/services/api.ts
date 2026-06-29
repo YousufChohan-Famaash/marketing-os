@@ -242,36 +242,43 @@ export function connectText(args: {
   });
 }
 
-/** POST /connect/lead-form — the "Send your details" stepwise intake form. */
-export interface LeadFormResponse {
+/** POST /forms/submit — the "Send your details" lead-capture form (web_form module). */
+export interface WebFormSubmitResponse {
   ok: boolean;
   status: string; // 'received'
-  chip?: { kind: string; label: string };
-  lead_id?: string;
+  leadId: string;
+  leadNumber: string; // e.g. "#0B30"
 }
 
-export function submitLeadForm(args: {
-  conversationId: string;
-  caseType: { id?: string; slug?: string; label: string };
-  injurySeverity: string;
-  timeline: string;
-  name: string;
+export function submitWebForm(args: {
+  firmId: string;
+  firstName: string;
+  lastName?: string;
   phone: string;
   email?: string;
+  caseTypeId?: string;
+  accidentType?: string;
+  description?: string;
   consentText?: string;
   copyVersion?: string;
-}): Promise<LeadFormResponse> {
-  return request<LeadFormResponse>('/connect/lead-form', {
+  /** Honeypot — the hidden field's value; empty for humans, filled by bots. */
+  website?: string;
+  utm?: Record<string, string>;
+}): Promise<WebFormSubmitResponse> {
+  return request<WebFormSubmitResponse>('/forms/submit', {
     method: 'POST',
     body: JSON.stringify({
-      conversationId: args.conversationId,
-      caseType: args.caseType,
-      injurySeverity: args.injurySeverity,
-      timeline: args.timeline,
-      name: args.name,
+      firmId: args.firmId,
+      firstName: args.firstName,
+      lastName: args.lastName,
       phone: args.phone,
       email: args.email,
-      consent: { agreed: true, copyVersion: args.copyVersion ?? 'tcpa-v1', text: args.consentText },
+      caseTypeId: args.caseTypeId,
+      accidentType: args.accidentType,
+      description: args.description,
+      consent: { agreed: true, text: args.consentText, copyVersion: args.copyVersion ?? 'web_form_v1' },
+      website: args.website ?? '',
+      utm: args.utm,
     }),
   });
 }

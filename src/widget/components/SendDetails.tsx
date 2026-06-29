@@ -1,8 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
-import { ApiError, errorDetail, submitLeadForm } from '../services/api';
+import { ApiError, errorDetail, submitWebForm } from '../services/api';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
+
+/** Pull UTM attribution off the URL, if any (best-effort; usually empty in-iframe). */
+function readUtm(): Record<string, string> | undefined {
+  if (typeof window === 'undefined') return undefined;
+  const p = new URLSearchParams(window.location.search);
+  const utm: Record<string, string> = {};
+  for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']) {
+    const v = p.get(k);
+    if (v) utm[k] = v;
+  }
+  return Object.keys(utm).length ? utm : undefined;
+}
 
 interface SendDetailsProps {
   consentLabel: string;
@@ -50,7 +62,7 @@ const STEP_TITLES = [
 export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const caseTypes = useWidgetStore((s) => s.caseTypes);
   const branding = useWidgetStore((s) => s.branding);
-  const conversationId = useWidgetStore((s) => s.conversationId);
+  const firmId = useWidgetStore((s) => s.firmId);
 
   const caseOptions = useMemo(
     () => (caseTypes.length ? caseTypes.map((c) => c.label) : (branding?.practiceAreas ?? DEFAULT_CASE_TYPES)),
@@ -65,6 +77,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const [phone, setPhone] = useState(prefill.phone ?? '');
   const [email, setEmail] = useState(prefill.email ?? '');
   const [agreed, setAgreed] = useState(false);
+  const [honeypot, setHoneypot] = useState(''); // bots fill this; humans never see it
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -83,31 +96,48 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const submit = async () => {
     if (!canSubmit) return;
     setError(null);
-    if (!conversationId) {
-      setError('Your session expired — please reopen the chat and try again.');
+    if (!firmId) {
+      setError("We couldn't submit your details. Please try again.");
       return;
     }
     setSubmitting(true);
     try {
       const ct = caseTypes.find((c) => c.label === caseType);
-      await submitLeadForm({
-        conversationId,
-        caseType: { id: ct?.id, slug: ct?.slug, label: caseType ?? '' },
-        injurySeverity: severity ?? '',
-        timeline: timeline ?? '',
-        name: name.trim(),
+      const [firstName, ...rest] = name.trim().split(/\s+/);
+      // The web-form endpoint has no severity/timeline fields, so fold those
+      // answers into the free-text description the intake team reads.
+      const description = [
+        severity ? `Injury severity: ${severity}.` : '',
+        timeline ? `When it happened: ${timeline}.` : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      await submitWebForm({
+        firmId,
+        firstName: firstName || name.trim(),
+        lastName: rest.length ? rest.join(' ') : undefined,
         phone: phone.trim(),
         email: email.trim() || undefined,
+        caseTypeId: ct?.id,
+        accidentType: caseType ?? undefined,
+        description,
         consentText: consentLabel,
+        website: honeypot,
+        utm: readUtm(),
       });
       setDone(true);
     } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0;
       const detail = errorDetail(err);
-      setError(
-        err instanceof ApiError && err.status === 400 && detail
-          ? detail
-          : "We couldn't submit your details. Please try again.",
-      );
+      if (status === 403) {
+        setError("This form isn't available right now. Please try another option.");
+      } else if (status === 429) {
+        setError('Too many submissions — please try again in a bit.');
+      } else if (status === 400 && detail) {
+        setError(detail);
+      } else {
+        setError("We couldn't submit your details. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -189,6 +219,17 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
           {error && (
             <p className="rounded-lg bg-danger-soft px-3 py-2 text-[12px] text-danger">{error}</p>
           )}
+          {/* Honeypot — off-screen, not a tab stop; real users leave it empty. */}
+          <input
+            type="text"
+            name="website"
+            autoComplete="off"
+            tabIndex={-1}
+            aria-hidden="true"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+          />
           <Field label="Your name">
             <input
               type="text"
