@@ -242,6 +242,25 @@ export function connectText(args: {
   });
 }
 
+/** GET /forms/config — options for the "Send your details" wizard (web_form module). */
+export interface WebFormOption {
+  value: string;
+  label: string;
+}
+export interface WebFormConfig {
+  firmName: string;
+  caseTypes: { id: string; label: string }[];
+  injurySeverityOptions: WebFormOption[];
+  incidentTimingOptions: WebFormOption[];
+  consentRequired: boolean;
+  consentText: string;
+  consentVersion: string;
+}
+
+export function fetchWebFormConfig(firmId: string, signal?: AbortSignal): Promise<WebFormConfig> {
+  return request<WebFormConfig>(`/forms/config?firm_id=${encodeURIComponent(firmId)}`, undefined, signal);
+}
+
 /** POST /forms/submit — the "Send your details" lead-capture form (web_form module). */
 export interface WebFormSubmitResponse {
   ok: boolean;
@@ -252,13 +271,14 @@ export interface WebFormSubmitResponse {
 
 export function submitWebForm(args: {
   firmId: string;
-  firstName: string;
-  lastName?: string;
-  phone: string;
+  name: string; // full name, one field — backend splits it
+  phone: string; // any format — backend normalizes to +E.164
   email?: string;
   caseTypeId?: string;
   accidentType?: string;
-  description?: string;
+  injurySeverity?: string; // chosen injurySeverityOptions[].value
+  incidentTiming?: string; // chosen incidentTimingOptions[].value
+  description?: string; // optional free text; backend composes one if omitted
   consentText?: string;
   copyVersion?: string;
   /** Honeypot — the hidden field's value; empty for humans, filled by bots. */
@@ -269,12 +289,13 @@ export function submitWebForm(args: {
     method: 'POST',
     body: JSON.stringify({
       firmId: args.firmId,
-      firstName: args.firstName,
-      lastName: args.lastName,
+      name: args.name,
       phone: args.phone,
       email: args.email,
       caseTypeId: args.caseTypeId,
       accidentType: args.accidentType,
+      injurySeverity: args.injurySeverity,
+      incidentTiming: args.incidentTiming,
       description: args.description,
       consent: { agreed: true, text: args.consentText, copyVersion: args.copyVersion ?? 'web_form_v1' },
       website: args.website ?? '',
