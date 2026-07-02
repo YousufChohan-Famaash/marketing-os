@@ -25,6 +25,13 @@ export interface FeatureFlagsSlice {
   allowedOrigins: string[];
   /** Resolved Connect launcher settings (size, channels, video). */
   connect: ConnectSettings;
+  /**
+   * Active conversation language code ('en' | 'es' | 'ar'). Single source of
+   * truth for both the /token language and per-language compliance copy
+   * (resolveTcpa). Defaults to 'en'; the language picker (coming soon) sets it.
+   */
+  language: string;
+  setLanguage: (language: string) => void;
   setBootConfig: (config: WidgetBootConfig) => void;
 }
 
@@ -45,6 +52,8 @@ export const createFeatureFlagsSlice: StateCreator<
   dropboxSignTestMode: false,
   allowedOrigins: [],
   connect: resolveConnectSettings(null),
+  language: 'en',
+  setLanguage: (language) => set({ language }),
   setBootConfig: (config) =>
     set({
       firmId: config.firmId,

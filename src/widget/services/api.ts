@@ -344,6 +344,7 @@ export function scheduleCallback(args: {
   slotStart: string;
   timezone: string;
   consentText?: string;
+  copyVersion?: string;
 }): Promise<ScheduleCallbackResponse> {
   return request<ScheduleCallbackResponse>('/connect/schedule-callback', {
     method: 'POST',
@@ -354,7 +355,7 @@ export function scheduleCallback(args: {
       email: args.email,
       slotStart: args.slotStart,
       timezone: args.timezone,
-      consent: { agreed: true, copyVersion: 'v1', text: args.consentText },
+      consent: { agreed: true, copyVersion: args.copyVersion ?? 'v1', text: args.consentText },
     }),
   });
 }

@@ -1,0 +1,40 @@
+import type { ComplianceConfig } from '../types/domain';
+
+/** Compliant default when the firm has authored no TCPA copy at all. */
+export const DEFAULT_TCPA_CONSENT =
+  'By providing your number you agree to receive calls and texts about your inquiry. ' +
+  'Message and data rates may apply. Reply STOP to opt out.';
+
+export interface ResolvedTcpa {
+  /** The consent copy to show the lead. */
+  text: string;
+  /**
+   * The server-minted template version to record with the consent (audit
+   * proof). Undefined when we fell back to legacy/default copy that has none.
+   */
+  version?: string;
+}
+
+/**
+ * Resolve the TCPA consent copy the firm authored in the Law App's Compliance
+ * tab for the lead's language.
+ *
+ * Resolution order (mirrors the backend's `resolve_tcpa`):
+ *   1. `tcpaTemplates[language]` — the per-language template the admin authored
+ *   2. `tcpaConsent` — the legacy single string (firm never used the new tab)
+ *   3. a compliant hardcoded default
+ *
+ * Never machine-translate — show the authored text as-is.
+ */
+export function resolveTcpa(
+  compliance: ComplianceConfig | null | undefined,
+  language: string,
+): ResolvedTcpa {
+  const item = compliance?.tcpaTemplates?.[language];
+  if (item?.text) return { text: item.text, version: item.version };
+
+  const legacy = compliance?.tcpaConsent;
+  if (legacy) return { text: legacy };
+
+  return { text: DEFAULT_TCPA_CONSENT };
+}

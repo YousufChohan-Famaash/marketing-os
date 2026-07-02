@@ -13,6 +13,8 @@ import { CallbackForm } from './CallbackForm';
 
 interface ScheduleCallbackProps {
   consentLabel: string;
+  /** Server-minted TCPA template version to record with the consent (audit). */
+  consentVersion?: string;
   /** Prefill from what the lead already shared in the chat session. */
   prefill: { name?: string; phone?: string; email?: string };
   /** Switch to the immediate Call-Me-Now channel (used as the fallback). */
@@ -45,7 +47,7 @@ interface DayGroup {
  * at the chosen time. On a 502 (slot raced/taken) we silently re-fetch and ask
  * them to pick again; when no calendar is connected we fall back to Call-Me-Now.
  */
-export function ScheduleCallback({ consentLabel, prefill, onFallback }: ScheduleCallbackProps) {
+export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFallback }: ScheduleCallbackProps) {
   const firmId = useWidgetStore((s) => s.firmId);
   const conversationId = useWidgetStore((s) => s.conversationId);
 
@@ -151,6 +153,7 @@ export function ScheduleCallback({ consentLabel, prefill, onFallback }: Schedule
         slotStart: selectedStart,
         timezone: tz,
         consentText: consentLabel,
+        copyVersion: consentVersion,
       });
       setConfirmLabel(res.chip?.label ?? "Callback booked — we'll call you then");
       setPhase('booked');

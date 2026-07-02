@@ -214,9 +214,33 @@ export interface FeatureFlags {
 
 export type Plan = 'chat_only' | 'chat_plus_voice' | 'full';
 
+/**
+ * One authored compliance template (TCPA consent copy or a UPL disclaimer),
+ * written in the Law App's Compliance tab. `version` is server-minted — display
+ * it and echo it back when recording consent so the exact copy is provable in
+ * the audit log. Mirrors the backend's TemplateItem (compliance_service.py).
+ */
+export interface TemplateItem {
+  text: string;
+  version: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
 export interface ComplianceConfig {
   aiDisclosure: string;
+  /**
+   * Legacy single-string TCPA consent. Kept as the fallback for firms that
+   * haven't authored per-language templates in the Compliance tab.
+   */
   tcpaConsent: string;
+  /**
+   * Per-language TCPA consent templates keyed by language code (e.g. 'en',
+   * 'es', 'ar'), authored in the Law App's Compliance tab. Resolve with
+   * `resolveTcpa()` — it picks the lead's language and falls back to
+   * `tcpaConsent`. Empty ({}) for firms that never touched the tab.
+   */
+  tcpaTemplates?: Record<string, TemplateItem>;
   privacyUrl: string;
   termsUrl: string;
 }

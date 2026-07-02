@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
+import { resolveTcpa } from '../utils/compliance';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
@@ -63,10 +64,14 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const capturedFields = useWidgetStore((s) => s.capturedFields);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
 
-  // TCPA gate before we capture a phone number for any channel.
-  const consentLabel =
-    compliance?.tcpaConsent ??
-    'By providing your number you agree to receive calls and texts about your inquiry. Message and data rates may apply. Reply STOP to opt out.';
+  // TCPA gate before we capture a phone number for any channel. Uses the copy
+  // the firm authored in the Law App's Compliance tab for the active language,
+  // falling back to legacy/default copy. `consentVersion` is recorded with the
+  // consent so the exact wording is provable in the audit log.
+  const language = useWidgetStore((s) => s.language);
+  const tcpa = resolveTcpa(compliance, language);
+  const consentLabel = tcpa.text;
+  const consentVersion = tcpa.version;
 
   // SMS (TCPA) requires explicit STOP opt-out + rates wording. If the firm's
   // consent copy already carries it, use it; otherwise use compliant text copy.
@@ -142,7 +147,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     }
     setPlacing(true);
     try {
-      await placeCallNow({ conversationId, phone, name, consentText: consentLabel });
+      await placeCallNow({ conversationId, phone, name, consentText: consentLabel, copyVersion: consentVersion });
       setConnectCallStatus(null); // clear any prior status before this call
       setCallTarget({ phone, name });
       setCallPhase('calling');
@@ -173,13 +178,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     try {
       let out;
       try {
-        out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel });
+        out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
       } catch (err) {
         // WhatsApp unreachable for this firm → fall back to SMS automatically.
         if (err instanceof ApiError && err.status === 503 && channel === 'whatsapp') {
           channel = 'sms';
           setTextMethod('sms');
-          out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel });
+          out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
         } else {
           throw err;
         }
@@ -320,6 +325,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             {channel === 'schedule' && (
               <ScheduleCallback
                 consentLabel={consentLabel}
+                consentVersion={consentVersion}
                 prefill={{
                   name: capturedName(capturedFields),
                   phone: knownPhone,

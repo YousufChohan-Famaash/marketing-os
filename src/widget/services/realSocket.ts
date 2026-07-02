@@ -7,6 +7,7 @@ import type {
   ServerEventHandler,
 } from '../types/protocol';
 import { createConversationToken } from './api';
+import { useWidgetStore } from '../store/widgetStore';
 
 /**
  * Real backend transport over a LiveKit room data channel.
@@ -51,7 +52,7 @@ export class RealSocket implements ConversationSocket {
     const session = await createConversationToken({
       firm_id: firmId,
       conversation_id: conversationId,
-      language: 'en',
+      language: useWidgetStore.getState().language,
     });
     if (DEV) console.log('[famaash-widget] /token', session);
 
