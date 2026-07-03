@@ -391,6 +391,11 @@ export function createConversationToken(
     language?: string;
     practice_area?: string;
     case_type_id?: string;
+    // Free Consultation hand-off: the answers the visitor already gave, so the
+    // agent's opener acknowledges the accident instead of a cold "describe it".
+    accident_type_label?: string;
+    injury_severity?: string;
+    incident_timing?: string;
   },
   signal?: AbortSignal,
 ): Promise<ConversationTokenResponse> {

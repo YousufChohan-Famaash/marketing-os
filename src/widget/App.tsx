@@ -100,18 +100,23 @@ export function App() {
     //   large home (or cinematic) → the default portrait card (fits video + grid)
     const isHome = connectView === 'home';
     const isChatOpener = connectView === 'chat' && !conversationStarted;
-    // Compact home only applies to the compact card (medium/small WITH a video);
-    // with no video the home falls back to the taller grid layout.
+    // Home is sized by its OWN layout only — never by whether a conversation has
+    // already started. Previously a started conversation forced Home to the tall
+    // size, so coming back to the menu looked different from where you began.
+    // Compact card = medium/small WITH a video (and not mid-cinematic); with no
+    // video Home falls back to the default portrait size.
     const compactHome =
-      connectSize !== 'large' &&
-      Boolean(cinematicVideo) &&
-      isHome &&
-      !conversationStarted &&
-      !cinematic;
-    if (compactHome) void bridge.requestCompact();
-    else if (isChatOpener) void bridge.requestShrink();
-    else if (!isHome || conversationStarted) void bridge.requestTall();
-    else void bridge.requestShrink();
+      connectSize !== 'large' && Boolean(cinematicVideo) && !cinematic;
+    if (isHome) {
+      if (compactHome) void bridge.requestCompact();
+      else void bridge.requestShrink();
+    } else if (isChatOpener) {
+      void bridge.requestShrink();
+    } else {
+      // A started conversation or a routed channel (call/text/schedule/email) —
+      // these scroll, so give them the tall panel.
+      void bridge.requestTall();
+    }
   }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
 
   // Boot runs two independent tracks IN PARALLEL so the agent connection isn't

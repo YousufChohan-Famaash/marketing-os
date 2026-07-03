@@ -216,6 +216,9 @@ const styles = `
   background: white;
   z-index: ${Z_INDEX};
   color-scheme: light;
+  /* Animate size changes between views so switching surfaces glides instead of
+     snapping (anchored bottom-right, so it grows up/left). */
+  transition: width 0.24s cubic-bezier(0.22, 1, 0.36, 1), height 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 #${IFRAME_ID}.is-hidden { display: none; }
 /* Conversations + channel views need more room (scrolling chat, forms). */
@@ -249,9 +252,33 @@ const styles = `
   }
   .fa-teaser { width: 300px; }
 }
+/* ---- loading placeholder (shown while the panel iframe boots) ---- */
+#famaash-loading {
+  position: fixed; bottom: 20px; right: 20px; width: 410px; height: 540px;
+  max-height: calc(100vh - 36px);
+  border: none; border-radius: 16px; background: #fff;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
+  z-index: ${Z_INDEX}; display: none; place-items: center;
+}
+#famaash-loading.show { display: grid; }
+#famaash-loading.fa-pos-left { right: auto; left: 20px; }
+#famaash-loading.fa-pos-center { right: auto; left: 50%; transform: translateX(-50%); }
+#famaash-loading .fa-spin {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid rgba(15, 23, 42, 0.12);
+  border-top-color: var(--fa-accent, ${FALLBACK_ACCENT});
+  animation: fa-spin 0.8s linear infinite;
+}
+@keyframes fa-spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) {
+  #famaash-loading { inset: 0; width: 100vw; height: 100dvh; max-height: none; border-radius: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fa-teaser, .fa-bubble, .fa-way, .fa-lbl, .fa-lbl-full { transition: none; }
   .fa-teaser:hover, .fa-bubble:hover { transform: none; }
+  #${IFRAME_ID} { transition: none; }
+  #famaash-loading .fa-spin { animation: none; }
 }
 `;
 
@@ -651,6 +678,24 @@ function readScriptConfig(): {
     if (launcherPos === 'bottom-left') el.classList.add('fa-pos-left');
     else if (launcherPos === 'bottom-center') el.classList.add('fa-pos-center');
   };
+
+  // Loading spinner shown during the panel's first (cold) boot, so opening never
+  // flashes a blank panel — it's a branded spinner until the widget is ready.
+  let loadingEl: HTMLDivElement | null = null;
+  const showLoading = () => {
+    if (!loadingEl) {
+      loadingEl = document.createElement('div');
+      loadingEl.id = 'famaash-loading';
+      loadingEl.setAttribute('aria-hidden', 'true');
+      loadingEl.innerHTML = '<span class="fa-spin"></span>';
+      const accent = getHostTheme()?.primary;
+      if (accent) loadingEl.style.setProperty('--fa-accent', accent);
+      positionEl(loadingEl);
+      document.body.appendChild(loadingEl);
+    }
+    loadingEl.classList.add('show');
+  };
+  const hideLoading = () => loadingEl?.classList.remove('show');
   let iframeRemote: IframeMethods | null = null;
   let connection: Connection<IframeMethods> | null = null;
   let iframeReady: Promise<IframeMethods> | null = null;
@@ -692,11 +737,14 @@ function readScriptConfig(): {
     },
   };
 
-  function ensureIframe(view?: string): Promise<IframeMethods> {
+  function ensureIframe(view?: string, ctx?: unknown): Promise<IframeMethods> {
     if (iframeReady) return iframeReady;
 
     const el = document.createElement('iframe');
     el.id = IFRAME_ID;
+    // Created hidden; openWidget reveals it once the bridge handshake completes,
+    // so a booting (blank) panel is never shown — the loading spinner covers it.
+    el.classList.add('is-hidden');
     el.title = 'Famaash chat widget';
     el.setAttribute('sandbox', SANDBOX);
     el.setAttribute('allow', 'microphone; camera; clipboard-write');
@@ -710,7 +758,10 @@ function readScriptConfig(): {
     const viewParam = view && view !== 'home' ? `&view=${encodeURIComponent(view)}` : '';
     const cineParam = cine ? '&cine=1' : '';
     const mediaParam = media ? '&media=1' : '';
-    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}`;
+    // Free Consultation hand-off answers (case type, injury, timing) → the widget
+    // reads `ctx` at boot and seeds POST /token so the opener acknowledges them.
+    const ctxParam = ctx ? `&ctx=${encodeURIComponent(JSON.stringify(ctx))}` : '';
+    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}`;
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;
@@ -735,12 +786,15 @@ function readScriptConfig(): {
     return iframeReady;
   }
 
-  function openWidget(view?: string): void {
+  function openWidget(view?: string, ctx?: unknown): void {
     // The panel opens where the teaser sits, so hide the dock while open.
     setDockHidden(true);
     const firstOpen = !iframeReady;
-    ensureIframe(view)
+    // Only the first open pays the cold-boot cost; show the spinner for it.
+    if (firstOpen) showLoading();
+    ensureIframe(view, ctx)
       .then((remote) => {
+        hideLoading();
         iframe?.classList.remove('is-hidden');
         // On re-open the iframe is cached, so route via the bridge instead of src.
         if (view && view !== 'home' && !firstOpen) {
@@ -749,6 +803,7 @@ function readScriptConfig(): {
         return remote.open();
       })
       .catch(() => {
+        hideLoading();
         iframe?.classList.add('is-hidden');
         setDockHidden(false);
       });
@@ -836,13 +891,15 @@ function readScriptConfig(): {
     .catch(() => undefined);
 
   type FamaashApi = {
-    open(): void;
+    // `ctx` is the Free Consultation hand-off payload (case type, injury, timing);
+    // it's only honored on the first open (it seeds the widget's /token at boot).
+    open(view?: string, ctx?: unknown): void;
     close(): void;
     identify(user: { id: string; email: string; name?: string }): void;
     setContext(data: Record<string, unknown>): void;
   };
   const api: FamaashApi = {
-    open: () => openWidget(),
+    open: (view, ctx) => openWidget(view, ctx),
     close: () => closeWidget(),
     identify: (user) => {
       ensureIframe()

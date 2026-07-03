@@ -41,22 +41,41 @@ export interface HostBridgeClient {
   isConnected(): boolean;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
- * Build a regex that matches any of the supplied origins, PLUS the iframe's
- * own origin (so same-domain demo deployments — widget + host page on one
- * Vercel project — always handshake without explicit allow-list entries).
+ * Build the parent-origin allow-list regex Penpal validates the host page
+ * against. Rules (mirror the backend + widget-allowed-origins-frontend-guide.md):
  *
- * Cross-origin embeds (real client sites embedding widget.famaash.com on
- * a third-party law-firm domain) still go through `allowedOrigins` from boot config.
+ *   - No configured origins → the firm hasn't restricted embedding, so accept
+ *     any host (matches the dashboard's "empty = not restricted" copy).
+ *   - Otherwise → the iframe's own origin is always trusted (so same-Vercel
+ *     demo pages work), plus each configured origin. Exact origins match
+ *     verbatim; a `https://*.base` entry matches any SUBDOMAIN of base (not the
+ *     apex), same scheme and exact port — e.g. `https://*.firm.com` covers
+ *     `www.firm.com` and `a.b.firm.com` but not `firm.com` or `firm.com.evil.com`.
  */
 function originAllowList(origins: string[]): RegExp {
+  const configured = origins.filter(Boolean);
+  if (configured.length === 0) return /^.*$/;
+
   const selfOrigin =
     typeof window !== 'undefined' ? window.location.origin : '';
-  const set = new Set<string>([selfOrigin, ...origins].filter(Boolean));
-  const escaped = [...set].map((o) =>
-    o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-  );
-  return new RegExp(`^(${escaped.join('|')})$`);
+  const patterns: string[] = [];
+  if (selfOrigin) patterns.push(escapeRegex(selfOrigin));
+
+  for (const o of configured) {
+    const wildcard = o.toLowerCase().match(/^(https?):\/\/\*\.([^/:]+)(?::(\d+))?$/);
+    if (wildcard) {
+      const [, scheme, base, port] = wildcard;
+      patterns.push(`${scheme}://[^/:]+\\.${escapeRegex(base)}${port ? `:${port}` : ''}`);
+    } else {
+      patterns.push(escapeRegex(o.toLowerCase()));
+    }
+  }
+  return new RegExp(`^(${patterns.join('|')})$`);
 }
 
 export function createHostBridge(

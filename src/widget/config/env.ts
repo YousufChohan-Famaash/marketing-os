@@ -23,6 +23,39 @@ export function getApiBase(): string {
 }
 
 /**
+ * Free Consultation hand-off context. When the consultation wizard opens the
+ * chat, the loader forwards the visitor's Q1–Q3 answers as a `ctx` query param;
+ * we read them here and pass them to POST /token so the agent's opener picks up
+ * where the wizard left off (see free-consultation-guide.md §4c).
+ */
+export interface ConsultationContext {
+  case_type_id?: string;
+  practice_area?: string;
+  accident_type_label?: string;
+  injury_severity?: string;
+  incident_timing?: string;
+}
+
+export function getConsultationContext(): ConsultationContext | null {
+  const raw = queryParam('ctx');
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(decodeURIComponent(raw)) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+    const ctx: ConsultationContext = {
+      case_type_id: str(p.caseTypeId ?? p.case_type_id),
+      practice_area: str(p.accidentType ?? p.practice_area),
+      accident_type_label: str(p.accidentType ?? p.accident_type_label),
+      injury_severity: str(p.injurySeverity ?? p.injury_severity),
+      incident_timing: str(p.incidentTiming ?? p.incident_timing),
+    };
+    return Object.values(ctx).some(Boolean) ? ctx : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whether to persist the conversation id + resume on reload. OFF by default so
  * every load starts a fresh conversation (handy for repeated end-to-end tests).
  * Turn on with `?persist=1` or `VITE_WIDGET_PERSIST=1`.
