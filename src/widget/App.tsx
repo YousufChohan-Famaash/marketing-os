@@ -8,6 +8,7 @@ import { WidgetShell } from './components/WidgetShell';
 import { applyFont, applyTheme } from './config/theme';
 import { shouldShowCinematic } from './config/connect';
 import { resolveCinematicVideo } from './config/demoMedia';
+import { getConsultationContext } from './config/env';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
@@ -72,6 +73,17 @@ export function App() {
   useEffect(() => {
     const v = readInitialView();
     if (v && v !== 'home') useWidgetStore.getState().setConnectView(v);
+    // Free Consultation hand-off: we already have the case type from the wizard,
+    // so drop straight into the chat conversation and skip the case-type opener.
+    // The agent sends its acknowledgment opener after `ready` (no pick needed);
+    // show typing dots meanwhile on a fresh conversation.
+    if (getConsultationContext()) {
+      const st = useWidgetStore.getState();
+      st.setConnectView('chat');
+      st.setCaseTypePicked(true);
+      st.setConversationStarted(true);
+      if (st.messages.length === 0) st.beginTyping();
+    }
   }, []);
 
   // Drive the iframe size: Small-mode home is compact and expands to full the
