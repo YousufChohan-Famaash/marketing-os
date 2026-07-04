@@ -581,7 +581,18 @@ function makeDock(
     }
   });
 
-  const open = (view?: string) => onOpen(view);
+  const open = (view?: string) => {
+    // Re-engaging clears the minimized state: after opening the chat, minimizing
+    // or closing it brings back the full teaser (not straight back to the small
+    // bubble). Minimizing the teaser itself still collapses to the bubble.
+    showBubble(false);
+    try {
+      sessionStorage.removeItem(MIN_STORAGE_KEY);
+    } catch {
+      /* storage may be blocked */
+    }
+    onOpen(view);
+  };
 
   // Tapping a channel chip deep-links straight into that channel's view.
   teaser.querySelectorAll<HTMLElement>('.fa-way[data-channel]').forEach((chip) => {
