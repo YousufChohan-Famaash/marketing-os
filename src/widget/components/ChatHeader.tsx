@@ -60,10 +60,10 @@ export function ChatHeader({
             )}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
-              <span className="text-[13px] font-semibold">{agentTakeover.agentName.charAt(0)}</span>
+              <span className="text-[13px] font-semibold">{(agentTakeover.agentName || 'Specialist').charAt(0)}</span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-ink">{agentTakeover.agentName}</p>
+              <p className="truncate text-[13px] font-semibold text-ink">{agentTakeover.agentName || 'Specialist'}</p>
               <p className="flex items-center gap-1 truncate text-[11px] text-muted">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
                 {agentTakeover.agentTitle ?? 'Live agent'}

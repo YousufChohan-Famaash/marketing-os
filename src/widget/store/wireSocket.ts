@@ -119,8 +119,10 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
     }),
 
     socket.on('agent_takeover', (e) => {
+      // Defensive: never store an undefined name (a mis-shaped event would then
+      // crash the header's `.charAt`). Fall back to a safe label.
       store.getState().setAgentTakeover({
-        agentName: e.agentName,
+        agentName: e.agentName || 'Specialist',
         agentTitle: e.agentTitle,
       });
     }),
