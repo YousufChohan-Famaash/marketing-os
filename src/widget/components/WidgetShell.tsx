@@ -8,6 +8,7 @@ import { ChannelView } from './ChannelView';
 import { ChatHeader } from './ChatHeader';
 import { CinematicOpen } from './CinematicOpen';
 import { Composer, type ComposerHandle } from './Composer';
+import { ConnectingState } from './ConnectingState';
 import { ConnectHome } from './ConnectHome';
 import { IntroStage } from './IntroStage';
 import { MessageList } from './MessageList';
@@ -79,11 +80,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   }
 
   if (bootStatus === 'loading' || bootStatus === 'idle') {
-    return (
-      <div className="flex h-full items-center justify-center bg-bg p-6 text-center text-muted">
-        <p className="text-[13px]">Connecting…</p>
-      </div>
-    );
+    return <ConnectingState />;
   }
 
   if (bootStatus === 'error') {
