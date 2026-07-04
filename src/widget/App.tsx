@@ -65,6 +65,7 @@ export function App() {
   const conversationStarted = useWidgetStore((s) => s.conversationStarted);
   const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
+  const readyRafRef = useRef(0);
   const [bridgeReady, setBridgeReady] = useState(false);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
@@ -262,6 +263,19 @@ export function App() {
     }
     return undefined;
   }, [isWidgetOpen, openWidget]);
+
+  // Tell the host the shell has painted, so the loader reveals the panel only
+  // once there's real content in it (never a blank frame). `bridgeReady` flips
+  // right after bootStatus becomes 'ready'; the double rAF waits for paint.
+  useEffect(() => {
+    if (!bridgeReady) return undefined;
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => bridgeRef.current?.notifyReady());
+      readyRafRef.current = r2;
+    });
+    readyRafRef.current = r1;
+    return () => cancelAnimationFrame(readyRafRef.current);
+  }, [bridgeReady]);
 
   const notifyHostEvent = (event: AnalyticsEvent) => {
     bridgeRef.current?.notifyEvent(event);

@@ -37,6 +37,8 @@ export interface HostBridgeClient {
   requestTall(): Promise<void>;
   getHostContext(): Promise<HostContext | null>;
   notifyEvent(event: AnalyticsEvent): void;
+  /** Tell the host the widget has painted, so it can reveal the panel. */
+  notifyReady(): void;
   destroy(): void;
   isConnected(): boolean;
 }
@@ -167,6 +169,11 @@ export function createHostBridge(
         r?.notifyEvent(event).catch(() => undefined);
       });
     },
+    notifyReady() {
+      void ready.then((r) => {
+        r?.notifyReady?.().catch(() => undefined);
+      });
+    },
     destroy() {
       connection.destroy();
       connected = false;
@@ -188,6 +195,7 @@ function makeNoOpClient(): HostBridgeClient {
     requestTall: async () => undefined,
     getHostContext: async () => null,
     notifyEvent: () => undefined,
+    notifyReady: () => undefined,
     destroy: () => undefined,
     isConnected: () => false,
   };

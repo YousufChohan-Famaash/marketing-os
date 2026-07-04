@@ -329,6 +329,12 @@ export interface HostBridge {
   requestTall(): Promise<void>;
   getHostContext(): Promise<HostContext>;
   notifyEvent(event: { type: string; data: unknown }): Promise<void>;
+  /**
+   * Fired by the iframe once it has painted its first meaningful frame, so the
+   * loader can reveal the panel then — never a blank frame between the bridge
+   * handshake and the widget's first paint.
+   */
+  notifyReady(): Promise<void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────

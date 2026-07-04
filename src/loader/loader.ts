@@ -30,6 +30,7 @@ interface HostMethods {
   requestTall(): void;
   getHostContext(): { url: string; referrer: string; utm: Record<string, string> };
   notifyEvent(event: { type: string; data: unknown }): void;
+  notifyReady(): void;
 }
 
 const LAUNCHER_ID = 'famaash-launcher';
@@ -707,6 +708,32 @@ function readScriptConfig(): {
     loadingEl.classList.add('show');
   };
   const hideLoading = () => loadingEl?.classList.remove('show');
+
+  // Reveal the panel only once the widget has actually painted (it calls
+  // `notifyReady` over the bridge). This closes the gap between the Penpal
+  // handshake and the widget's first paint, which otherwise flashed a blank
+  // panel. A fallback timer reveals anyway if the signal is ever missed.
+  let widgetPainted = false;
+  let revealArmed = false;
+  let revealTimer: ReturnType<typeof setTimeout> | null = null;
+  const revealPanel = () => {
+    revealArmed = false;
+    if (revealTimer) {
+      clearTimeout(revealTimer);
+      revealTimer = null;
+    }
+    hideLoading();
+    iframe?.classList.remove('is-hidden');
+  };
+  const armReveal = () => {
+    if (widgetPainted) {
+      revealPanel();
+      return;
+    }
+    revealArmed = true;
+    revealTimer = setTimeout(revealPanel, 2500);
+  };
+
   let iframeRemote: IframeMethods | null = null;
   let connection: Connection<IframeMethods> | null = null;
   let iframeReady: Promise<IframeMethods> | null = null;
@@ -745,6 +772,11 @@ function readScriptConfig(): {
         // eslint-disable-next-line no-console
         console.debug('[famaash:event]', event);
       }
+    },
+    // The widget has painted its first frame — safe to reveal the panel now.
+    notifyReady: () => {
+      widgetPainted = true;
+      if (revealArmed) revealPanel();
     },
   };
 
@@ -805,15 +837,23 @@ function readScriptConfig(): {
     if (firstOpen) showLoading();
     ensureIframe(view, ctx)
       .then((remote) => {
-        hideLoading();
-        iframe?.classList.remove('is-hidden');
         // On re-open the iframe is cached, so route via the bridge instead of src.
         if (view && view !== 'home' && !firstOpen) {
           remote.setView(view).catch(() => undefined);
         }
-        return remote.open();
+        void remote.open();
+        // First open: keep the spinner until the widget signals it has painted
+        // (notifyReady), so the panel never reveals a blank frame. A cached
+        // iframe already has content, so reveal it immediately.
+        if (firstOpen) armReveal();
+        else revealPanel();
       })
       .catch(() => {
+        revealArmed = false;
+        if (revealTimer) {
+          clearTimeout(revealTimer);
+          revealTimer = null;
+        }
         hideLoading();
         iframe?.classList.add('is-hidden');
         setDockHidden(false);
