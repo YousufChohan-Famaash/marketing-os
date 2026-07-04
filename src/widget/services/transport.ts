@@ -9,7 +9,7 @@
 
 import type { WidgetBootConfig } from '../types/domain';
 import type { ConversationSocket } from '../types/protocol';
-import { isPersistenceEnabled } from '../config/env';
+import { getConsultationContext, isPersistenceEnabled } from '../config/env';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { fetchConversationHistory, fetchWidgetConfig } from './api';
@@ -46,7 +46,13 @@ export function getOrCreateConversationId(firmId: string): {
 } {
   const key = `${CONV_STORAGE_PREFIX}${firmId}`;
 
-  if (!isPersistenceEnabled()) {
+  // A Free-Consultation → Chat handoff MUST reuse its conversation_id across
+  // reloads: minting a fresh id while still carrying the consultation params
+  // makes the agent auto-open again (re-greet in a new room). So persist on a
+  // handoff even when global persistence is off.
+  const handoff = getConsultationContext() != null;
+
+  if (!isPersistenceEnabled() && !handoff) {
     // Fresh each load; clear any stale id so turning persistence back on starts clean.
     try {
       sessionStorage.removeItem(key);
