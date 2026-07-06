@@ -286,7 +286,11 @@ const styles = `
 .fa-sk-typing .fa-d:nth-child(3) { animation-delay: .32s; }
 .fa-sk-txt { font: 500 12.5px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #64748B; }
 .fa-sk-composer { margin: 12px; height: 44px; border-radius: 14px; flex: none; background: rgba(2,6,23,0.05); }
-.fa-sk-av, .fa-sk-hl > i, .fa-sk-bub, .fa-sk-composer { animation: fa-sk-pulse 1.5s ease-in-out infinite; }
+/* Neutral form/menu skeleton (Call / Text / Schedule / Email / home) */
+.fa-sk-form { gap: 12px; }
+.fa-sk-row { height: 46px; border-radius: 12px; background: rgba(2,6,23,0.05); }
+.fa-sk-row-sm { height: 14px; width: 62%; border-radius: 6px; }
+.fa-sk-av, .fa-sk-hl > i, .fa-sk-bub, .fa-sk-composer, .fa-sk-row { animation: fa-sk-pulse 1.5s ease-in-out infinite; }
 @keyframes fa-sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 @keyframes fa-sk-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .35; } 40% { transform: translateY(-3px); opacity: 1; } }
 @media (max-width: 640px) {
@@ -297,7 +301,7 @@ const styles = `
   .fa-teaser, .fa-bubble, .fa-way, .fa-lbl, .fa-lbl-full { transition: none; }
   .fa-teaser:hover, .fa-bubble:hover { transform: none; }
   #${IFRAME_ID} { transition: none; }
-  .fa-sk-av, .fa-sk-hl > i, .fa-sk-bub, .fa-sk-composer, .fa-sk-typing .fa-d { animation: none !important; }
+  .fa-sk-av, .fa-sk-hl > i, .fa-sk-bub, .fa-sk-composer, .fa-sk-row, .fa-sk-typing .fa-d { animation: none !important; }
 }
 `;
 
@@ -712,28 +716,45 @@ function readScriptConfig(): {
   // Loading spinner shown during the panel's first (cold) boot, so opening never
   // flashes a blank panel — it's a branded spinner until the widget is ready.
   let loadingEl: HTMLDivElement | null = null;
-  const showLoading = () => {
+  // The placeholder skeleton depends on WHAT is being opened: the chat view gets
+  // a conversation skeleton ("Connecting you to…"), but Call / Text / Schedule /
+  // Email / the home menu get a neutral form/menu skeleton — showing chat bubbles
+  // + "connecting to an agent" there would be misleading.
+  const showLoading = (view?: string) => {
     if (!loadingEl) {
       loadingEl = document.createElement('div');
       loadingEl.id = 'famaash-loading';
       loadingEl.setAttribute('aria-hidden', 'true');
-      loadingEl.innerHTML =
-        '<div class="fa-sk">' +
-          '<div class="fa-sk-head"><div class="fa-sk-av"></div><div class="fa-sk-hl"><i></i><i></i></div></div>' +
-          '<div class="fa-sk-body">' +
-            '<div class="fa-sk-bub"><i></i><i></i></div>' +
-            '<div class="fa-sk-bub fa-sk-b2"><i></i></div>' +
-            '<div class="fa-sk-typing"><span class="fa-d"></span><span class="fa-d"></span><span class="fa-d"></span><span class="fa-sk-txt"></span></div>' +
-          '</div>' +
-          '<div class="fa-sk-composer"></div>' +
-        '</div>';
-      // Set the connecting copy via textContent (never inject the firm name as HTML).
-      const txtEl = loadingEl.querySelector('.fa-sk-txt');
-      if (txtEl) txtEl.textContent = name ? `Connecting you to ${name}…` : 'Connecting…';
       const accent = getHostTheme()?.primary;
       if (accent) loadingEl.style.setProperty('--fa-accent', accent);
       positionEl(loadingEl);
       document.body.appendChild(loadingEl);
+    }
+    const head =
+      '<div class="fa-sk-head"><div class="fa-sk-av"></div><div class="fa-sk-hl"><i></i><i></i></div></div>';
+    const bottom = '<div class="fa-sk-composer"></div>';
+    if (view === 'chat') {
+      loadingEl.innerHTML =
+        '<div class="fa-sk">' + head +
+          '<div class="fa-sk-body">' +
+            '<div class="fa-sk-bub"><i></i><i></i></div>' +
+            '<div class="fa-sk-bub fa-sk-b2"><i></i></div>' +
+            '<div class="fa-sk-typing"><span class="fa-d"></span><span class="fa-d"></span><span class="fa-d"></span><span class="fa-sk-txt"></span></div>' +
+          '</div>' + bottom +
+        '</div>';
+      const txtEl = loadingEl.querySelector('.fa-sk-txt');
+      if (txtEl) txtEl.textContent = name && name !== 'our team' ? `Connecting you to ${name}…` : 'Connecting…';
+    } else {
+      // Neutral skeleton: a few field/row placeholders + an action bar. Reads as
+      // a form or menu loading, not an agent conversation.
+      loadingEl.innerHTML =
+        '<div class="fa-sk">' + head +
+          '<div class="fa-sk-body fa-sk-form">' +
+            '<div class="fa-sk-row"></div>' +
+            '<div class="fa-sk-row"></div>' +
+            '<div class="fa-sk-row fa-sk-row-sm"></div>' +
+          '</div>' + bottom +
+        '</div>';
     }
     loadingEl.classList.add('show');
   };
@@ -866,8 +887,9 @@ function readScriptConfig(): {
     // The panel opens where the teaser sits, so hide the dock while open.
     setDockHidden(true);
     const firstOpen = !iframeReady;
-    // Only the first open pays the cold-boot cost; show the spinner for it.
-    if (firstOpen) showLoading();
+    // Only the first open pays the cold-boot cost; show the skeleton for it,
+    // shaped to the channel being opened (chat vs. a form/menu).
+    if (firstOpen) showLoading(view);
     ensureIframe(view, ctx)
       .then((remote) => {
         // On re-open the iframe is cached, so route via the bridge instead of src.
