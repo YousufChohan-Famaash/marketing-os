@@ -253,24 +253,42 @@ const styles = `
   }
   .fa-teaser { width: 300px; }
 }
-/* ---- loading placeholder (shown while the panel iframe boots) ---- */
+/* ---- loading placeholder: a branded skeleton of the chat panel, so a cold
+       boot on a heavy host page reads as "the app is materializing", never a
+       blank white box with a lonely spinner. Mirrors the widget's own
+       ConnectingState so the swap on reveal is seamless. ---- */
 #famaash-loading {
   position: fixed; bottom: 20px; right: 20px; width: 410px; height: 540px;
   max-height: calc(100vh - 36px);
   border: none; border-radius: 16px; background: #fff;
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
-  z-index: ${Z_INDEX}; display: none; place-items: center;
+  z-index: ${Z_INDEX}; display: none; overflow: hidden;
 }
-#famaash-loading.show { display: grid; }
+#famaash-loading.show { display: block; }
 #famaash-loading.fa-pos-left { right: auto; left: 20px; }
 #famaash-loading.fa-pos-center { right: auto; left: 50%; transform: translateX(-50%); }
-#famaash-loading .fa-spin {
-  width: 34px; height: 34px; border-radius: 50%;
-  border: 3px solid rgba(15, 23, 42, 0.12);
-  border-top-color: var(--fa-accent, ${FALLBACK_ACCENT});
-  animation: fa-spin 0.8s linear infinite;
-}
-@keyframes fa-spin { to { transform: rotate(360deg); } }
+.fa-sk { display: flex; flex-direction: column; height: 100%; width: 100%; }
+.fa-sk-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(2,6,23,0.06); }
+.fa-sk-av { width: 36px; height: 36px; border-radius: 50%; flex: none; background: rgba(2,6,23,0.08); }
+.fa-sk-hl { display: flex; flex-direction: column; gap: 7px; }
+.fa-sk-hl > i { display: block; border-radius: 5px; background: rgba(2,6,23,0.08); }
+.fa-sk-hl > i:nth-child(1) { width: 118px; height: 9px; }
+.fa-sk-hl > i:nth-child(2) { width: 64px; height: 8px; }
+.fa-sk-body { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.fa-sk-bub { max-width: 78%; border-radius: 16px 16px 16px 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; background: rgba(2,6,23,0.04); }
+.fa-sk-bub > i { display: block; height: 9px; border-radius: 5px; background: rgba(2,6,23,0.09); }
+.fa-sk-bub:not(.fa-sk-b2) > i:nth-child(1) { width: 152px; }
+.fa-sk-bub:not(.fa-sk-b2) > i:nth-child(2) { width: 104px; }
+.fa-sk-b2 > i { width: 120px; }
+.fa-sk-typing { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.fa-sk-typing .fa-d { width: 6px; height: 6px; border-radius: 50%; background: var(--fa-accent, ${FALLBACK_ACCENT}); animation: fa-sk-dot 1.1s ease-in-out infinite; }
+.fa-sk-typing .fa-d:nth-child(2) { animation-delay: .16s; }
+.fa-sk-typing .fa-d:nth-child(3) { animation-delay: .32s; }
+.fa-sk-txt { font: 500 12.5px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #64748B; }
+.fa-sk-composer { margin: 12px; height: 44px; border-radius: 14px; flex: none; background: rgba(2,6,23,0.05); }
+.fa-sk-av, .fa-sk-hl > i, .fa-sk-bub, .fa-sk-composer { animation: fa-sk-pulse 1.5s ease-in-out infinite; }
+@keyframes fa-sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes fa-sk-dot { 0%, 80%, 100% { transform: translateY(0); opacity: .35; } 40% { transform: translateY(-3px); opacity: 1; } }
 @media (max-width: 640px) {
   #famaash-loading { inset: 0; width: 100vw; height: 100dvh; max-height: none; border-radius: 0; }
 }
@@ -279,7 +297,7 @@ const styles = `
   .fa-teaser, .fa-bubble, .fa-way, .fa-lbl, .fa-lbl-full { transition: none; }
   .fa-teaser:hover, .fa-bubble:hover { transform: none; }
   #${IFRAME_ID} { transition: none; }
-  #famaash-loading .fa-spin { animation: none; }
+  .fa-sk-av, .fa-sk-hl > i, .fa-sk-bub, .fa-sk-composer, .fa-sk-typing .fa-d { animation: none !important; }
 }
 `;
 
@@ -699,7 +717,19 @@ function readScriptConfig(): {
       loadingEl = document.createElement('div');
       loadingEl.id = 'famaash-loading';
       loadingEl.setAttribute('aria-hidden', 'true');
-      loadingEl.innerHTML = '<span class="fa-spin"></span>';
+      loadingEl.innerHTML =
+        '<div class="fa-sk">' +
+          '<div class="fa-sk-head"><div class="fa-sk-av"></div><div class="fa-sk-hl"><i></i><i></i></div></div>' +
+          '<div class="fa-sk-body">' +
+            '<div class="fa-sk-bub"><i></i><i></i></div>' +
+            '<div class="fa-sk-bub fa-sk-b2"><i></i></div>' +
+            '<div class="fa-sk-typing"><span class="fa-d"></span><span class="fa-d"></span><span class="fa-d"></span><span class="fa-sk-txt"></span></div>' +
+          '</div>' +
+          '<div class="fa-sk-composer"></div>' +
+        '</div>';
+      // Set the connecting copy via textContent (never inject the firm name as HTML).
+      const txtEl = loadingEl.querySelector('.fa-sk-txt');
+      if (txtEl) txtEl.textContent = name ? `Connecting you to ${name}…` : 'Connecting…';
       const accent = getHostTheme()?.primary;
       if (accent) loadingEl.style.setProperty('--fa-accent', accent);
       positionEl(loadingEl);
@@ -730,8 +760,11 @@ function readScriptConfig(): {
       revealPanel();
       return;
     }
+    // The branded skeleton covers the wait, so favour showing it over revealing
+    // a possibly-still-blank iframe. notifyReady reveals immediately in the
+    // normal case; this fallback only matters if that signal is ever missed.
     revealArmed = true;
-    revealTimer = setTimeout(revealPanel, 2500);
+    revealTimer = setTimeout(revealPanel, 6000);
   };
 
   let iframeRemote: IframeMethods | null = null;
