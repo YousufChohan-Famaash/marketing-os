@@ -872,7 +872,11 @@ function readScriptConfig(): {
     el.classList.add('is-hidden');
     el.title = 'Famaash chat widget';
     el.setAttribute('sandbox', SANDBOX);
-    el.setAttribute('allow', 'microphone; camera; clipboard-write');
+    // `autoplay` MUST be delegated here: a cross-origin iframe can't autoplay the
+    // intro video (even muted) unless the parent grants it via Permissions-Policy.
+    // Without it the video loads but never starts on embedded sites (it plays in
+    // the dashboard preview, which already grants autoplay).
+    el.setAttribute('allow', 'autoplay; microphone; camera; clipboard-write');
     // Inherit the host site's colors: pass the detected palette so the widget
     // can theme itself before first paint (admin override happens server-side).
     const theme = getHostTheme();
