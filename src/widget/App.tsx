@@ -66,6 +66,7 @@ export function App() {
   const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
   const readyRafRef = useRef(0);
+  const paintPingRaf = useRef(0);
   const [bridgeReady, setBridgeReady] = useState(false);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
@@ -264,9 +265,33 @@ export function App() {
     return undefined;
   }, [isWidgetOpen, openWidget]);
 
+  // Fast reveal: ping the loader the moment our shell first paints (the
+  // ConnectingState), independent of /config and the Penpal bridge. The loader
+  // reveals the panel on this, so the visitor sees our connecting UI right away
+  // instead of the loader skeleton sitting until the bridge handshake (which is
+  // gated on /config). One-way, non-sensitive, source-validated on the loader.
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.parent === window) return undefined;
+    const r1 = requestAnimationFrame(() => {
+      paintPingRaf.current = requestAnimationFrame(() => {
+        try {
+          window.parent.postMessage({ type: 'famaash:painted' }, '*');
+        } catch {
+          /* parent unreachable — the bridge notifyReady + fallback still cover it */
+        }
+      });
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(paintPingRaf.current);
+    };
+  }, []);
+
   // Tell the host the shell has painted, so the loader reveals the panel only
   // once there's real content in it (never a blank frame). `bridgeReady` flips
   // right after bootStatus becomes 'ready'; the double rAF waits for paint.
+  // (Redundant with the paint ping above once that's live, but harmless and a
+  // safety net if an older loader without the ping listener is cached.)
   useEffect(() => {
     if (!bridgeReady) return undefined;
     const r1 = requestAnimationFrame(() => {

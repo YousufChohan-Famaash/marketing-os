@@ -816,6 +816,20 @@ function readScriptConfig(): {
     revealTimer = setTimeout(revealPanel, 6000);
   };
 
+  // Fast-path reveal: the widget pings the instant its React shell paints — well
+  // before /config resolves and the Penpal bridge (which carries notifyReady) is
+  // even created. Revealing then shows the widget's own connecting state right
+  // away instead of sitting on the skeleton until the bridge handshake. Mirrors
+  // notifyReady exactly, and is validated by source identity (the message must
+  // come from our own iframe), so it changes nothing about origin security.
+  window.addEventListener('message', (e: MessageEvent) => {
+    if (!iframe || e.source !== iframe.contentWindow) return;
+    if ((e.data as { type?: string } | null)?.type === 'famaash:painted') {
+      widgetPainted = true;
+      if (revealArmed) revealPanel();
+    }
+  });
+
   let iframeRemote: IframeMethods | null = null;
   let connection: Connection<IframeMethods> | null = null;
   let iframeReady: Promise<IframeMethods> | null = null;
