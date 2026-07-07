@@ -671,6 +671,8 @@ function readScriptConfig(): {
   firmId: string;
   widgetOrigin: string;
   size: 'small' | 'medium' | 'large';
+  /** True when the embed hardcoded data-size — that wins over the dashboard. */
+  sizeExplicit: boolean;
   name: string;
   poster?: string;
   cine: boolean;
@@ -685,12 +687,12 @@ function readScriptConfig(): {
   }
   const firmId = script.getAttribute('data-firm-id') ?? 'firm_demo';
   const widgetOrigin = new URL(script.src, window.location.href).origin;
-  // Launcher presentation hints from the embed snippet (set by the Law App to
-  // match the firm's Branding Studio settings). The widget panel reads its own
-  // size/video from /config; these style the host-page teaser and forward a
-  // cinematic-open hint for testing.
+  // Launcher presentation hints from the embed snippet. `data-size` is an
+  // optional OVERRIDE — when set it wins; otherwise the teaser size comes from
+  // the firm's dashboard (connect.size in /config, applied once it loads).
   const sizeAttr = script.getAttribute('data-size');
-  const size = sizeAttr === 'small' ? 'small' : sizeAttr === 'medium' ? 'medium' : 'large';
+  const sizeExplicit = sizeAttr === 'small' || sizeAttr === 'medium' || sizeAttr === 'large';
+  const size: 'small' | 'medium' | 'large' = sizeExplicit ? (sizeAttr as 'small' | 'medium' | 'large') : 'large';
   const name = script.getAttribute('data-name') ?? 'our team';
   const poster = script.getAttribute('data-poster') ?? undefined;
   const cineAttr = script.getAttribute('data-cine');
@@ -698,11 +700,11 @@ function readScriptConfig(): {
   const mediaAttr = script.getAttribute('data-media');
   const media = mediaAttr === '1' || mediaAttr === 'true';
   const apiBase = (script.getAttribute('data-api-base') ?? 'https://api.catafleet.com/api/v1/widget').replace(/\/+$/, '');
-  return { firmId, widgetOrigin, size, name, poster, cine, media, apiBase };
+  return { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase };
 }
 
 (function boot() {
-  const { firmId, widgetOrigin, size, name, poster, cine, media, apiBase } = readScriptConfig();
+  const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase } = readScriptConfig();
   injectStyles();
 
   let iframe: HTMLIFrameElement | null = null;
@@ -921,7 +923,8 @@ function readScriptConfig(): {
     iframeRemote?.close().catch(() => undefined);
   }
 
-  const dockApi = makeDock(openWidget, { size, name, poster });
+  let dockApi = makeDock(openWidget, { size, name, poster });
+  let currentSize = size;
   setDockHidden = dockApi.setHidden;
   document.body.appendChild(dockApi.dock);
 
@@ -954,8 +957,22 @@ function readScriptConfig(): {
             launcherOffsetY?: number;
             launcherPosition?: 'bottom-left' | 'bottom-center' | 'bottom-right';
           };
+          connect?: { size?: 'small' | 'medium' | 'large' };
         } | null,
       ) => {
+        // Teaser size from the dashboard (connect.size) — unless the embed
+        // hardcoded data-size. Rebuild the dock if it differs from what we drew.
+        const cfgSize = cfg?.connect?.size;
+        if (!sizeExplicit && (cfgSize === 'small' || cfgSize === 'medium' || cfgSize === 'large') && cfgSize !== currentSize) {
+          const wasHidden = dockApi.dock.classList.contains('is-hidden');
+          dockApi.dock.remove();
+          dockApi = makeDock(openWidget, { size: cfgSize, name, poster });
+          currentSize = cfgSize;
+          setDockHidden = dockApi.setHidden;
+          document.body.appendChild(dockApi.dock);
+          setDockHidden(wasHidden);
+        }
+
         const b = cfg?.branding;
         if (!b) return;
         launcherPos = b.launcherPosition;
