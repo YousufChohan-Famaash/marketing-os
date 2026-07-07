@@ -471,11 +471,25 @@ const SVG = {
   minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
 };
 
-const CHANNELS_HTML = `
-  <span class="fa-way" data-channel="call">${SVG.phone}<span class="fa-lbl">Call</span><span class="fa-lbl-full">Call me now</span></span>
-  <span class="fa-way" data-channel="chat">${SVG.chat}<span class="fa-lbl">Chat</span><span class="fa-lbl-full">Start a conversation</span></span>
-  <span class="fa-way" data-channel="text">${SVG.text}<span class="fa-lbl">Text</span><span class="fa-lbl-full">Text me on my phone</span></span>
-  <span class="fa-way" data-channel="schedule">${SVG.calendar}<span class="fa-lbl">Book</span><span class="fa-lbl-full">Schedule a call</span></span>`;
+// Teaser "ways" (quick-contact chips). Which appear and their order are driven
+// by the firm's connect.channels config; falls back to all four when unset.
+const WAY: Record<string, { icon: string; short: string; full: string }> = {
+  call: { icon: SVG.phone, short: 'Call', full: 'Call me now' },
+  chat: { icon: SVG.chat, short: 'Chat', full: 'Start a conversation' },
+  text: { icon: SVG.text, short: 'Text', full: 'Text me on my phone' },
+  schedule: { icon: SVG.calendar, short: 'Book', full: 'Schedule a call' },
+};
+const WAY_ORDER = ['call', 'chat', 'text', 'schedule'];
+function channelsHtml(channels?: string[]): string {
+  const picked = (channels ?? []).filter((k) => k in WAY);
+  const use = picked.length ? picked : WAY_ORDER;
+  return use
+    .map((k) => {
+      const w = WAY[k];
+      return `<span class="fa-way" data-channel="${k}">${w.icon}<span class="fa-lbl">${w.short}</span><span class="fa-lbl-full">${w.full}</span></span>`;
+    })
+    .join('');
+}
 
 function videoSurfaceHTML(large: boolean, poster?: string): string {
   // A real thumbnail when the embed provides one (lightly dimmed); otherwise the
@@ -502,11 +516,11 @@ const MIN_STORAGE_KEY = 'famaash:launcher-min';
  */
 function makeDock(
   onOpen: (view?: string) => void,
-  opts: { size: 'small' | 'medium' | 'large'; name: string; poster?: string },
+  opts: { size: 'small' | 'medium' | 'large'; name: string; poster?: string; channels?: string[] },
 ): {
   dock: HTMLDivElement;
   setHidden: (hidden: boolean) => void;
-  applyConfig: (cfg: { poster?: string | null; name?: string | null }) => void;
+  applyConfig: (cfg: { poster?: string | null; name?: string | null; channels?: string[] }) => void;
 } {
   const dock = document.createElement('div');
   dock.id = DOCK_ID;
@@ -565,7 +579,7 @@ function makeDock(
       <div class="fa-body">
         ${headline}
         <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
-        <div class="fa-ways">${CHANNELS_HTML}</div>
+        <div class="fa-ways">${channelsHtml(opts.channels)}</div>
         <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>
       </div>`
     : `
@@ -574,7 +588,7 @@ function makeDock(
         <div class="fa-sm-main">
           <div class="fa-sm-head">${headline}${minBtnHTML('on-card')}</div>
           <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
-          <div class="fa-ways">${CHANNELS_HTML}</div>
+          <div class="fa-ways">${channelsHtml(opts.channels)}</div>
         </div>
       </div>
       <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>`;
@@ -618,12 +632,16 @@ function makeDock(
   };
 
   // Tapping a channel chip deep-links straight into that channel's view.
-  teaser.querySelectorAll<HTMLElement>('.fa-way[data-channel]').forEach((chip) => {
-    chip.addEventListener('click', (e) => {
-      e.stopPropagation();
-      open(chip.dataset.channel);
+  // Re-run after the ways are rebuilt from /config so the new chips are wired.
+  const bindWays = () => {
+    teaser.querySelectorAll<HTMLElement>('.fa-way[data-channel]').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        open(chip.dataset.channel);
+      });
     });
-  });
+  };
+  bindWays();
   // Anywhere else on the teaser (or the video) opens the home menu.
   teaser.addEventListener('click', () => open());
   teaser.addEventListener('keydown', (e) => {
@@ -650,7 +668,7 @@ function makeDock(
     setHidden,
     // Upgrade the teaser with the firm's real config (poster, attorney name)
     // once /config resolves, so the embed snippet doesn't have to hardcode them.
-    applyConfig: ({ poster, name }) => {
+    applyConfig: ({ poster, name, channels }) => {
       if (poster) {
         const vid = teaser.querySelector<HTMLElement>('.fa-vid');
         if (vid) {
@@ -662,6 +680,14 @@ function makeDock(
       if (name) {
         const cap = teaser.querySelector<HTMLElement>('.fa-vcap b');
         if (cap) cap.textContent = `Meet ${name}`;
+      }
+      // Rebuild the quick-contact chips from the firm's configured channels.
+      if (channels && channels.length) {
+        const ways = teaser.querySelector<HTMLElement>('.fa-ways');
+        if (ways) {
+          ways.innerHTML = channelsHtml(channels);
+          bindWays();
+        }
       }
     },
   };
@@ -957,7 +983,7 @@ function readScriptConfig(): {
             launcherOffsetY?: number;
             launcherPosition?: 'bottom-left' | 'bottom-center' | 'bottom-right';
           };
-          connect?: { size?: 'small' | 'medium' | 'large' };
+          connect?: { size?: 'small' | 'medium' | 'large'; channels?: string[] };
         } | null,
       ) => {
         // Teaser size from the dashboard (connect.size) — unless the embed
@@ -966,7 +992,7 @@ function readScriptConfig(): {
         if (!sizeExplicit && (cfgSize === 'small' || cfgSize === 'medium' || cfgSize === 'large') && cfgSize !== currentSize) {
           const wasHidden = dockApi.dock.classList.contains('is-hidden');
           dockApi.dock.remove();
-          dockApi = makeDock(openWidget, { size: cfgSize, name, poster });
+          dockApi = makeDock(openWidget, { size: cfgSize, name, poster, channels: cfg?.connect?.channels });
           currentSize = cfgSize;
           setDockHidden = dockApi.setHidden;
           document.body.appendChild(dockApi.dock);
@@ -1004,11 +1030,14 @@ function readScriptConfig(): {
           if (iframe) iframe.style[side] = x;
         }
         // Real launcher / mini-bubble photo from config (falls back to the video
-        // poster), unless the embed snippet hardcoded one.
+        // poster). Skip the poster when the embed snippet hardcoded one, but still
+        // apply the name and configured channels.
         const img = b.launcherImageUrl ?? b.introVideoPoster;
-        if (!poster) {
-          dockApi.applyConfig({ poster: img, name: b.assistantName ?? b.name });
-        }
+        dockApi.applyConfig({
+          poster: poster ? undefined : img,
+          name: b.assistantName ?? b.name,
+          channels: cfg?.connect?.channels,
+        });
       },
     )
     .catch(() => undefined);
