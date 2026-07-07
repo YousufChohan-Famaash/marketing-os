@@ -6,6 +6,10 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+const MONTHS_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -26,8 +30,9 @@ interface CalendarGridProps {
 
 /**
  * A modern month-grid calendar: month nav, a tappable Month-Year header that
- * opens a year jump, weekday row, and rounded day cells. Out-of-range days are
- * disabled; today gets a ring; the selected day is filled brand-purple.
+ * opens a jump picker (pick a year newest-first, then a month, and you land
+ * straight on that month), weekday row, and rounded day cells. Out-of-range
+ * days/months are disabled; today gets a ring; the selected day is brand-purple.
  */
 export function CalendarGrid({
   selectedISO,
@@ -39,10 +44,13 @@ export function CalendarGrid({
 }: CalendarGridProps) {
   const [selY, selM] = selectedISO.split('-').map(Number);
   const [view, setView] = useState({ y: selY, m: selM - 1 });
-  const [showYears, setShowYears] = useState(false);
+  // Jump picker: closed → choose a year → choose a month → back to the grid.
+  const [jump, setJump] = useState<'none' | 'year' | 'month'>('none');
 
-  const firstYear = years[0];
-  const lastYear = years[years.length - 1];
+  const firstYear = Math.min(...years);
+  const lastYear = Math.max(...years);
+  // Newest year first — nobody scrolls from 1905 to find their birth year.
+  const yearsDesc = [...years].sort((a, b) => b - a);
 
   const go = (delta: number) => {
     setView((v) => {
@@ -60,6 +68,13 @@ export function CalendarGrid({
     });
   };
 
+  // A month is selectable only if at least one of its days is within bounds.
+  const monthDisabled = (y: number, m: number) => {
+    const first = `${y}-${pad(m + 1)}-01`;
+    const last = `${y}-${pad(m + 1)}-${pad(daysIn(y, m))}`;
+    return last < minISO || first > maxISO;
+  };
+
   const dayCount = daysIn(view.y, view.m);
   const firstWeekday = new Date(view.y, view.m, 1).getDay();
   const cells: Array<number | null> = [];
@@ -68,25 +83,73 @@ export function CalendarGrid({
 
   return (
     <div className="px-3 py-2">
-      {showYears ? (
-        <div className="wheel-col max-h-[176px] overflow-y-auto">
-          <div className="grid grid-cols-4 gap-1.5">
-            {years.map((y) => (
-              <button
-                key={y}
-                type="button"
-                onClick={() => {
-                  setView((v) => ({ ...v, y }));
-                  setShowYears(false);
-                }}
-                className={cn(
-                  'flex h-9 items-center justify-center rounded-lg text-[13px] font-medium transition-colors',
-                  y === view.y ? 'bg-famaash text-white' : 'text-[#1A1A1A] hover:bg-subtle',
-                )}
-              >
-                {y}
-              </button>
-            ))}
+      {jump === 'year' ? (
+        <div>
+          <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
+            Choose a year
+          </div>
+          <div className="wheel-col max-h-[196px] overflow-y-auto">
+            <div className="grid grid-cols-4 gap-1.5">
+              {yearsDesc.map((y) => (
+                <button
+                  key={y}
+                  type="button"
+                  onClick={() => {
+                    setView((v) => ({ ...v, y }));
+                    setJump('month');
+                  }}
+                  className={cn(
+                    'flex h-9 items-center justify-center rounded-lg text-[13px] font-medium transition-colors',
+                    y === view.y ? 'bg-famaash text-white' : 'text-[#1A1A1A] hover:bg-subtle',
+                  )}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : jump === 'month' ? (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setJump('year')}
+              aria-label="Back to years"
+              className="flex items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-bold text-[#1A1A1A] transition-colors hover:bg-subtle"
+            >
+              <ChevronLeftIcon size={14} className="text-muted" />
+              {view.y}
+            </button>
+            <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
+              Choose a month
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {MONTHS_SHORT.map((label, m) => {
+              const disabled = monthDisabled(view.y, m);
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    setView((v) => ({ ...v, m }));
+                    setJump('none');
+                  }}
+                  className={cn(
+                    'flex h-10 items-center justify-center rounded-lg text-[13px] font-medium transition-colors',
+                    m === view.m
+                      ? 'bg-famaash text-white'
+                      : disabled
+                        ? 'cursor-not-allowed text-muted-soft/40'
+                        : 'text-[#1A1A1A] hover:bg-subtle',
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -102,8 +165,8 @@ export function CalendarGrid({
             </button>
             <button
               type="button"
-              onClick={() => setShowYears(true)}
-              aria-label="Choose year"
+              onClick={() => setJump('year')}
+              aria-label="Choose month and year"
               className="flex items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-bold text-[#1A1A1A] transition-colors hover:bg-subtle"
             >
               {MONTHS[view.m]} {view.y}
