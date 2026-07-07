@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AlertIcon, MessageSquareIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
+import { useWidgetStore } from '../store/widgetStore';
+import { useKnownContact } from '../store/useKnownContact';
 
 interface CallbackFormProps {
   heading: string;
@@ -47,9 +49,14 @@ export function CallbackForm({
   emailError,
   onSubmit,
 }: CallbackFormProps) {
-  const [name, setName] = useState(initialName ?? '');
-  const [phone, setPhone] = useState(initialPhone ?? '');
-  const [email, setEmail] = useState(initialEmail ?? '');
+  // Pre-fill from what we already know about the visitor (captured this session
+  // or remembered from before), so quick actions never ask for the number twice.
+  // An explicit initial* prop from the caller still wins.
+  const known = useKnownContact();
+  const rememberContact = useWidgetStore((s) => s.rememberContact);
+  const [name, setName] = useState(initialName ?? known.name ?? '');
+  const [phone, setPhone] = useState(initialPhone ?? known.phone ?? '');
+  const [email, setEmail] = useState(initialEmail ?? known.email ?? '');
   const [agreed, setAgreed] = useState(false);
   const phoneValid = phone.replace(/\D/g, '').length >= 7;
   const nameValid = !collectName || name.trim().length >= 2;
@@ -152,15 +159,15 @@ export function CallbackForm({
 
       <button
         type="button"
-        onClick={() =>
-          valid &&
-          !busy &&
-          onSubmit(
-            phone.trim(),
-            collectName ? name.trim() : undefined,
-            collectEmail ? email.trim() : undefined,
-          )
-        }
+        onClick={() => {
+          if (!valid || busy) return;
+          const p = phone.trim();
+          const n = collectName ? name.trim() : undefined;
+          const e = collectEmail ? email.trim() : undefined;
+          // Remember it so the next quick action is already filled in.
+          rememberContact({ phone: p, name: n, email: e });
+          onSubmit(p, n, e);
+        }}
         disabled={!valid || busy}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
       >

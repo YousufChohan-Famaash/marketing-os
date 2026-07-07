@@ -12,6 +12,10 @@ import {
   type FeatureFlagsSlice,
 } from './slices/featureFlagsSlice';
 import {
+  createLeadContactSlice,
+  type LeadContactSlice,
+} from './slices/leadContactSlice';
+import {
   createScopeSlice,
   type ScopeSlice,
 } from './slices/scopeSlice';
@@ -26,6 +30,7 @@ export type WidgetStore = ConversationSlice &
   ScopeSlice &
   StreamingSlice &
   FeatureFlagsSlice &
+  LeadContactSlice &
   UiSlice;
 
 export const useWidgetStore = create<WidgetStore>()((...a) => ({
@@ -34,6 +39,7 @@ export const useWidgetStore = create<WidgetStore>()((...a) => ({
   ...createScopeSlice(...a),
   ...createStreamingSlice(...a),
   ...createFeatureFlagsSlice(...a),
+  ...createLeadContactSlice(...a),
   ...createUiSlice(...a),
 }));
 

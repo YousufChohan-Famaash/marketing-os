@@ -68,6 +68,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const chatCaseTypes = useWidgetStore((s) => s.caseTypes);
   const branding = useWidgetStore((s) => s.branding);
   const firmId = useWidgetStore((s) => s.firmId);
+  const rememberContact = useWidgetStore((s) => s.rememberContact);
 
   const [phase, setPhase] = useState<'loading' | 'form' | 'unavailable'>('loading');
   const [config, setConfig] = useState<WebFormConfig | null>(null);
@@ -142,6 +143,8 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
       return;
     }
     setSubmitting(true);
+    // Remember for the next quick action (auto-fill call/help/text).
+    rememberContact({ phone: phone.trim(), name: name.trim(), email: email.trim() || undefined });
     try {
       await submitWebForm({
         firmId,

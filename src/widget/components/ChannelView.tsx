@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
+import { useKnownContact } from '../store/useKnownContact';
 import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
 import { resolveTcpa } from '../utils/compliance';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
@@ -25,32 +26,6 @@ const TITLES: Record<ChannelViewProps['channel'], string> = {
   email: 'Send your details',
 };
 
-type CapturedFieldMap = Record<string, { type: string; value: string | null }>;
-
-/** Pull a previously captured phone, if any, so channels never re-ask. */
-function capturedPhone(fields: CapturedFieldMap): string | undefined {
-  for (const f of Object.values(fields)) {
-    if (f.value && (f.type === 'phone' || /\+?\d[\d\s()-]{6,}/.test(f.value))) return f.value;
-  }
-  return undefined;
-}
-
-/** Pull a previously captured email, if any. */
-function capturedEmail(fields: CapturedFieldMap): string | undefined {
-  for (const f of Object.values(fields)) {
-    if (f.value && (f.type === 'email' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.value))) return f.value;
-  }
-  return undefined;
-}
-
-/** Pull a previously captured name, if any (matched by field id). */
-function capturedName(fields: CapturedFieldMap): string | undefined {
-  for (const [id, f] of Object.entries(fields)) {
-    if (f.value && /name/i.test(id)) return f.value;
-  }
-  return undefined;
-}
-
 /**
  * A single contact channel routed from the home menu. Reversible: the back
  * button returns to the menu without losing context (captured fields persist in
@@ -61,7 +36,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const compliance = useWidgetStore((s) => s.compliance);
   const branding = useWidgetStore((s) => s.branding);
   const conversationId = useWidgetStore((s) => s.conversationId);
-  const capturedFields = useWidgetStore((s) => s.capturedFields);
+  const known = useKnownContact();
   const setConnectView = useWidgetStore((s) => s.setConnectView);
 
   // TCPA gate before we capture a phone number for any channel. Uses the copy
@@ -80,7 +55,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     ? consentLabel
     : `I agree to receive texts from ${firmName} about my inquiry. Message and data rates may apply. Reply STOP to opt out. Consent isn't a condition of hiring the firm.`;
 
-  const knownPhone = capturedPhone(capturedFields);
+  const knownPhone = known.phone;
   const hasContext = Boolean(knownPhone) || useWidgetStore.getState().messages.length > 0;
 
   const [done, setDone] = useState<string | null>(null);
@@ -326,11 +301,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
               <ScheduleCallback
                 consentLabel={consentLabel}
                 consentVersion={consentVersion}
-                prefill={{
-                  name: capturedName(capturedFields),
-                  phone: knownPhone,
-                  email: capturedEmail(capturedFields),
-                }}
+                prefill={{ name: known.name, phone: known.phone, email: known.email }}
                 onFallback={() => setConnectView('call')}
               />
             )}
@@ -338,11 +309,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             {channel === 'email' && (
               <SendDetails
                 consentLabel={consentLabel}
-                prefill={{
-                  name: capturedName(capturedFields),
-                  phone: knownPhone,
-                  email: capturedEmail(capturedFields),
-                }}
+                prefill={{ name: known.name, phone: known.phone, email: known.email }}
               />
             )}
           </>

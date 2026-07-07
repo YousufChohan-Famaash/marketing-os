@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { CapturedField, Section } from '../../types/domain';
 import type { WidgetStore } from '../widgetStore';
+import { contactFromFields } from '../../services/leadContact';
 
 const INITIAL_SECTIONS: Section[] = [
   { id: 'identity', name: 'Identity', fields: [], isComplete: false },
@@ -36,13 +37,13 @@ export const createCaptureSlice: StateCreator<
   [],
   [],
   CaptureSlice
-> = (set) => ({
+> = (set, get) => ({
   sections: INITIAL_SECTIONS.map((s) => ({ ...s, fields: [] })),
   capturedFields: {},
   pendingEdits: {},
   failedEdits: {},
   progressTotal: DEFAULT_PROGRESS_TOTAL,
-  captureField: (field) =>
+  captureField: (field) => {
     set((state) => {
       const sections = state.sections.map((s) =>
         s.id === field.sectionId
@@ -58,13 +59,18 @@ export const createCaptureSlice: StateCreator<
         capturedFields: { ...state.capturedFields, [field.id]: field },
         sections,
       };
-    }),
+    });
+    // Remember a captured phone/name/email so quick actions auto-fill it, even
+    // after a reload.
+    const contact = contactFromFields({ [field.id]: field });
+    if (contact.phone || contact.name || contact.email) get().rememberContact(contact);
+  },
   editField: (id, newValue) =>
     set((state) => ({
       pendingEdits: { ...state.pendingEdits, [id]: newValue },
       failedEdits: omit(state.failedEdits, id),
     })),
-  confirmEdit: (id, finalValue) =>
+  confirmEdit: (id, finalValue) => {
     set((state) => {
       const existing = state.capturedFields[id];
       const updated: Record<string, CapturedField> = existing
@@ -85,7 +91,15 @@ export const createCaptureSlice: StateCreator<
         pendingEdits: omit(state.pendingEdits, id),
         failedEdits: omit(state.failedEdits, id),
       };
-    }),
+    });
+    // A lead correcting their own value (e.g. fixing a phone) should update what
+    // we remember for auto-fill.
+    const field = get().capturedFields[id];
+    if (field) {
+      const contact = contactFromFields({ [id]: field });
+      if (contact.phone || contact.name || contact.email) get().rememberContact(contact);
+    }
+  },
   failEdit: (id) =>
     set((state) => {
       const pending = state.pendingEdits[id];
