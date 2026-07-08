@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ConsentModal } from './components/ConsentModal';
 import { ModalHost } from './components/ModalHost';
@@ -68,8 +68,45 @@ export function App() {
   const readyRafRef = useRef(0);
   const paintPingRaf = useRef(0);
   const [bridgeReady, setBridgeReady] = useState(false);
+  // Deferred LiveKit connection (Option B): the socket is created on the
+  // case-type pick, not on open. These refs carry its lifecycle so the pick
+  // effect can trigger it and the boot cleanup can tear it down.
+  const socketRef = useRef<ConversationSocket | null>(null);
+  const unwireRef = useRef<(() => void) | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  const connectingRef = useRef(false);
+  const disposedRef = useRef(false);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
+
+  // Connect the LiveKit session on demand: the first case-type pick (or a
+  // Free Consultation hand-off, which already knows the case type). Idempotent —
+  // guarded so a fast double-tap or a re-render can't open two rooms. The pick
+  // itself is sent by the flush effect once `socket` is set (RealSocket queues
+  // it until the agent's `ready` event).
+  const connectSocket = useCallback(() => {
+    if (socketRef.current || connectingRef.current) return;
+    const cid = conversationIdRef.current;
+    if (!cid) return;
+    connectingRef.current = true;
+    void (async () => {
+      try {
+        const s = await createSocket();
+        if (disposedRef.current) { s.disconnect(); return; }
+        socketRef.current = s;
+        unwireRef.current = wireSocketToStore(s);
+        setSocket(s); // expose before connect so a buffered pick can queue
+        await s.connect(firmId, cid);
+        if (disposedRef.current) return;
+        bridgeRef.current?.notifyEvent({ type: 'widget_opened', data: { firmId, conversationId: cid } });
+      } catch (err) {
+        if (disposedRef.current) return;
+        setBootStatus('error', err instanceof Error ? err.message : 'Connection failed');
+      } finally {
+        connectingRef.current = false;
+      }
+    })();
+  }, [firmId, setBootStatus]);
 
   // Honor a ?view= deep-link (teaser channel tap, first iframe load) once.
   useEffect(() => {
@@ -133,55 +170,31 @@ export function App() {
     }
   }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
 
-  // Boot runs two independent tracks IN PARALLEL so the agent connection isn't
-  // gated behind /config:
-  //   • Connection track: import LiveKit → POST /token → room.connect
-  //   • Config track:      GET /config → (resume history) → PAINT the opener
-  // The conversation_id is generated synchronously, so /token needs nothing
-  // from /config. By the time the user reads the chips and picks, the room is
-  // usually already connected and the pick flushes instantly.
+  // Boot fetches ONLY /config — that alone paints the opener + case-type chips
+  // (they're /config data, not agent data; the agent never renders them). The
+  // LiveKit connection is deferred to the case-type pick (Option B in
+  // chat-widget-fast-open-frontend-guide.md): it isn't needed to show the chips,
+  // and deferring it avoids creating a Lead/Call on every open/bounce. A Free
+  // Consultation hand-off already knows the case type, so it connects right away.
   useEffect(() => {
-    let disposed = false;
-    let localSocket: ConversationSocket | null = null;
-    let unwire: (() => void) | null = null;
+    disposedRef.current = false;
     const abort = new AbortController();
     const DEV = import.meta.env.DEV;
     const t0 = DEV ? performance.now() : 0;
 
     setBootStatus('loading');
     const { id: conversationId, returning } = getOrCreateConversationId(firmId);
+    conversationIdRef.current = conversationId;
     setConversationId(conversationId);
+    // Consultation hand-off: the case type is already chosen, so connect now —
+    // the agent streams its acknowledgment opener after `ready` (no pick event).
+    if (getConsultationContext()) connectSocket();
 
-    // ── Connection track (parallel) ──────────────────────────────────────
-    void (async () => {
-      try {
-        const s = await createSocket();
-        if (disposed) {
-          s.disconnect();
-          return;
-        }
-        localSocket = s;
-        unwire = wireSocketToStore(s);
-        setSocket(s); // expose before connect so a buffered pick can queue
-        await s.connect(firmId, conversationId);
-        if (disposed) return;
-        if (DEV) {
-          // eslint-disable-next-line no-console
-          console.log('[famaash-widget] connected in', Math.round(performance.now() - t0), 'ms');
-        }
-        notifyHostEvent({ type: 'widget_opened', data: { firmId, conversationId } });
-      } catch (err) {
-        if (disposed) return;
-        const message = err instanceof Error ? err.message : 'Connection failed';
-        setBootStatus('error', message);
-      }
-    })();
-
-    // ── Config track (parallel) — gates the opener ───────────────────────
+    // ── Config track — paints the opener ─────────────────────────────────
     void (async () => {
       try {
         const config = await loadBootConfig(firmId, abort.signal);
-        if (disposed) return;
+        if (disposedRef.current) return;
         setBootConfig(config);
         // Theme precedence: an explicit admin 'custom' palette overrides the
         // host-site colors already applied at boot. 'inherit' (default) keeps them.
@@ -195,7 +208,7 @@ export function App() {
         applyFont(config.branding?.fontFamily);
         if (returning) {
           await rehydrateFromHistory(conversationId, abort.signal);
-          if (disposed) return;
+          if (disposedRef.current) return;
         }
         // Don't override a connection failure that already set 'error'.
         if (useWidgetStore.getState().bootStatus !== 'error') {
@@ -222,7 +235,7 @@ export function App() {
         // Bridge is live — let the sizing effect drive expand vs. compact.
         setBridgeReady(true);
       } catch (err) {
-        if (disposed) return;
+        if (disposedRef.current) return;
         // Fail closed: firm lacks the chat_widget module → don't render at all.
         if (err instanceof ApiError && err.status === 403) {
           setBootStatus('disabled');
@@ -234,26 +247,34 @@ export function App() {
     })();
 
     return () => {
-      disposed = true;
+      disposedRef.current = true;
       abort.abort();
-      unwire?.();
-      localSocket?.disconnect();
+      unwireRef.current?.();
+      unwireRef.current = null;
+      socketRef.current?.disconnect();
+      socketRef.current = null;
       bridgeRef.current?.destroy();
       bridgeRef.current = null;
     };
-  }, [firmId, setBootConfig, setBootStatus, setConversationId, openWidget, closeWidget]);
+  }, [firmId, setBootConfig, setBootStatus, setConversationId, openWidget, closeWidget, connectSocket]);
 
-  // Flush the buffered opener pick once a socket exists (RealSocket itself
-  // queues it until the agent's `ready` event arrives).
+  // Case-type pick (Option B): the first pick is what triggers the LiveKit
+  // connection. If the socket isn't up yet, kick it off and show the "thinking"
+  // state; this effect re-runs once `socket` is set and sends the buffered pick
+  // (RealSocket queues it until the agent's `ready` event). On a later pick /
+  // consultation the socket already exists and it flushes immediately.
   useEffect(() => {
-    if (socket && pendingCaseType) {
+    if (!pendingCaseType) return;
+    // The agent opens with its first question after the pick — show typing dots
+    // while the connection + `ready` handshake catch up.
+    useWidgetStore.getState().beginTyping();
+    if (socket) {
       socket.send(pendingCaseType);
-      // The agent opens with its first question after the case-type pick —
-      // show the typing dots while it (and the `ready` handshake) catch up.
-      useWidgetStore.getState().beginTyping();
       setPendingCaseType(null);
+    } else {
+      connectSocket();
     }
-  }, [socket, pendingCaseType, setPendingCaseType]);
+  }, [socket, pendingCaseType, setPendingCaseType, connectSocket]);
 
   // Open the widget locally when it boots — in production the host's launcher
   // would call `iframe.open()` over Penpal, but for local dev we self-open.
