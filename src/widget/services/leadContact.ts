@@ -19,8 +19,19 @@ export interface LeadContact {
 const STORAGE_PREFIX = 'famaash_contact_';
 const storageKey = (firmId: string) => `${STORAGE_PREFIX}${firmId}`;
 
-const PHONE_RE = /\+?\d[\d\s()-]{6,}/;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// A date like "2026-05-14" is all digits + hyphens, so it slips past a naive
+// phone check — exclude ISO dates explicitly.
+const ISO_DATE_RE = /^\d{4}-\d{1,2}-\d{1,2}$/;
+const PHONE_CHARS_RE = /^[+(]?[\d\s().-]{6,}$/;
+
+/** A value that's actually phone-shaped: 7-15 digits, phone-only chars, no date. */
+function looksLikePhone(v: string): boolean {
+  const s = v.trim();
+  if (!s || ISO_DATE_RE.test(s) || !PHONE_CHARS_RE.test(s)) return false;
+  const digits = s.replace(/\D/g, '').length;
+  return digits >= 7 && digits <= 15;
+}
 
 function trimmed(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
@@ -32,7 +43,9 @@ export function cleanContact(c: LeadContact): LeadContact {
   const phone = trimmed(c.phone);
   const name = trimmed(c.name);
   const email = trimmed(c.email);
-  if (phone) out.phone = phone;
+  // Guard the phone so a date or garbage never gets remembered/restored as one
+  // (also scrubs stale bad values written by an earlier build).
+  if (phone && looksLikePhone(phone)) out.phone = phone;
   if (name) out.name = name;
   if (email) out.email = email;
   return out;
@@ -75,10 +88,20 @@ export function contactFromFields(
   for (const [id, f] of Object.entries(fields)) {
     const value = trimmed(f.value);
     if (!value) continue;
+    const type = (f.type ?? '').toLowerCase();
+    // Only sniff free-text fields by shape. Typed fields (date, number, select,
+    // currency, file_ref) are never contact details, so a captured accident date
+    // can't masquerade as a phone.
+    const generic = type === '' || type === 'text';
     const label = `${id} ${f.name ?? ''}`;
-    if (!out.phone && (f.type === 'phone' || PHONE_RE.test(value))) out.phone = value;
-    else if (!out.email && (f.type === 'email' || EMAIL_RE.test(value))) out.email = value;
-    else if (!out.name && (f.type === 'name' || /name/i.test(label))) out.name = value;
+
+    if (!out.phone && (type === 'phone' || (generic && looksLikePhone(value)))) {
+      out.phone = value;
+    } else if (!out.email && (type === 'email' || (generic && EMAIL_RE.test(value)))) {
+      out.email = value;
+    } else if (!out.name && generic && /name/i.test(label) && !looksLikePhone(value) && !EMAIL_RE.test(value)) {
+      out.name = value;
+    }
   }
   return out;
 }
