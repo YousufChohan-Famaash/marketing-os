@@ -935,7 +935,15 @@ function readScriptConfig(): {
     const firstOpen = !iframeReady;
     // Only the first open pays the cold-boot cost; show the skeleton for it,
     // shaped to the channel being opened (chat vs. a form/menu).
-    if (firstOpen) showLoading(view);
+    if (firstOpen) {
+      showLoading(view);
+      // Arm the reveal NOW, not after the bridge handshake. The widget pings
+      // `famaash:painted` the instant its shell mounts (well before /config and
+      // the Penpal bridge exist); arming here lets that ping reveal the panel
+      // immediately instead of waiting out the whole boot. notifyReady + the
+      // fallback timer still cover the case where the ping is missed.
+      armReveal();
+    }
     ensureIframe(view, ctx)
       .then((remote) => {
         // On re-open the iframe is cached, so route via the bridge instead of src.
@@ -943,11 +951,9 @@ function readScriptConfig(): {
           remote.setView(view).catch(() => undefined);
         }
         void remote.open();
-        // First open: keep the spinner until the widget signals it has painted
-        // (notifyReady), so the panel never reveals a blank frame. A cached
-        // iframe already has content, so reveal it immediately.
-        if (firstOpen) armReveal();
-        else revealPanel();
+        // A cached iframe already has content, so reveal it immediately. (First
+        // open was already armed above and reveals on the paint ping.)
+        if (!firstOpen) revealPanel();
       })
       .catch(() => {
         revealArmed = false;
