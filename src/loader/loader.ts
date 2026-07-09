@@ -734,6 +734,9 @@ function readScriptConfig(): {
   injectStyles();
 
   let iframe: HTMLIFrameElement | null = null;
+  // Whether the current iframe was booted with a consultation `ctx` in its src.
+  // Prewarm creates a context-less iframe; a later ctx open must rebuild it.
+  let iframeHadCtx = false;
   let setDockHidden: (hidden: boolean) => void = () => undefined;
   let launcherPos: 'bottom-left' | 'bottom-center' | 'bottom-right' | undefined;
   const positionEl = (el: HTMLElement) => {
@@ -908,6 +911,7 @@ function readScriptConfig(): {
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;
+    iframeHadCtx = ctx != null;
 
     connection = connectToChild<IframeMethods>({
       iframe: el,
@@ -932,28 +936,35 @@ function readScriptConfig(): {
   function openWidget(view?: string, ctx?: unknown): void {
     // The panel opens where the teaser sits, so hide the dock while open.
     setDockHidden(true);
-    const firstOpen = !iframeReady;
-    // Only the first open pays the cold-boot cost; show the skeleton for it,
-    // shaped to the channel being opened (chat vs. a form/menu).
-    if (firstOpen) {
-      showLoading(view);
-      // Arm the reveal NOW, not after the bridge handshake. The widget pings
-      // `famaash:painted` the instant its shell mounts (well before /config and
-      // the Penpal bridge exist); arming here lets that ping reveal the panel
-      // immediately instead of waiting out the whole boot. notifyReady + the
-      // fallback timer still cover the case where the ping is missed.
-      armReveal();
+    // A consultation hand-off carries `ctx` (wizard answers) the widget reads
+    // from its src at boot. If we prewarmed a context-less iframe, rebuild it
+    // with the ctx so the hand-off still seeds the conversation.
+    if (ctx != null && iframe && !iframeHadCtx) {
+      connection?.destroy();
+      iframe.remove();
+      iframe = null;
+      iframeReady = null;
+      iframeRemote = null;
+      widgetPainted = false;
     }
+    const firstOpen = !iframeReady;
+    // Show the skeleton unless the (prewarmed) widget has already painted — that
+    // way an open mid-prewarm still shows the branded skeleton, never a blank gap.
+    if (firstOpen || !widgetPainted) showLoading(view);
+    // Arm the reveal. armReveal reveals immediately when the widget has already
+    // painted — which is the norm now that we prewarm the iframe in the
+    // background on page load, so a click opens instantly. On a cold open the
+    // paint ping / notifyReady reveals the moment the shell mounts, with the
+    // fallback timer as a backstop.
+    armReveal();
     ensureIframe(view, ctx)
       .then((remote) => {
-        // On re-open the iframe is cached, so route via the bridge instead of src.
-        if (view && view !== 'home' && !firstOpen) {
+        // The iframe may have been prewarmed on 'home'; route it to the tapped
+        // view over the bridge (the src-based view only applies to a cold open).
+        if (view && view !== 'home') {
           remote.setView(view).catch(() => undefined);
         }
         void remote.open();
-        // A cached iframe already has content, so reveal it immediately. (First
-        // open was already armed above and reveals on the paint ping.)
-        if (!firstOpen) revealPanel();
       })
       .catch(() => {
         revealArmed = false;
@@ -977,6 +988,21 @@ function readScriptConfig(): {
   let currentSize = size;
   setDockHidden = dockApi.setHidden;
   document.body.appendChild(dockApi.dock);
+
+  // Prewarm the panel in the background once the page is idle: create the hidden
+  // iframe so the widget bundle downloads, mounts, and fetches /config before the
+  // user clicks. Then opening is instant — the reveal shows already-rendered
+  // content instead of a 5-7s skeleton. Safe to do eagerly now that the LiveKit
+  // connection is deferred to the case-type pick (prewarming creates no room or
+  // lead — it's just the bundle + config). ensureIframe is idempotent, so if the
+  // user opens first, this is a no-op.
+  const prewarm = () => { if (!iframeReady) void ensureIframe().catch(() => undefined); };
+  const win = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void };
+  if (typeof win.requestIdleCallback === 'function') {
+    win.requestIdleCallback(prewarm, { timeout: 3000 });
+  } else {
+    setTimeout(prewarm, 1200);
+  }
 
   // Hydrate the launcher from /config (non-blocking): the teaser renders
   // instantly with the embed defaults, then upgrades its thumbnail, attorney
