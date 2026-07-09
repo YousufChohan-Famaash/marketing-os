@@ -36,6 +36,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const compliance = useWidgetStore((s) => s.compliance);
   const branding = useWidgetStore((s) => s.branding);
   const conversationId = useWidgetStore((s) => s.conversationId);
+  const firmId = useWidgetStore((s) => s.firmId);
   const known = useKnownContact();
   const setConnectView = useWidgetStore((s) => s.setConnectView);
 
@@ -122,7 +123,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     }
     setPlacing(true);
     try {
-      await placeCallNow({ conversationId, phone, name, consentText: consentLabel, copyVersion: consentVersion });
+      await placeCallNow({ conversationId, firmId: firmId ?? undefined, phone, name, consentText: consentLabel, copyVersion: consentVersion });
       setConnectCallStatus(null); // clear any prior status before this call
       setCallTarget({ phone, name });
       setCallPhase('calling');
@@ -153,13 +154,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     try {
       let out;
       try {
-        out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
+        out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
       } catch (err) {
         // WhatsApp unreachable for this firm → fall back to SMS automatically.
         if (err instanceof ApiError && err.status === 503 && channel === 'whatsapp') {
           channel = 'sms';
           setTextMethod('sms');
-          out = await connectText({ conversationId, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
+          out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
         } else {
           throw err;
         }

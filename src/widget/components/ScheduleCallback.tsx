@@ -147,6 +147,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     try {
       const res = await scheduleCallback({
         conversationId,
+        firmId: firmId ?? undefined,
         name,
         phone,
         email: email ?? '',

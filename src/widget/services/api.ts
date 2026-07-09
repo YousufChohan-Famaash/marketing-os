@@ -184,6 +184,10 @@ export interface CallNowResponse {
 
 export function placeCallNow(args: {
   conversationId: string;
+  /** Lets the backend create-or-resume the conversation when the visitor reached
+   *  this straight from the launcher (Option B defers the socket that would
+   *  otherwise register it), instead of 404ing on an unknown conversation. */
+  firmId?: string;
   phone: string;
   name?: string;
   consentText?: string;
@@ -193,6 +197,7 @@ export function placeCallNow(args: {
     method: 'POST',
     body: JSON.stringify({
       conversationId: args.conversationId,
+      firmId: args.firmId,
       phone: args.phone,
       name: args.name,
       consent: {
@@ -218,6 +223,10 @@ export interface TextConnectResponse {
 
 export function connectText(args: {
   conversationId: string;
+  /** Lets the backend create-or-resume the conversation when the visitor reached
+   *  this straight from the launcher (Option B defers the socket that would
+   *  otherwise register it), instead of 404ing on an unknown conversation. */
+  firmId?: string;
   phone: string;
   channel: 'whatsapp' | 'sms';
   name?: string;
@@ -229,6 +238,7 @@ export function connectText(args: {
     method: 'POST',
     body: JSON.stringify({
       conversationId: args.conversationId,
+      firmId: args.firmId,
       phone: args.phone,
       channel: args.channel,
       name: args.name,
@@ -338,6 +348,10 @@ export interface ScheduleCallbackResponse {
 
 export function scheduleCallback(args: {
   conversationId: string;
+  /** Lets the backend create-or-resume the conversation when the visitor reached
+   *  this straight from the launcher (Option B defers the socket that would
+   *  otherwise register it), instead of 404ing on an unknown conversation. */
+  firmId?: string;
   name?: string;
   phone: string;
   email: string;
@@ -350,6 +364,7 @@ export function scheduleCallback(args: {
     method: 'POST',
     body: JSON.stringify({
       conversationId: args.conversationId,
+      firmId: args.firmId,
       name: args.name,
       phone: args.phone,
       email: args.email,
