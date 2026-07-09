@@ -989,20 +989,28 @@ function readScriptConfig(): {
   setDockHidden = dockApi.setHidden;
   document.body.appendChild(dockApi.dock);
 
-  // Prewarm the panel in the background once the page is idle: create the hidden
-  // iframe so the widget bundle downloads, mounts, and fetches /config before the
-  // user clicks. Then opening is instant — the reveal shows already-rendered
-  // content instead of a 5-7s skeleton. Safe to do eagerly now that the LiveKit
-  // connection is deferred to the case-type pick (prewarming creates no room or
-  // lead — it's just the bundle + config). ensureIframe is idempotent, so if the
-  // user opens first, this is a no-op.
-  const prewarm = () => { if (!iframeReady) void ensureIframe().catch(() => undefined); };
+  // Prewarm the panel in the background so opening is instant: create the hidden
+  // iframe early so the widget bundle downloads, mounts, and fetches /config
+  // before the user clicks — then the reveal shows already-rendered content, not
+  // a 5-7s skeleton. Fire on the FIRST sign of activity (a mouse move / touch /
+  // scroll usually happens seconds before the click) or a short idle fallback,
+  // whichever comes first — NOT full idle, which a heavy host page (e.g. a big
+  // hero video hogging bandwidth) can push out several seconds. Safe to do
+  // eagerly now that the LiveKit connection is deferred to the case-type pick:
+  // prewarming creates no room or lead, just the bundle + config. ensureIframe is
+  // idempotent, so opening first is a no-op.
+  let prewarmed = false;
+  const prewarmEvents = ['pointerdown', 'pointermove', 'touchstart', 'keydown', 'scroll'] as const;
+  const prewarm = () => {
+    if (prewarmed) return;
+    prewarmed = true;
+    prewarmEvents.forEach((ev) => window.removeEventListener(ev, prewarm, true));
+    if (!iframeReady) void ensureIframe().catch(() => undefined);
+  };
+  prewarmEvents.forEach((ev) => window.addEventListener(ev, prewarm, { once: true, passive: true, capture: true }));
   const win = window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void };
-  if (typeof win.requestIdleCallback === 'function') {
-    win.requestIdleCallback(prewarm, { timeout: 3000 });
-  } else {
-    setTimeout(prewarm, 1200);
-  }
+  if (typeof win.requestIdleCallback === 'function') win.requestIdleCallback(prewarm, { timeout: 800 });
+  else setTimeout(prewarm, 600);
 
   // Hydrate the launcher from /config (non-blocking): the teaser renders
   // instantly with the embed defaults, then upgrades its thumbnail, attorney
