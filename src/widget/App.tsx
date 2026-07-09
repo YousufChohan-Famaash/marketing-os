@@ -65,8 +65,6 @@ export function App() {
   const conversationStarted = useWidgetStore((s) => s.conversationStarted);
   const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
-  const readyRafRef = useRef(0);
-  const paintPingRaf = useRef(0);
   const [bridgeReady, setBridgeReady] = useState(false);
   // Deferred LiveKit connection (Option B): the socket is created on the
   // case-type pick, not on open. These refs carry its lifecycle so the pick
@@ -286,41 +284,28 @@ export function App() {
     return undefined;
   }, [isWidgetOpen, openWidget]);
 
-  // Fast reveal: ping the loader the moment our shell first paints (the
-  // ConnectingState), independent of /config and the Penpal bridge. The loader
-  // reveals the panel on this, so the visitor sees our connecting UI right away
-  // instead of the loader skeleton sitting until the bridge handshake (which is
-  // gated on /config). One-way, non-sensitive, source-validated on the loader.
+  // Tell the loader we're mounted so it can reveal the panel on the next open.
+  // CRITICAL: do NOT gate this on requestAnimationFrame. The panel is prewarmed
+  // while display:none, and browsers freeze rAF for a hidden iframe — so an
+  // rAF-gated signal never fires until the panel is already revealed, which
+  // defeats prewarm entirely (the loader falls back to its ~6s reveal timer on
+  // every open). postMessage runs fine while hidden. React has committed the DOM
+  // by the time this effect runs, so the frame paints content (not blank) the
+  // instant the loader un-hides it.
   useEffect(() => {
-    if (typeof window === 'undefined' || window.parent === window) return undefined;
-    const r1 = requestAnimationFrame(() => {
-      paintPingRaf.current = requestAnimationFrame(() => {
-        try {
-          window.parent.postMessage({ type: 'famaash:painted' }, '*');
-        } catch {
-          /* parent unreachable — the bridge notifyReady + fallback still cover it */
-        }
-      });
-    });
-    return () => {
-      cancelAnimationFrame(r1);
-      cancelAnimationFrame(paintPingRaf.current);
-    };
+    if (typeof window === 'undefined' || window.parent === window) return;
+    try {
+      window.parent.postMessage({ type: 'famaash:painted' }, '*');
+    } catch {
+      /* parent unreachable — the bridge notifyReady + fallback still cover it */
+    }
   }, []);
 
-  // Tell the host the shell has painted, so the loader reveals the panel only
-  // once there's real content in it (never a blank frame). `bridgeReady` flips
-  // right after bootStatus becomes 'ready'; the double rAF waits for paint.
-  // (Redundant with the paint ping above once that's live, but harmless and a
-  // safety net if an older loader without the ping listener is cached.)
+  // Backup reveal signal over the bridge once it's connected (also not rAF-gated,
+  // for the same hidden-iframe reason). Redundant with the paint ping above.
   useEffect(() => {
-    if (!bridgeReady) return undefined;
-    const r1 = requestAnimationFrame(() => {
-      const r2 = requestAnimationFrame(() => bridgeRef.current?.notifyReady());
-      readyRafRef.current = r2;
-    });
-    readyRafRef.current = r1;
-    return () => cancelAnimationFrame(readyRafRef.current);
+    if (!bridgeReady) return;
+    bridgeRef.current?.notifyReady();
   }, [bridgeReady]);
 
   const notifyHostEvent = (event: AnalyticsEvent) => {
