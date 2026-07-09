@@ -3,11 +3,9 @@
  * contact actions — "Call me now", "I need help now", "Text me", "Schedule a
  * callback" — auto-fill instead of asking for the number again.
  *
- * Within a session the details come straight from what the chat has captured
- * (contactFromFields). Across a reload they're cached in sessionStorage, keyed
- * per firm so one firm's visitors never leak into another's on a shared widget
- * origin. sessionStorage (not localStorage) mirrors the conversation-id policy
- * and keeps a phone number off the device once the tab closes.
+ * IN-MEMORY ONLY, for the current chat: the details come from what the chat has
+ * captured (contactFromFields) plus what the visitor typed this session, and
+ * live in the store. Nothing is persisted, so a page refresh forgets the number.
  */
 
 export interface LeadContact {
@@ -15,9 +13,6 @@ export interface LeadContact {
   name?: string;
   email?: string;
 }
-
-const STORAGE_PREFIX = 'famaash_contact_';
-const storageKey = (firmId: string) => `${STORAGE_PREFIX}${firmId}`;
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // A date like "2026-05-14" is all digits + hyphens, so it slips past a naive
@@ -37,43 +32,17 @@ function trimmed(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim() : undefined;
 }
 
-/** Drop empties + trim so we never persist or merge blank values. */
+/** Drop empties + trim so we never merge blank values. */
 export function cleanContact(c: LeadContact): LeadContact {
   const out: LeadContact = {};
   const phone = trimmed(c.phone);
   const name = trimmed(c.name);
   const email = trimmed(c.email);
-  // Guard the phone so a date or garbage never gets remembered/restored as one
-  // (also scrubs stale bad values written by an earlier build).
+  // Guard the phone so a date or garbage never gets remembered as one.
   if (phone && looksLikePhone(phone)) out.phone = phone;
   if (name) out.name = name;
   if (email) out.email = email;
   return out;
-}
-
-/** Read the remembered contact for a firm. Best-effort; storage may be blocked. */
-export function loadLeadContact(firmId: string | null | undefined): LeadContact {
-  if (!firmId || typeof sessionStorage === 'undefined') return {};
-  try {
-    const raw = sessionStorage.getItem(storageKey(firmId));
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return cleanContact({ phone: trimmed(parsed.phone), name: trimmed(parsed.name), email: trimmed(parsed.email) });
-  } catch {
-    return {};
-  }
-}
-
-/** Persist the (already-merged) contact for a firm. No-op when empty or blocked. */
-export function persistLeadContact(firmId: string | null | undefined, contact: LeadContact): void {
-  if (!firmId || typeof sessionStorage === 'undefined') return;
-  const clean = cleanContact(contact);
-  if (!clean.phone && !clean.name && !clean.email) return;
-  try {
-    sessionStorage.setItem(storageKey(firmId), JSON.stringify(clean));
-  } catch {
-    /* storage blocked (strict iframe / private mode) — auto-fill just won't survive reloads */
-  }
 }
 
 /**

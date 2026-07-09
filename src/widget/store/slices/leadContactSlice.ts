@@ -1,14 +1,13 @@
 import type { StateCreator } from 'zustand';
 import type { WidgetStore } from '../widgetStore';
-import { cleanContact, loadLeadContact, persistLeadContact, type LeadContact } from '../../services/leadContact';
+import { cleanContact, type LeadContact } from '../../services/leadContact';
 
 export interface LeadContactSlice {
-  /** Contact details the visitor has shared, remembered so quick actions auto-fill. */
+  /** Contact details the visitor shared THIS chat, so quick actions auto-fill.
+   *  In-memory only — a page refresh clears it (nothing is persisted). */
   leadContact: LeadContact;
-  /** Merge in newly-known details (non-empty wins) and persist them for this firm. */
+  /** Merge in newly-known details (non-empty wins) for the current session. */
   rememberContact: (patch: LeadContact) => void;
-  /** Seed from storage once the firm id is known (boot). Keeps anything already set. */
-  hydrateLeadContact: (firmId: string) => void;
 }
 
 export const createLeadContactSlice: StateCreator<
@@ -16,14 +15,8 @@ export const createLeadContactSlice: StateCreator<
   [],
   [],
   LeadContactSlice
-> = (set, get) => ({
+> = (set) => ({
   leadContact: {},
   rememberContact: (patch) =>
-    set((state) => {
-      const next = { ...state.leadContact, ...cleanContact(patch) };
-      persistLeadContact(get().firmId, next);
-      return { leadContact: next };
-    }),
-  hydrateLeadContact: (firmId) =>
-    set((state) => ({ leadContact: { ...loadLeadContact(firmId), ...state.leadContact } })),
+    set((state) => ({ leadContact: { ...state.leadContact, ...cleanContact(patch) } })),
 });

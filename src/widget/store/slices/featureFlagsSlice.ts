@@ -40,7 +40,7 @@ export const createFeatureFlagsSlice: StateCreator<
   [],
   [],
   FeatureFlagsSlice
-> = (set, get) => ({
+> = (set) => ({
   firmId: null,
   firmName: null,
   plan: null,
@@ -54,7 +54,7 @@ export const createFeatureFlagsSlice: StateCreator<
   connect: resolveConnectSettings(null),
   language: 'en',
   setLanguage: (language) => set({ language }),
-  setBootConfig: (config) => {
+  setBootConfig: (config) =>
     set({
       firmId: config.firmId,
       firmName: config.firmName,
@@ -67,8 +67,5 @@ export const createFeatureFlagsSlice: StateCreator<
       dropboxSignTestMode: config.dropboxSignTestMode ?? false,
       allowedOrigins: config.allowedOrigins ?? [],
       connect: resolveConnectSettings(config),
-    });
-    // Seed remembered contact details for this firm so quick actions auto-fill.
-    get().hydrateLeadContact(config.firmId);
-  },
+    }),
 });
