@@ -65,6 +65,17 @@ export function CallbackForm({
   const brand = variant === 'brand';
   const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
+  // When the visitor already gave us a number, don't ask for it again — confirm
+  // the one on file and let them edit it (CEO feedback). Applies to every flow
+  // that shares this form: Call / Talk to a human, Text me, I need help now.
+  const prefilledPhone = (initialPhone ?? known.phone ?? '').trim();
+  const hasKnownPhone = prefilledPhone.replace(/\D/g, '').length >= 7;
+  const verbWord = brand ? 'text' : 'call';
+  const shownHeading = hasKnownPhone ? 'Is this the best number to reach you?' : heading;
+  const shownBody = hasKnownPhone
+    ? `You gave us ${prefilledPhone}. Confirm and we'll ${verbWord} you at this number, or edit it below to use a different one.`
+    : body;
+
   return (
     <div className="space-y-4">
       <span
@@ -77,8 +88,8 @@ export function CallbackForm({
       </span>
 
       <div>
-        <h3 className="text-[16px] font-bold text-ink">{heading}</h3>
-        <p className="mt-1 text-[13px] leading-relaxed text-muted">{body}</p>
+        <h3 className="text-[16px] font-bold text-ink">{shownHeading}</h3>
+        <p className="mt-1 text-[13px] leading-relaxed text-muted">{shownBody}</p>
       </div>
 
       {collectName && (

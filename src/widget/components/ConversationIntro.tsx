@@ -29,7 +29,8 @@ export function ConversationIntro({ controls }: { controls?: IntroControls }) {
   const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
   const posterUrl = resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
 
-  // Muted autoplay + loop (matches the opener); the play button unmutes/replays.
+  // Muted autoplay that plays through once (no loop, per CEO feedback); the
+  // play button unmutes and replays it from the start.
   useEffect(() => {
     if (!videoUrl) return;
     const v = videoRef.current;
@@ -50,7 +51,9 @@ export function ConversationIntro({ controls }: { controls?: IntroControls }) {
   };
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
+    // -mt-3 cancels the MessageList's top padding (py-3) so the video sits flush
+    // against the panel's top edge, no white gap above it (per CEO feedback).
+    <div className="-mt-3 flex flex-col gap-4 pb-2">
       {/* Full-bleed, full-size video (escapes the list's px-4) — same as the opener. */}
       <div className="relative -mx-4 aspect-[565/728] max-h-[370px] overflow-hidden bg-obsidian">
         <video
@@ -59,7 +62,6 @@ export function ConversationIntro({ controls }: { controls?: IntroControls }) {
           poster={posterUrl}
           controls={played}
           playsInline
-          loop
           preload="metadata"
           className="block h-full w-full object-cover"
           aria-label="Introduction video"
