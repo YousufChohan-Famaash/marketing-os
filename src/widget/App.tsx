@@ -6,8 +6,6 @@ import { SigningSheet } from './components/SigningSheet';
 import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
 import { applyFont, applyTheme } from './config/theme';
-import { shouldShowCinematic } from './config/connect';
-import { resolveCinematicVideo } from './config/demoMedia';
 import { getConsultationContext } from './config/env';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
@@ -60,10 +58,8 @@ export function App() {
   // Lives in the store so message rendering can nudge font size when expanded.
   const isExpanded = useWidgetStore((s) => s.isExpanded);
   const setExpanded = useWidgetStore((s) => s.setExpanded);
-  const connectSize = useWidgetStore((s) => s.connect.size);
   const connectView = useWidgetStore((s) => s.connectView);
   const conversationStarted = useWidgetStore((s) => s.conversationStarted);
-  const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
   const [bridgeReady, setBridgeReady] = useState(false);
   // Deferred LiveKit connection (Option B): the socket is created on the
@@ -123,50 +119,20 @@ export function App() {
     }
   }, []);
 
-  // Drive the iframe size: Small-mode home is compact and expands to full the
-  // moment a conversation/channel opens; everything else uses the full size.
+  // Drive the OPENED iframe panel size. The dashboard widget-size setting only
+  // affects the collapsed teaser on the host page — once the panel is open it's
+  // sized to its content, identically for every size:
+  //   home / chat opener → the default portrait card (fits the video + grid)
+  //   a started conversation or a routed channel → the tall scrolling panel
   useEffect(() => {
     if (!bridgeReady) return;
     const bridge = bridgeRef.current;
     if (!bridge) return;
-    // The cinematic open needs the full panel even on a Small-mode home.
-    const st = useWidgetStore.getState();
-    const cinematicVideo = resolveCinematicVideo(
-      st.connect.videoMode,
-      st.branding?.introVideoUrl,
-      st.connect.storyVideoUrl,
-    );
-    const cinematic = shouldShowCinematic(st.connect, {
-      connectView,
-      conversationStarted,
-      cinematicDismissed,
-      hasVideo: Boolean(cinematicVideo),
-    });
-    // Size the portrait panel to its content:
-    //   medium/small home → short compact card
-    //   chat opener (case-type chips, before a pick) → shorter card, no whitespace
-    //   a started conversation / channel view → taller (scrolling chat, forms)
-    //   large home (or cinematic) → the default portrait card (fits video + grid)
     const isHome = connectView === 'home';
     const isChatOpener = connectView === 'chat' && !conversationStarted;
-    // Home is sized by its OWN layout only — never by whether a conversation has
-    // already started. Previously a started conversation forced Home to the tall
-    // size, so coming back to the menu looked different from where you began.
-    // Compact card = medium/small WITH a video (and not mid-cinematic); with no
-    // video Home falls back to the default portrait size.
-    const compactHome =
-      connectSize !== 'large' && Boolean(cinematicVideo) && !cinematic;
-    if (isHome) {
-      if (compactHome) void bridge.requestCompact();
-      else void bridge.requestShrink();
-    } else if (isChatOpener) {
-      void bridge.requestShrink();
-    } else {
-      // A started conversation or a routed channel (call/text/schedule/email) —
-      // these scroll, so give them the tall panel.
-      void bridge.requestTall();
-    }
-  }, [bridgeReady, connectSize, connectView, conversationStarted, cinematicDismissed]);
+    if (isHome || isChatOpener) void bridge.requestShrink();
+    else void bridge.requestTall();
+  }, [bridgeReady, connectView, conversationStarted]);
 
   // Boot fetches ONLY /config — that alone paints the opener + case-type chips
   // (they're /config data, not agent data; the agent never renders them). The
