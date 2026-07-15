@@ -1,6 +1,5 @@
 import { useWidgetStore } from '../store/widgetStore';
 import { CHANNEL_META, rankChannels } from '../config/connect';
-import { resolveCinematicVideo } from '../config/demoMedia';
 import type { ConnectChannel } from '../types/domain';
 import { CalendarIcon, ChatIcon, ChevronRightIcon, FileIcon, PhoneIcon, SmartphoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
@@ -27,11 +26,11 @@ const HEADLINE_LEAD = 'Hurt? Talk to us';
 const HEADLINE_ACCENT = 'your way.';
 
 /**
- * The Connect launcher home menu, in one of the admin-selected sizes:
- *   Large  — hero attorney video, then a 2×2 grid of channel cards.
- *   Medium — compact card: video tile on the left, headline, channel row.
- *   (Small is the host-page picture FAB, handled in the loader.)
- * Channels route into their own view (reversible); email is a demoted link.
+ * The Connect launcher home menu: a hero attorney video, then a 2×2 grid of
+ * channel cards with "Send your details" below. The layout is the SAME for
+ * every widget size — the size setting only controls the collapsed teaser on
+ * the host page, never this expanded view. Channels route into their own view
+ * (reversible); email is the demoted "Send your details" card.
  */
 export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: ConnectHomeProps) {
   const branding = useWidgetStore((s) => s.branding);
@@ -41,13 +40,6 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   const firmName = branding?.name ?? 'our team';
   const ranked = rankChannels(settings).slice(0, 4);
   const hasEmail = settings.channels.includes('email');
-  // The compact horizontal card is built around a video tile. With no video it
-  // reads like a bare teaser, so fall through to the grid layout (which shows a
-  // branded avatar header + a 2×2 channel grid) instead.
-  const hasVideo = Boolean(
-    resolveCinematicVideo(settings.videoMode, branding?.introVideoUrl, settings.storyVideoUrl),
-  );
-  const compact = settings.size !== 'large' && hasVideo;
 
   const go = (id: ConnectChannel) => {
     // 'email' now routes to the stepwise "Send your details" form (not mailto).
@@ -60,52 +52,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
     </h2>
   );
 
-  // ── Medium: compact horizontal card ────────────────────────────────────────
-  if (compact) {
-    return (
-      <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`Contact ${firmName}`}>
-        <div className="flex gap-3 px-4 pt-4">
-          <ConnectVideo compact className="aspect-square w-[92px] shrink-0 rounded-2xl" />
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div className="flex items-start justify-between gap-2">
-              <h2 className="text-[16px] font-bold leading-tight tracking-[-0.02em] text-ink">
-                {HEADLINE_LEAD} <span className="text-famaash">{HEADLINE_ACCENT}</span>
-              </h2>
-              <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
-            </div>
-            <StatusLine />
-            <div className="mt-0.5 flex gap-1.5">
-              {ranked.map((id) => {
-                const Icon = CHANNEL_ICON[id];
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => go(id)}
-                    aria-label={CHANNEL_META[id].label}
-                    className="flex flex-1 flex-col items-center gap-1 rounded-xl border border-hairline bg-white px-1 py-2 text-ink transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
-                  >
-                    <Icon size={18} className="text-famaash" aria-hidden="true" />
-                    <span className="text-[10px] font-semibold">{shortLabel(id)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        {hasEmail && (
-          <div className="px-4 pt-3">
-            <RowChannelCard id="email" onClick={() => go('email')} />
-          </div>
-        )}
-        <div className="mt-auto">
-          <PoweredByFooter />
-        </div>
-      </div>
-    );
-  }
-
-  // ── Large: hero video + 2×2 channel grid ───────────────────────────────────
+  // Hero video + 2×2 channel grid — identical across every widget size.
   return (
     <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`Contact ${firmName}`}>
       <div className="relative shrink-0">
@@ -198,6 +145,3 @@ function StatusLine({ className }: { className?: string }) {
   );
 }
 
-function shortLabel(id: ConnectChannel): string {
-  return id === 'call' ? 'Call' : id === 'chat' ? 'Chat' : id === 'text' ? 'Text' : id === 'schedule' ? 'Book' : 'Email';
-}
