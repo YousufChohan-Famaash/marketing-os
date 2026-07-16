@@ -79,6 +79,8 @@ export interface Message {
   storagePath?: string;
   files?: UploadedFile[];
   retainerStatus?: 'pending' | 'signing' | 'signed';
+  /** For `retainer` cards: contingency fee % from the `retainer_present` event. */
+  contingencyPercent?: number;
   /** For `document_sign` cards: the document to review & sign. */
   document?: DocumentRef;
   video?: VideoPayload;

@@ -93,7 +93,7 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
     }),
 
     socket.on('retainer_present', (e) => {
-      mergeMessage(e.messageId, { type: 'retainer', retainerStatus: 'pending' });
+      mergeMessage(e.messageId, { type: 'retainer', retainerStatus: 'pending', contingencyPercent: e.contingencyPercent });
     }),
 
     socket.on('link_card', (e) => {

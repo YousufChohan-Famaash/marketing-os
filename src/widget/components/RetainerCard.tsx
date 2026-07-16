@@ -10,6 +10,7 @@ interface RetainerCardProps {
 export function RetainerCard({ message, onReviewAndSign }: RetainerCardProps) {
   const status = message.retainerStatus ?? 'pending';
   const signed = status === 'signed';
+  const pct = message.contingencyPercent;
 
   return (
     <div
@@ -34,7 +35,9 @@ export function RetainerCard({ message, onReviewAndSign }: RetainerCardProps) {
           <p className="mt-0.5 text-[12px] text-muted">
             {signed
               ? 'A countersigned copy was emailed to you.'
-              : '33% contingency · DocuSign envelope #DS-99481'}
+              : typeof pct === 'number'
+                ? `${pct}% contingency · review the terms and sign below`
+                : 'Review the terms and sign below.'}
           </p>
           {!signed && (
             <button
