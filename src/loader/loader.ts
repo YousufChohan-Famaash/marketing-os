@@ -733,6 +733,42 @@ function readScriptConfig(): {
   const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase } = readScriptConfig();
   injectStyles();
 
+  // Marketing attribution from the HOST page (the sandboxed iframe can't read the
+  // host's URL / referrer itself). Forwarded to the widget via the iframe src so
+  // POST /token can attribute the chat lead, and sent on the funnel beacons
+  // below. See chat-analytics-frontend-guide.md.
+  const attribution: Record<string, string> = (() => {
+    const utm = parseUtm();
+    const a: Record<string, string> = {};
+    if (utm.utm_source) a.utm_source = utm.utm_source;
+    if (utm.utm_medium) a.utm_medium = utm.utm_medium;
+    if (utm.utm_campaign) a.utm_campaign = utm.utm_campaign;
+    if (document.referrer) a.referrer = document.referrer;
+    a.landing_path = window.location.pathname || '/';
+    return a;
+  })();
+
+  // Top-of-funnel beacon: public, no auth, fire-and-forget. An unknown firm_id is
+  // a soft no-op server-side; never let analytics throw into the host page.
+  let openBeaconFired = false;
+  const postEvent = (eventType: 'page_view' | 'widget_open', extra?: Record<string, unknown>): void => {
+    try {
+      void fetch(`${apiBase}/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firm_id: firmId, event_type: eventType, ...extra }),
+        credentials: 'omit',
+        keepalive: true,
+      }).catch(() => undefined);
+    } catch {
+      /* ignore — analytics must never break the page */
+    }
+  };
+
+  // Page load with the widget present → the funnel's "Visited site" stage + the
+  // traffic-source signal.
+  postEvent('page_view', attribution);
+
   let iframe: HTMLIFrameElement | null = null;
   // Whether the current iframe was booted with a consultation `ctx` in its src.
   // Prewarm creates a context-less iframe; a later ctx open must rebuild it.
@@ -907,7 +943,10 @@ function readScriptConfig(): {
     // Free Consultation hand-off answers (case type, injury, timing) → the widget
     // reads `ctx` at boot and seeds POST /token so the opener acknowledges them.
     const ctxParam = ctx ? `&ctx=${encodeURIComponent(JSON.stringify(ctx))}` : '';
-    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}`;
+    // Host-page marketing attribution → the widget reads this at boot and sends
+    // it on POST /token so the chat lead is attributed to its source/campaign.
+    const attrParam = `&attr=${encodeURIComponent(JSON.stringify(attribution))}`;
+    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}`;
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;
@@ -934,6 +973,11 @@ function readScriptConfig(): {
   }
 
   function openWidget(view?: string, ctx?: unknown): void {
+    // First launcher open this page load → the funnel's "Opened widget" stage.
+    if (!openBeaconFired) {
+      openBeaconFired = true;
+      postEvent('widget_open');
+    }
     // The panel opens where the teaser sits, so hide the dock while open.
     setDockHidden(true);
     // A consultation hand-off carries `ctx` (wizard answers) the widget reads

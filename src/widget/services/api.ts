@@ -411,6 +411,13 @@ export function createConversationToken(
     accident_type_label?: string;
     injury_severity?: string;
     incident_timing?: string;
+    // Marketing attribution forwarded from the host page by the loader — lets the
+    // backend attribute the chat lead to a source/campaign (chat-analytics guide).
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    referrer?: string;
+    landing_path?: string;
   },
   signal?: AbortSignal,
 ): Promise<ConversationTokenResponse> {

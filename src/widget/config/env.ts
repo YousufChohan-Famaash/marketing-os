@@ -56,6 +56,39 @@ export function getConsultationContext(): ConsultationContext | null {
 }
 
 /**
+ * Marketing attribution forwarded by the loader from the HOST page (the iframe's
+ * own URL can't see the host's UTM/referrer). The loader packs it into an `attr`
+ * query param; we read it here and send it on POST /token so the backend can
+ * attribute the chat lead to a source/campaign (chat-analytics-frontend-guide).
+ */
+export interface Attribution {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  referrer?: string;
+  landing_path?: string;
+}
+
+export function getAttribution(): Attribution | null {
+  const raw = queryParam('attr');
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(decodeURIComponent(raw)) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+    const a: Attribution = {
+      utm_source: str(p.utm_source),
+      utm_medium: str(p.utm_medium),
+      utm_campaign: str(p.utm_campaign),
+      referrer: str(p.referrer),
+      landing_path: str(p.landing_path),
+    };
+    return Object.values(a).some(Boolean) ? a : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whether to persist the conversation id + resume on reload. OFF by default so
  * every load starts a fresh conversation (handy for repeated end-to-end tests).
  * Turn on with `?persist=1` or `VITE_WIDGET_PERSIST=1`.

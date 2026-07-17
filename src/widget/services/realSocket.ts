@@ -8,7 +8,7 @@ import type {
 } from '../types/protocol';
 import { createConversationToken } from './api';
 import { useWidgetStore } from '../store/widgetStore';
-import { getConsultationContext } from '../config/env';
+import { getConsultationContext, getAttribution } from '../config/env';
 
 /**
  * Real backend transport over a LiveKit room data channel.
@@ -57,6 +57,9 @@ export class RealSocket implements ConversationSocket {
       // Seed with the Free Consultation answers when the chat was opened from
       // that wizard (null → nothing added, normal cold chat).
       ...(getConsultationContext() ?? {}),
+      // Marketing attribution the loader forwarded from the host page → lets the
+      // backend attribute this chat lead to its source/campaign.
+      ...(getAttribution() ?? {}),
     });
     if (DEV) console.log('[famaash-widget] /token', session);
 
