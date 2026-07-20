@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { MessageSquareIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { useWidgetStore } from '../store/widgetStore';
@@ -25,6 +25,9 @@ interface CallbackFormProps {
   busy?: boolean;
   /** Inline error to show on the email field (e.g. a server 400). */
   emailError?: string | null;
+  /** Optional media (e.g. the presence video) shown at the right of the heading
+   * row. Only the in-panel channel views pass this; modals leave it off. */
+  media?: ReactNode;
   onSubmit: (phone: string, name?: string, email?: string) => void;
 }
 
@@ -47,6 +50,7 @@ export function CallbackForm({
   initialEmail,
   busy,
   emailError,
+  media,
   onSubmit,
 }: CallbackFormProps) {
   // Pre-fill from what we already know about the visitor (captured this session
@@ -78,13 +82,15 @@ export function CallbackForm({
 
   return (
     <div className="space-y-4">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-famaash-light text-famaash">
-        {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <PhoneIcon size={20} aria-hidden="true" />}
-      </span>
-
-      <div>
-        <h3 className="text-[16px] font-bold text-ink">{shownHeading}</h3>
-        <p className="mt-1 text-[13px] leading-relaxed text-muted">{shownBody}</p>
+      <div className="flex items-start gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
+          {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <PhoneIcon size={20} aria-hidden="true" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[16px] font-bold text-ink">{shownHeading}</h3>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">{shownBody}</p>
+        </div>
+        {media}
       </div>
 
       {collectName && (

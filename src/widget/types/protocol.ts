@@ -327,6 +327,8 @@ export interface HostBridge {
   requestCompact(): Promise<void>;
   /** Grow the iframe taller for conversations / channel forms. */
   requestTall(): Promise<void>;
+  /** Size the iframe for the home menu (fits the hero video + every option). */
+  requestHome(): Promise<void>;
   getHostContext(): Promise<HostContext>;
   notifyEvent(event: { type: string; data: unknown }): Promise<void>;
   /**

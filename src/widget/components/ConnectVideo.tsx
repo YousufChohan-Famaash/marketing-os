@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar, resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { postVideoEvent } from '../services/api';
-import { PlayIcon, ReplayIcon } from '../utils/icons';
+import { PlayIcon, VolumeOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { Avatar } from './Avatar';
 
@@ -86,13 +86,6 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
     setSoundOn(next);
   };
 
-  const replay = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.currentTime = 0;
-    void v.play();
-  };
-
   return (
     <div className={cn('relative overflow-hidden', className)}>
       <video
@@ -123,11 +116,11 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
         <span className="h-1.5 w-1.5 rounded-full bg-[#5BD6A0]" aria-hidden="true" />
         Live
       </span>
-      {/* Sound / replay control */}
+      {/* Sound toggle: tap to play with sound, tap again to mute. */}
       <button
         type="button"
-        onClick={soundOn ? replay : toggleSound}
-        aria-label={soundOn ? 'Replay video' : 'Play with sound'}
+        onClick={toggleSound}
+        aria-label={soundOn ? 'Mute video' : 'Play with sound'}
         className={cn(
           'absolute z-10 flex items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-transform hover:scale-105',
           compact
@@ -135,7 +128,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
             : 'left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2',
         )}
       >
-        {soundOn ? <ReplayIcon size={compact ? 13 : 18} /> : <PlayIcon size={compact ? 13 : 18} />}
+        {soundOn ? <VolumeOffIcon size={compact ? 13 : 18} /> : <PlayIcon size={compact ? 13 : 18} />}
       </button>
     </div>
   );

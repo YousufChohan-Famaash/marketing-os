@@ -128,12 +128,17 @@ export function App() {
     if (!bridgeReady) return;
     const bridge = bridgeRef.current;
     if (!bridge) return;
-    // Only the slot grid and a live conversation need the tall scrolling panel;
-    // the short Call / Text / Send-details forms use the default height so they
-    // don't leave a large empty void below the content.
-    const needsTall = connectView === 'schedule' || (connectView === 'chat' && conversationStarted);
-    if (needsTall) void bridge.requestTall();
-    else void bridge.requestShrink();
+    // Three panel heights, sized to each view's content:
+    //   schedule / live conversation → the tall scrolling panel (slot grid, chat)
+    //   home menu → tall enough that the hero video + every option fit, no scroll
+    //   short Call / Text / Send-details forms → the default height (no big void)
+    if (connectView === 'schedule' || (connectView === 'chat' && conversationStarted)) {
+      void bridge.requestTall();
+    } else if (connectView === 'home') {
+      void bridge.requestHome();
+    } else {
+      void bridge.requestShrink();
+    }
   }, [bridgeReady, connectView, conversationStarted]);
 
   // Boot fetches ONLY /config — that alone paints the opener + case-type chips
@@ -144,6 +149,12 @@ export function App() {
   // Consultation hand-off already knows the case type, so it connects right away.
   useEffect(() => {
     disposedRef.current = false;
+    // Per-run cancellation flag. `disposedRef` is shared across effect runs and
+    // gets reset to false by a superseding run (e.g. React StrictMode's remount)
+    // BEFORE this run's aborted /config fetch reaches its catch — which then
+    // wrongly surfaced the abort as "We can't reach the chat right now". A local
+    // flag is scoped to this run, so an aborted run never sets the error state.
+    let cancelled = false;
     const abort = new AbortController();
     const DEV = import.meta.env.DEV;
     const t0 = DEV ? performance.now() : 0;
@@ -160,7 +171,7 @@ export function App() {
     void (async () => {
       try {
         const config = await loadBootConfig(firmId, abort.signal);
-        if (disposedRef.current) return;
+        if (cancelled) return;
         setBootConfig(config);
         // Theme precedence: an explicit admin 'custom' palette overrides the
         // host-site colors already applied at boot. 'inherit' (default) keeps them.
@@ -174,7 +185,7 @@ export function App() {
         applyFont(config.branding?.fontFamily);
         if (returning) {
           await rehydrateFromHistory(conversationId, abort.signal);
-          if (disposedRef.current) return;
+          if (cancelled) return;
         }
         // Don't override a connection failure that already set 'error'.
         if (useWidgetStore.getState().bootStatus !== 'error') {
@@ -201,7 +212,9 @@ export function App() {
         // Bridge is live — let the sizing effect drive expand vs. compact.
         setBridgeReady(true);
       } catch (err) {
-        if (disposedRef.current) return;
+        // A superseded/unmounted run aborts its own fetch — that's not a real
+        // failure, so never surface it as a boot error.
+        if (cancelled || abort.signal.aborted) return;
         // Fail closed: firm lacks the chat_widget module → don't render at all.
         if (err instanceof ApiError && err.status === 403) {
           setBootStatus('disabled');
@@ -214,6 +227,7 @@ export function App() {
 
     return () => {
       disposedRef.current = true;
+      cancelled = true;
       abort.abort();
       unwireRef.current?.();
       unwireRef.current = null;

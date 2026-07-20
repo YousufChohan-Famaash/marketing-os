@@ -35,6 +35,7 @@ export interface HostBridgeClient {
   requestShrink(): Promise<void>;
   requestCompact(): Promise<void>;
   requestTall(): Promise<void>;
+  requestHome(): Promise<void>;
   getHostContext(): Promise<HostContext | null>;
   notifyEvent(event: AnalyticsEvent): void;
   /** Tell the host the widget has painted, so it can reveal the panel. */
@@ -154,6 +155,10 @@ export function createHostBridge(
       const r = await ready;
       await r?.requestTall();
     },
+    async requestHome() {
+      const r = await ready;
+      await r?.requestHome();
+    },
     async getHostContext() {
       const r = await ready;
       if (!r) return null;
@@ -193,6 +198,7 @@ function makeNoOpClient(): HostBridgeClient {
     requestShrink: async () => undefined,
     requestCompact: async () => undefined,
     requestTall: async () => undefined,
+    requestHome: async () => undefined,
     getHostContext: async () => null,
     notifyEvent: () => undefined,
     notifyReady: () => undefined,

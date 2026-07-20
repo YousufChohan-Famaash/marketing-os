@@ -28,6 +28,7 @@ interface HostMethods {
   requestShrink(): void;
   requestCompact(): void;
   requestTall(): void;
+  requestHome(): void;
   getHostContext(): { url: string; referrer: string; utm: Record<string, string> };
   notifyEvent(event: { type: string; data: unknown }): void;
   notifyReady(): void;
@@ -228,6 +229,11 @@ const styles = `
 #${IFRAME_ID}.is-tall {
   height: min(700px, calc(100vh - 36px));
 }
+/* Home menu: taller than a short form so the hero video + every contact option
+   (incl. "Send your details") fit in one view without scrolling. */
+#${IFRAME_ID}.is-home {
+  height: min(624px, calc(100vh - 36px));
+}
 /* Opt-in wide mode via the header expand control. */
 #${IFRAME_ID}.is-expanded {
   width: min(680px, calc(100vw - 40px));
@@ -245,7 +251,8 @@ const styles = `
   #${IFRAME_ID},
   #${IFRAME_ID}.is-tall,
   #${IFRAME_ID}.is-expanded,
-  #${IFRAME_ID}.is-compact {
+  #${IFRAME_ID}.is-compact,
+  #${IFRAME_ID}.is-home {
     inset: 0;
     width: 100vw;
     height: 100vh;
@@ -886,18 +893,22 @@ function readScriptConfig(): {
     },
     requestExpand: () => {
       iframe?.classList.add('is-expanded');
-      iframe?.classList.remove('is-compact', 'is-tall');
+      iframe?.classList.remove('is-compact', 'is-tall', 'is-home');
     },
     requestShrink: () => {
-      iframe?.classList.remove('is-expanded', 'is-compact', 'is-tall');
+      iframe?.classList.remove('is-expanded', 'is-compact', 'is-tall', 'is-home');
     },
     requestCompact: () => {
       iframe?.classList.add('is-compact');
-      iframe?.classList.remove('is-expanded', 'is-tall');
+      iframe?.classList.remove('is-expanded', 'is-tall', 'is-home');
     },
     requestTall: () => {
       iframe?.classList.add('is-tall');
-      iframe?.classList.remove('is-expanded', 'is-compact');
+      iframe?.classList.remove('is-expanded', 'is-compact', 'is-home');
+    },
+    requestHome: () => {
+      iframe?.classList.add('is-home');
+      iframe?.classList.remove('is-expanded', 'is-compact', 'is-tall');
     },
     getHostContext: () => ({
       url: window.location.href,

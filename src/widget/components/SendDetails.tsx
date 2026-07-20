@@ -10,6 +10,7 @@ import {
 } from '../services/api';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
+import { PresenceVideo } from './PresenceVideo';
 
 interface SendDetailsProps {
   consentLabel: string;
@@ -224,12 +225,13 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
           <FileIcon size={20} aria-hidden="true" />
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <h3 className="text-[16px] font-bold text-ink">Send your details</h3>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
             A few quick questions and we'll reach back shortly.
           </p>
         </div>
+        <PresenceVideo />
       </div>
 
       {/* Progress + step back */}

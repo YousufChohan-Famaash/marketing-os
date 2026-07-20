@@ -5,7 +5,7 @@ import { ApiError, connectText, errorDetail, placeCallNow } from '../services/ap
 import { resolveTcpa } from '../utils/compliance';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
-import { AttorneyPresence } from './AttorneyPresence';
+import { PresenceVideo } from './PresenceVideo';
 import { CallbackForm } from './CallbackForm';
 import { ScheduleCallback } from './ScheduleCallback';
 import { SendDetails } from './SendDetails';
@@ -230,7 +230,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
           <Confirmation message={done} onBack={back} />
         ) : (
           <>
-            <AttorneyPresence className="mb-4" />
             {hasContext && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-famaash-stroke bg-famaash-soft px-3 py-2 text-[12px] text-famaash">
                 <CheckIcon size={14} aria-hidden="true" />
@@ -252,6 +251,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   cta={placing ? 'Starting your call…' : 'Call me now'}
                   collectName
                   consentLabel={consentLabel}
+                  media={<PresenceVideo />}
                   onSubmit={finishCall}
                 />
               </>
@@ -295,6 +295,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   }
                   busy={texting}
                   consentLabel={textConsentLabel}
+                  media={<PresenceVideo />}
                   onSubmit={finishText}
                 />
               </div>
