@@ -348,7 +348,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
             type="button"
             onClick={() => void submit()}
             disabled={!canSubmit}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
           >
             {submitting ? 'Sending…' : 'Submit my details'}
           </button>

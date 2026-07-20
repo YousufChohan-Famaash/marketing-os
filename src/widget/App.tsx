@@ -128,10 +128,12 @@ export function App() {
     if (!bridgeReady) return;
     const bridge = bridgeRef.current;
     if (!bridge) return;
-    const isHome = connectView === 'home';
-    const isChatOpener = connectView === 'chat' && !conversationStarted;
-    if (isHome || isChatOpener) void bridge.requestShrink();
-    else void bridge.requestTall();
+    // Only the slot grid and a live conversation need the tall scrolling panel;
+    // the short Call / Text / Send-details forms use the default height so they
+    // don't leave a large empty void below the content.
+    const needsTall = connectView === 'schedule' || (connectView === 'chat' && conversationStarted);
+    if (needsTall) void bridge.requestTall();
+    else void bridge.requestShrink();
   }, [bridgeReady, connectView, conversationStarted]);
 
   // Boot fetches ONLY /config — that alone paints the opener + case-type chips

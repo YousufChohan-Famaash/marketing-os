@@ -145,7 +145,9 @@ const styles = `
 /* ---- MEDIUM: compact card, tall video tile on the left ---- */
 .fa-teaser.fa-sm { width: 424px; padding: 14px; }
 .fa-teaser.fa-sm .fa-sm-row { display: flex; gap: 13px; align-items: stretch; }
-.fa-teaser.fa-sm .fa-vid { flex: 0 0 104px; width: 104px; align-self: stretch; min-height: 104px; border-radius: 14px; }
+/* Bleed the video to the card's top-left edge (no own radius) so it reads as one
+   object with the sheet instead of a rounded tile floating on a rounded card. */
+.fa-teaser.fa-sm .fa-vid { flex: 0 0 118px; width: 118px; align-self: stretch; min-height: 104px; margin: -14px 0 0 -14px; border-radius: 0; }
 .fa-teaser.fa-sm .fa-vplay { width: 38px; height: 38px; }
 .fa-teaser.fa-sm .fa-vplay svg { width: 13px; height: 13px; }
 .fa-teaser.fa-sm .fa-vlive { left: 8px; top: 8px; }

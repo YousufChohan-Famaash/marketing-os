@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertIcon, MessageSquareIcon, PhoneIcon } from '../utils/icons';
+import { MessageSquareIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
@@ -78,13 +78,8 @@ export function CallbackForm({
 
   return (
     <div className="space-y-4">
-      <span
-        className={cn(
-          'flex h-11 w-11 items-center justify-center rounded-full',
-          brand ? 'bg-famaash-light text-famaash' : 'bg-[#FFEFEF] text-[#F86669]',
-        )}
-      >
-        {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <AlertIcon size={20} aria-hidden="true" />}
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-famaash-light text-famaash">
+        {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <PhoneIcon size={20} aria-hidden="true" />}
       </span>
 
       <div>
@@ -180,7 +175,7 @@ export function CallbackForm({
           onSubmit(p, n, e);
         }}
         disabled={!valid || busy}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
       >
         <CtaIcon size={16} aria-hidden="true" />
         {cta}

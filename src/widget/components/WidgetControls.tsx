@@ -1,5 +1,5 @@
 import { useWidgetStore } from '../store/widgetStore';
-import { ArrowDownRightIcon, CollapseIcon, GlobeIcon, MaximizeIcon, ReplayIcon } from '../utils/icons';
+import { MinimizeIcon, CollapseIcon, GlobeIcon, MaximizeIcon, ReplayIcon } from '../utils/icons';
 import { useIsFullscreen } from '../utils/useIsFullscreen';
 import { cn } from '../utils/cn';
 
@@ -51,7 +51,7 @@ export function WidgetControls({
         </ControlBtn>
       )}
       <ControlBtn label="Minimize chat" onClick={onMinimize}>
-        <ArrowDownRightIcon size={15} />
+        <MinimizeIcon size={15} />
       </ControlBtn>
     </div>
   );
