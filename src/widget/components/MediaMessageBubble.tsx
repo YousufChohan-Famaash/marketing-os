@@ -37,7 +37,7 @@ export function MediaMessageBubble({ message }: { message: Message }) {
       </div>
       {!isVideo && message.mediaTranscript && (
         <p className="max-w-[250px] px-2 text-right text-[11px] italic leading-snug text-muted">
-          🎤 {mmss} — &ldquo;{message.mediaTranscript}&rdquo;
+          🎤 {mmss} &middot; &ldquo;{message.mediaTranscript}&rdquo;
         </p>
       )}
       <div className="flex items-center gap-2 px-2 text-[10px] text-muted">

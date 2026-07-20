@@ -20,7 +20,7 @@ export function WidgetErrorFallback({ resetErrorBoundary, error }: FallbackProps
           Chat is temporarily unavailable
         </p>
         <p className="mt-1 text-[13px] text-muted">
-          Please refresh — our team will follow up shortly if the issue persists.
+          Please refresh. Our team will follow up shortly if the issue persists.
         </p>
       </div>
       <button

@@ -147,7 +147,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const finishText = async (phone: string, name?: string) => {
     setTextError(null);
     if (!conversationId) {
-      setTextError('Your session expired — please reopen the chat and try again.');
+      setTextError('Your session expired. Please reopen the chat and try again.');
       return;
     }
     setTexting(true);
@@ -169,12 +169,12 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       if (out.channel === 'whatsapp') {
         if (out.waMeLink) {
           if (typeof window !== 'undefined') window.open(out.waMeLink, '_blank', 'noopener');
-          setDone('Continue in WhatsApp — we opened it with your message ready to send.');
+          setDone('Continue in WhatsApp. We opened it with your message ready to send.');
         } else {
-          setDone("We've messaged you on WhatsApp — check your phone to continue.");
+          setDone("We've messaged you on WhatsApp. Check your phone to continue.");
         }
       } else {
-        setDone('We just texted you — reply to that message to continue.');
+        setDone('We just texted you. Reply to that message to continue.');
       }
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
@@ -184,7 +184,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       } else if (status === 503) {
         setTextError("We couldn't send that just now. Try another option.");
       } else if (status === 404) {
-        setTextError('Your session expired — please reopen the chat and try again.');
+        setTextError('Your session expired. Please reopen the chat and try again.');
       } else if (status === 400 && detail) {
         setTextError(detail);
       } else {
@@ -247,7 +247,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                 <CallbackForm
                   variant="alert"
                   heading="Where should we call you?"
-                  body="We start the callback the moment you confirm — usually under a minute."
+                  body="We start the callback the moment you confirm, usually under a minute."
                   cta={placing ? 'Starting your call…' : 'Call me now'}
                   collectName
                   consentLabel={consentLabel}
@@ -380,7 +380,7 @@ function CallCountdown({
       <p className="mt-2 max-w-[32ch] text-[13.5px] leading-relaxed text-muted">
         {connecting
           ? `Your phone should ring at ${phone} any moment now.`
-          : `Hang tight — we'll ring ${phone} in under a minute. Keep your phone nearby.`}
+          : `Hang tight, we'll ring ${phone} in under a minute. Keep your phone nearby.`}
       </p>
       <button
         type="button"

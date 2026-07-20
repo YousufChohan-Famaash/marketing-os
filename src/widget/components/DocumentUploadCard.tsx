@@ -122,7 +122,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
         ) : (
           <p className="text-[11px] text-muted-soft">
             {status === 'failed'
-              ? 'Upload failed — tap to try again'
+              ? 'Upload failed. Tap to try again'
               : 'Tap to choose a file or drop it here · images / PDF'}
           </p>
         )}
@@ -134,7 +134,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
           onClick={skip}
           className="text-[12px] font-medium text-muted hover:text-ink"
         >
-          Skip — I don&apos;t have it
+          Skip, I don&apos;t have it
         </button>
       )}
     </div>

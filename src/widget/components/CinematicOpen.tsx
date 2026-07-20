@@ -137,7 +137,7 @@ export function CinematicOpen() {
           Meet {name}
         </p>
         <p className="mt-0.5 text-[12.5px] text-white/80">
-          A quick hello — pick how you'd like to talk.
+          A quick hello. Pick how you'd like to talk.
         </p>
         <div className="mt-3 flex gap-2" onMouseLeave={() => setHovered(null)}>
           {channels.map((id) => {

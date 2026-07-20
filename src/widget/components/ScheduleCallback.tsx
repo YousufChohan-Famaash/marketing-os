@@ -163,7 +163,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         consentText: consentLabel,
         copyVersion: consentVersion,
       });
-      setConfirmLabel(res.chip?.label ?? "Callback booked — we'll call you then");
+      setConfirmLabel(res.chip?.label ?? "Callback booked. We'll call you then");
       setPhase('booked');
     } catch (err) {
       const detail = errorDetail(err);
@@ -179,7 +179,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       } else if (status === 503) {
         setPhase('unavailable');
       } else if (status === 404) {
-        setFormError('Your session expired — please reopen the chat and try again.');
+        setFormError('Your session expired. Please reopen the chat and try again.');
       } else if (status === 400 && detail?.toLowerCase().includes('email')) {
         setEmailError(detail);
       } else if (status === 400 && detail) {

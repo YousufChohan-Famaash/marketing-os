@@ -234,7 +234,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
             </span>
           )}
           <span className="flex-1 truncate text-[12px] text-muted">
-            {isVideo ? "Recording video — tap send when done." : "Recording voice note…"}
+            {isVideo ? "Recording video. Tap send when done." : "Recording voice note…"}
           </span>
           <button
             type="button"
@@ -265,7 +265,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
             Listening
           </span>
           <span className="min-w-0 flex-1 truncate text-[12px] italic text-muted">
-            {stt.interim || "Speak now — your words will appear in the box."}
+            {stt.interim || "Speak now. Your words will appear in the box."}
           </span>
           <button
             type="button"

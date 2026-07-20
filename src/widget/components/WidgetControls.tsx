@@ -33,7 +33,7 @@ export function WidgetControls({
 
   return (
     <div className={cn('flex items-center gap-0.5 rounded-pill px-1.5 py-1', wrap)}>
-      <ControlBtn label="Language — coming soon" disabled>
+      <ControlBtn label="Language (coming soon)" disabled>
         <GlobeIcon size={15} />
       </ControlBtn>
       {onReplay && (

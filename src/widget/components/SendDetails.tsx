@@ -21,15 +21,15 @@ interface SendDetailsProps {
 // Fallbacks only when /forms/config can't be reached — the live options are
 // served by the backend (so labels can change without an FE deploy).
 const FALLBACK_SEVERITY: WebFormOption[] = [
-  { value: 'minor', label: 'Minor — treated and released' },
-  { value: 'moderate', label: 'Moderate — ongoing treatment' },
-  { value: 'severe', label: 'Severe — hospitalization or surgery' },
+  { value: 'minor', label: 'Minor, treated and released' },
+  { value: 'moderate', label: 'Moderate, ongoing treatment' },
+  { value: 'severe', label: 'Severe, hospitalization or surgery' },
   { value: 'unsure', label: 'Not sure yet' },
 ];
 const FALLBACK_TIMING: WebFormOption[] = [
   { value: 'within_week', label: 'Within the last week' },
-  { value: '1_4_weeks', label: '1–4 weeks ago' },
-  { value: '1_6_months', label: '1–6 months ago' },
+  { value: '1_4_weeks', label: '1 to 4 weeks ago' },
+  { value: '1_6_months', label: '1 to 6 months ago' },
   { value: 'over_6_months', label: 'More than 6 months ago' },
   { value: 'unsure', label: 'Not sure' },
 ];
@@ -168,7 +168,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
       if (status === 403) {
         setError("This form isn't available right now. Please try another option.");
       } else if (status === 429) {
-        setError('Too many submissions — please try again in a bit.');
+        setError('Too many submissions. Please try again in a bit.');
       } else if (status === 400 && detail) {
         setError(detail);
       } else {
@@ -209,7 +209,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
           <CheckIcon size={26} aria-hidden="true" />
         </span>
-        <h3 className="mt-4 text-[18px] font-bold text-ink">Thanks{first ? `, ${first}` : ''} — we've got your details</h3>
+        <h3 className="mt-4 text-[18px] font-bold text-ink">Thanks{first ? `, ${first}` : ''}. We've got your details</h3>
         <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
           A real person will reach out{phone ? ` at ${phone}` : ''} shortly. Keep an eye on your phone
           {email.trim() ? ' and email' : ''}.
