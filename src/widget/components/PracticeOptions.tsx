@@ -6,13 +6,16 @@ interface PracticeOptionsProps {
   options: string[];
   onSelect: (option: string) => void;
   disabled?: boolean;
+  /** One option per row instead of the 2-up grid (used on mobile full-screen,
+   * where a single column fills the tall panel instead of leaving dead space). */
+  stack?: boolean;
 }
 
 /**
  * Vertical practice-area rows: blue icon + label + arrow. Matches the Figma
  * intro picker. Arrow-key navigable.
  */
-export function PracticeOptions({ options, onSelect, disabled }: PracticeOptionsProps) {
+export function PracticeOptions({ options, onSelect, disabled, stack }: PracticeOptionsProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const handleKey = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
@@ -27,7 +30,11 @@ export function PracticeOptions({ options, onSelect, disabled }: PracticeOptions
   };
 
   return (
-    <div role="group" aria-label="What kind of matter brings you here?" className="grid grid-cols-2 gap-2">
+    <div
+      role="group"
+      aria-label="What kind of matter brings you here?"
+      className={`grid gap-2 ${stack ? 'grid-cols-1' : 'grid-cols-2'}`}
+    >
       {options.map((option, i) => {
         const hasIcon = !option.toLowerCase().includes('something else');
         return (

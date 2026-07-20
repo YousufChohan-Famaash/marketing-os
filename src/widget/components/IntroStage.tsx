@@ -3,9 +3,11 @@ import { useWidgetStore } from '../store/widgetStore';
 import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { generateId } from '../utils/id';
 import { ChevronLeftIcon, PlayIcon } from '../utils/icons';
+import { useMediaQuery } from '../utils/useMediaQuery';
 import { FamaashMark } from './BrandAssets';
 import { PoweredByFooter } from './PoweredByFooter';
 import { PracticeOptions } from './PracticeOptions';
+import { PresenceVideo } from './PresenceVideo';
 import { WidgetControls } from './WidgetControls';
 
 interface IntroStageProps {
@@ -37,6 +39,10 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
   const setPendingCaseType = useWidgetStore((s) => s.setPendingCaseType);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [played, setPlayed] = useState(false);
+  // Stack the case-type chips one-per-row only in the mobile full-screen layout
+  // (narrow AND tall). Keeps the 2-up grid on the short desktop panel, which is
+  // also ~410px wide, so width alone can't tell them apart.
+  const stackChips = useMediaQuery('(max-width: 640px) and (min-height: 640px)');
 
   const firmName = branding?.name ?? 'our team';
   const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
@@ -167,11 +173,16 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
 
       {/* Scrollable content: heading + options (subtext hidden to give the video room) */}
       <div className="flex-1 overflow-y-auto px-5 pb-2">
-        <h1 className="text-[18px] font-bold leading-tight tracking-[-0.03em] text-[#1A1A1A]">
-          Hi <span aria-hidden="true">👋</span> I&apos;m an AI intake assistant for {firmName}
-        </h1>
+        <div className="flex items-start gap-3">
+          <h1 className="min-w-0 flex-1 text-[18px] font-bold leading-tight tracking-[-0.03em] text-[#1A1A1A]">
+            Hi <span aria-hidden="true">👋</span> I&apos;m an AI intake assistant for {firmName}
+          </h1>
+          {/* No hero video on this step (chat case-type / no intro video), so keep
+              a human face in view with the compact presence thumbnail. */}
+          {!hasVideo && <PresenceVideo />}
+        </div>
         <div className="mt-4">
-          <PracticeOptions options={options} onSelect={pick} />
+          <PracticeOptions options={options} onSelect={pick} stack={stackChips} />
         </div>
       </div>
 
