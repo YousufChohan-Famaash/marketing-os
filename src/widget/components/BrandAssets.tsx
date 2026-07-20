@@ -84,12 +84,60 @@ export const PremisesIcon = (p: Props) => (
   </PracticeBase>
 );
 
+export const BusIcon = (p: Props) => (
+  <PracticeBase {...p}>
+    <rect x="3.5" y="3.5" width="15" height="11" rx="1.8" />
+    <path d="M3.5 9h15" />
+    <circle cx="7" cy="16.5" r="1.4" />
+    <circle cx="15" cy="16.5" r="1.4" />
+  </PracticeBase>
+);
+
+export const BoatIcon = (p: Props) => (
+  <PracticeBase {...p}>
+    <path d="M2.5 14.5h17l-2.4 4H4.9z" />
+    <path d="M11 3v11.5" />
+    <path d="M11 5l5.5 6.5H11" />
+  </PracticeBase>
+);
+
+export const DogIcon = (p: Props) => (
+  <PracticeBase {...p}>
+    <ellipse cx="11" cy="13.5" rx="3.6" ry="2.9" />
+    <circle cx="6" cy="9.5" r="1.4" />
+    <circle cx="9" cy="7" r="1.4" />
+    <circle cx="13" cy="7" r="1.4" />
+    <circle cx="16" cy="9.5" r="1.4" />
+  </PracticeBase>
+);
+
+export const NursingHomeIcon = (p: Props) => (
+  <PracticeBase {...p}>
+    <path d="M4.5 19V5.5L11 3l6.5 2.5V19" />
+    <path d="M2.5 19h17" />
+    <path d="M11 7.5v3.5M9.25 9.25h3.5" />
+  </PracticeBase>
+);
+
+export const ProductIcon = (p: Props) => (
+  <PracticeBase {...p}>
+    <path d="M11 2.5l7.5 4.2v8.6L11 19.5 3.5 15.3V6.7z" />
+    <path d="M3.5 6.7l7.5 4.2 7.5-4.2" />
+    <path d="M11 10.9v8.6" />
+  </PracticeBase>
+);
+
 /** Returns the matching practice icon, or null if the label doesn't map to one. */
 export function matchPracticeIcon(label: string, size = 18) {
   const l = label.toLowerCase();
   if (l.includes('truck') || l.includes('commercial')) return <TruckIcon size={size} />;
-  if (l.includes('slip') || l.includes('premises') || l.includes('fall'))
+  if (/\bbus\b/.test(l)) return <BusIcon size={size} />; // regex so "abuse" doesn't match
+  if (l.includes('boat') || l.includes('marine') || l.includes('vessel')) return <BoatIcon size={size} />;
+  if (l.includes('slip') || l.includes('premises') || l.includes('fall') || l.includes('property'))
     return <PremisesIcon size={size} />;
+  if (l.includes('dog') || l.includes('animal') || l.includes('bite')) return <DogIcon size={size} />;
+  if (l.includes('nursing') || l.includes('elder')) return <NursingHomeIcon size={size} />;
+  if (l.includes('product') || l.includes('defect')) return <ProductIcon size={size} />;
   if (l.includes('car') || l.includes('motor') || l.includes('vehicle') || l.includes('accident'))
     return <CarIcon size={size} />;
   return null;
