@@ -11,6 +11,12 @@ import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
 
+// The backend returns availability in Eastern (TCPA calling-hours), and the
+// confirmation email + stored booking are Eastern too. Render the whole grid in
+// the server's timezone, never the browser's, so a non-ET visitor sees the real
+// callable times. See schedule-callback-est-business-hours-frontend-guide.md.
+const ET = 'America/New_York';
+
 interface ScheduleCallbackProps {
   consentLabel: string;
   /** Server-minted TCPA template version to record with the consent (audit). */
@@ -51,8 +57,6 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   const firmId = useWidgetStore((s) => s.firmId);
   const conversationId = useWidgetStore((s) => s.conversationId);
 
-  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
-
   const [phase, setPhase] = useState<'loading' | 'pick' | 'unavailable' | 'booked'>('loading');
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [serverTz, setServerTz] = useState<string | null>(null);
@@ -64,6 +68,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Render in the response's timezone (always Eastern), never the browser's.
+  const displayTz = serverTz ?? ET;
+
   // Fetch availability on mount (and on demand after a raced booking).
   const loadAvailability = useMemo(
     () => async (signal?: AbortSignal) => {
@@ -71,9 +78,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         setPhase('unavailable');
         return;
       }
-      const from = dayKey(new Date(), tz);
+      const from = dayKey(new Date(), ET);
       try {
-        const res = await fetchAvailability(firmId, { from, days: 7, tz }, signal);
+        const res = await fetchAvailability(firmId, { from, days: 7, tz: ET }, signal);
         if (signal?.aborted) return;
         setServerTz(res.tz);
         if (!res.available || res.slots.length === 0) {
@@ -86,7 +93,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         if (!signal?.aborted) setPhase('unavailable');
       }
     },
-    [firmId, tz],
+    [firmId],
   );
 
   useEffect(() => {
@@ -97,26 +104,26 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
 
   // Group slots into days in the visitor's timezone.
   const days = useMemo<DayGroup[]>(() => {
-    const todayKey = dayKey(new Date(), tz);
-    const tomorrowKey = dayKey(new Date(Date.now() + 86_400_000), tz);
+    const todayKey = dayKey(new Date(), displayTz);
+    const tomorrowKey = dayKey(new Date(Date.now() + 86_400_000), displayTz);
     const map = new Map<string, DayGroup>();
     for (const s of slots) {
       const d = new Date(s.start);
-      const key = dayKey(d, tz);
+      const key = dayKey(d, displayTz);
       if (!map.has(key)) {
         const top =
           key === todayKey
             ? 'Today'
             : key === tomorrowKey
               ? 'Tomorrow'
-              : new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d);
-        const sub = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short', day: 'numeric' }).format(d);
+              : new Intl.DateTimeFormat('en-US', { timeZone: displayTz, weekday: 'short' }).format(d);
+        const sub = new Intl.DateTimeFormat('en-US', { timeZone: displayTz, month: 'short', day: 'numeric' }).format(d);
         map.set(key, { key, top, sub, slots: [] });
       }
       map.get(key)!.slots.push(s);
     }
     return [...map.values()];
-  }, [slots, tz]);
+  }, [slots, displayTz]);
 
   // Default the selected day to the first one with availability.
   useEffect(() => {
@@ -127,10 +134,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   }, [phase, days, selectedDay]);
 
   const fmtTime = (iso: string) =>
-    new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+    new Intl.DateTimeFormat('en-US', { timeZone: displayTz, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 
   const activeDay = days.find((d) => d.key === selectedDay) ?? null;
-  const tzLabel = (serverTz ?? tz).replace(/_/g, ' ');
 
   const book = async (phone: string, name?: string, email?: string) => {
     setEmailError(null);
@@ -152,7 +158,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         phone,
         email: email ?? '',
         slotStart: selectedStart,
-        timezone: tz,
+        timezone: ET,
         consentText: consentLabel,
         copyVersion: consentVersion,
       });
@@ -240,7 +246,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         <div>
           <h3 className="text-[16px] font-bold text-ink">Pick a time</h3>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
-            {tzLabel} time. We'll send a confirmation and a reminder.
+            All times in Eastern Time (ET). We'll send a confirmation and a reminder.
           </p>
         </div>
       </div>
@@ -312,7 +318,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
             variant="alert"
             heading={`Confirm ${activeDay?.top ?? ''} at ${fmtTime(selectedStart)}`}
             body="Where should we call you, and where should the confirmation go?"
-            cta={busy ? 'Booking your callback…' : 'Confirm callback'}
+            cta={busy ? 'Booking your callback…' : 'Confirm booking'}
             collectName
             collectEmail
             initialName={prefill.name}
