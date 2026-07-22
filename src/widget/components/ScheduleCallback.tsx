@@ -108,7 +108,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     const todayKey = dayKey(new Date(), displayTz);
     const tomorrowKey = dayKey(new Date(Date.now() + 86_400_000), displayTz);
     const map = new Map<string, DayGroup>();
-    for (const s of slots) {
+    // Sort chronologically first (ISO strings sort lexically), so days and the
+    // times within each day are always in order, never a jumbled list.
+    for (const s of [...slots].sort((a, b) => a.start.localeCompare(b.start))) {
       const d = new Date(s.start);
       const key = dayKey(d, displayTz);
       if (!map.has(key)) {
@@ -136,6 +138,15 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
 
   const fmtTime = (iso: string) =>
     new Intl.DateTimeFormat('en-US', { timeZone: displayTz, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+
+  // Bucket a slot into Morning / Afternoon / Evening (display tz) so a long day
+  // of times reads as a few short groups instead of 20+ loose chips.
+  const partOfDay = (iso: string): 'Morning' | 'Afternoon' | 'Evening' => {
+    const h = Number(
+      new Intl.DateTimeFormat('en-US', { timeZone: displayTz, hour: '2-digit', hour12: false }).format(new Date(iso)),
+    );
+    return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening';
+  };
 
   const activeDay = days.find((d) => d.key === selectedDay) ?? null;
 
@@ -238,6 +249,13 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   }
 
   // phase === 'pick'
+  const nextDay = days[0] ?? null;
+  const nextSlot = nextDay?.slots[0] ?? null;
+  const timeGroups = activeDay
+    ? (['Morning', 'Afternoon', 'Evening'] as const)
+        .map((label) => ({ label, slots: activeDay.slots.filter((s) => partOfDay(s.start) === label) }))
+        .filter((g) => g.slots.length > 0)
+    : [];
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
@@ -257,8 +275,38 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         <p className="rounded-lg bg-famaash-soft px-3 py-2 text-[12px] text-famaash">{notice}</p>
       )}
 
+      {/* One-tap shortcut to the soonest slot, above the grid. */}
+      {nextSlot && nextDay && (
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedDay(nextDay.key);
+            setSelectedStart(nextSlot.start);
+          }}
+          aria-pressed={selectedStart === nextSlot.start}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors',
+            selectedStart === nextSlot.start
+              ? 'border-famaash bg-famaash-soft'
+              : 'border-famaash-stroke bg-white hover:bg-subtle',
+          )}
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+            <CalendarIcon size={17} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
+              Next available
+            </span>
+            <span className="block text-[14px] font-bold text-ink">
+              {nextDay.top} at {fmtTime(nextSlot.start)}
+            </span>
+          </span>
+        </button>
+      )}
+
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">Choose a day</p>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">Or choose a day</p>
         <div className="flex flex-wrap gap-2">
           {days.map((d) => {
             const active = selectedDay === d.key;
@@ -284,11 +332,11 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         </div>
       </div>
 
-      {activeDay && (
-        <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">Available times</p>
-          <div className="flex flex-wrap gap-2">
-            {activeDay.slots.map((s) => {
+      {timeGroups.map((group) => (
+        <div key={group.label}>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">{group.label}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {group.slots.map((s) => {
               const active = selectedStart === s.start;
               return (
                 <button
@@ -297,7 +345,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
                   onClick={() => setSelectedStart(s.start)}
                   aria-pressed={active}
                   className={cn(
-                    'rounded-pill border px-4 py-2 text-[13px] font-medium transition-colors',
+                    'rounded-lg border px-2 py-2 text-[13px] font-medium tabular-nums transition-colors',
                     active
                       ? 'border-famaash bg-famaash-soft text-famaash'
                       : 'border-famaash-stroke bg-white text-ink hover:bg-subtle',
@@ -309,7 +357,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
             })}
           </div>
         </div>
-      )}
+      ))}
 
       {selectedStart && (
         <>
