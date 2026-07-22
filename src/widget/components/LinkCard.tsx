@@ -16,7 +16,7 @@ export const LinkCard = memo(function LinkCard({ card }: LinkCardProps) {
 
   const body = (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-famaash-light text-famaash">
+      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-famaash-light text-ink">
         {card.thumbnailUrl ? (
           <img
             src={card.thumbnailUrl}

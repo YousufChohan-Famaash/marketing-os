@@ -23,7 +23,7 @@ export default function VoiceCallChunk() {
       onClose={close}
     >
       <div className="flex flex-col items-center gap-4 py-2">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-famaash-light text-famaash">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-famaash-light text-ink">
           <span className="text-2xl font-semibold">
             {(branding?.name ?? 'A').charAt(0)}
           </span>

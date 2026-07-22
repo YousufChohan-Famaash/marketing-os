@@ -1,6 +1,5 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { practiceIconFor } from './BrandAssets';
-import { ArrowRightIcon } from '../utils/icons';
 
 interface PracticeOptionsProps {
   options: string[];
@@ -12,8 +11,8 @@ interface PracticeOptionsProps {
 }
 
 /**
- * Vertical practice-area rows: blue icon + label + arrow. Matches the Figma
- * intro picker. Arrow-key navigable.
+ * Practice-area chips: a correct case-type icon (or none) + the label. No arrow;
+ * the chip itself is the affordance. Arrow-key navigable.
  */
 export function PracticeOptions({ options, onSelect, disabled, stack }: PracticeOptionsProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -36,7 +35,7 @@ export function PracticeOptions({ options, onSelect, disabled, stack }: Practice
       className={`grid gap-2 ${stack ? 'grid-cols-1' : 'grid-cols-2'}`}
     >
       {options.map((option, i) => {
-        const hasIcon = !option.toLowerCase().includes('something else');
+        const icon = practiceIconFor(option, 17);
         return (
           <button
             key={option}
@@ -49,13 +48,14 @@ export function PracticeOptions({ options, onSelect, disabled, stack }: Practice
             onKeyDown={(e) => handleKey(e, i)}
             className="group flex items-center gap-2 rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-3 py-3 text-left transition-colors hover:bg-[#F5F8FB] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {hasIcon && <span className="shrink-0">{practiceIconFor(option, 17)}</span>}
-            <span className="line-clamp-2 flex-1 text-[13px] font-medium text-[#1A1A1A]">{option}</span>
-            <ArrowRightIcon
-              size={16}
-              className="shrink-0 text-[#888888] transition-transform group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
+            {icon && (
+              <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-ink transition-colors group-hover:text-[color:var(--practice-accent)]">
+                {icon}
+              </span>
+            )}
+            <span className="line-clamp-2 flex-1 text-[13px] font-medium text-[#1A1A1A] transition-colors group-hover:text-[color:var(--practice-accent)]">
+              {option}
+            </span>
           </button>
         );
       })}

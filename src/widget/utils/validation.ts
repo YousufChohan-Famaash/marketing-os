@@ -30,3 +30,17 @@ export function emailError(value: string, required = false): string | null {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return 'Enter a valid email address.';
   return null;
 }
+
+/**
+ * Progressive US phone mask -> (123) 456-7890 as the user types. An explicit
+ * international entry (leading +) is left untouched so country codes still work;
+ * the validator counts digits either way.
+ */
+export function formatPhone(input: string): string {
+  if (input.trim().startsWith('+')) return input;
+  const d = input.replace(/\D/g, '').slice(0, 10);
+  if (!d) return '';
+  if (d.length <= 3) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}

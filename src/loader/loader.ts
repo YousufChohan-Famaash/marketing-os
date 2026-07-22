@@ -100,13 +100,8 @@ const styles = `
   background: linear-gradient(180deg, transparent, #fff);
   background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--fa-accent) 12%, #fff));
 }
-.fa-vlive { position: absolute; left: 11px; top: 11px; z-index: 3; display: inline-flex; align-items: center; gap: 5px; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: #fff; background: rgba(8, 10, 14, 0.5); padding: 4px 8px; border-radius: 20px; }
-.fa-vlive i { width: 5px; height: 5px; border-radius: 50%; background: #5BD6A0; display: inline-block; }
 .fa-vplay { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; display: grid; place-items: center; border-radius: 50%; background: rgba(8, 10, 14, 0.36); border: 1.5px solid rgba(255, 255, 255, 0.42); color: #fff; backdrop-filter: blur(4px); }
 .fa-vplay svg { width: 17px; height: 17px; margin-left: 2px; }
-.fa-vcap { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 26px 14px 12px; background: linear-gradient(180deg, transparent, rgba(8, 6, 3, 0.74)); }
-.fa-vcap b { display: block; font-size: 15px; font-weight: 700; color: #fff; line-height: 1.1; }
-.fa-vcap span { display: block; font-size: 10.5px; color: rgba(255, 255, 255, 0.82); margin-top: 2px; }
 
 /* headline + channels + status */
 .fa-h { font-size: 17px; font-weight: 700; color: #0f172a; line-height: 1.2; letter-spacing: -0.01em; }
@@ -151,7 +146,6 @@ const styles = `
 .fa-teaser.fa-sm .fa-vid { flex: 0 0 118px; width: 118px; align-self: stretch; min-height: 104px; margin: -14px 0 0 -14px; border-radius: 0; }
 .fa-teaser.fa-sm .fa-vplay { width: 38px; height: 38px; }
 .fa-teaser.fa-sm .fa-vplay svg { width: 13px; height: 13px; }
-.fa-teaser.fa-sm .fa-vlive { left: 8px; top: 8px; }
 .fa-teaser.fa-sm .fa-sm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 9px; }
 .fa-teaser.fa-sm .fa-sm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .fa-teaser.fa-sm .fa-min { position: static; flex-shrink: 0; }
@@ -510,7 +504,6 @@ function videoSurfaceHTML(large: boolean, poster?: string): string {
   const fade = large ? '<span class="fa-vfade"></span>' : '';
   return `
     <div class="fa-vid"${style}>
-      <span class="fa-vlive"><i></i>LIVE</span>
       <span class="fa-vplay">${SVG.play}</span>
       ${fade}
     </div>`;
@@ -529,7 +522,7 @@ function makeDock(
 ): {
   dock: HTMLDivElement;
   setHidden: (hidden: boolean) => void;
-  applyConfig: (cfg: { poster?: string | null; name?: string | null; channels?: string[] }) => void;
+  applyConfig: (cfg: { poster?: string | null; channels?: string[] }) => void;
 } {
   const dock = document.createElement('div');
   dock.id = DOCK_ID;
@@ -677,7 +670,7 @@ function makeDock(
     setHidden,
     // Upgrade the teaser with the firm's real config (poster, attorney name)
     // once /config resolves, so the embed snippet doesn't have to hardcode them.
-    applyConfig: ({ poster, name, channels }) => {
+    applyConfig: ({ poster, channels }) => {
       if (poster) {
         const vid = teaser.querySelector<HTMLElement>('.fa-vid');
         if (vid) {
@@ -685,10 +678,6 @@ function makeDock(
           vid.style.backgroundSize = 'cover';
           vid.style.backgroundPosition = 'center';
         }
-      }
-      if (name) {
-        const cap = teaser.querySelector<HTMLElement>('.fa-vcap b');
-        if (cap) cap.textContent = `Meet ${name}`;
       }
       // Rebuild the quick-contact chips from the firm's configured channels.
       if (channels && channels.length) {
@@ -936,7 +925,7 @@ function readScriptConfig(): {
     // Created hidden; openWidget reveals it once the bridge handshake completes,
     // so a booting (blank) panel is never shown — the loading spinner covers it.
     el.classList.add('is-hidden');
-    el.title = 'Famaash chat widget';
+    el.title = 'Chat';
     el.setAttribute('sandbox', SANDBOX);
     // `autoplay` MUST be delegated here: a cross-origin iframe can't autoplay the
     // intro video (even muted) unless the parent grants it via Permissions-Policy.
@@ -1146,11 +1135,10 @@ function readScriptConfig(): {
         }
         // Real launcher / mini-bubble photo from config (falls back to the video
         // poster). Skip the poster when the embed snippet hardcoded one, but still
-        // apply the name and configured channels.
+        // apply the configured poster + channels.
         const img = b.launcherImageUrl ?? b.introVideoPoster;
         dockApi.applyConfig({
           poster: poster ? undefined : img,
-          name: b.assistantName ?? b.name,
           channels: cfg?.connect?.channels,
         });
       },

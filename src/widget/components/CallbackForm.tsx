@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { MessageSquareIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
-import { nameError, phoneError, emailError as validateEmail } from '../utils/validation';
+import { nameError, phoneError, emailError as validateEmail, formatPhone } from '../utils/validation';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 
@@ -60,7 +60,7 @@ export function CallbackForm({
   const known = useKnownContact();
   const rememberContact = useWidgetStore((s) => s.rememberContact);
   const [name, setName] = useState(initialName ?? known.name ?? '');
-  const [phone, setPhone] = useState(initialPhone ?? known.phone ?? '');
+  const [phone, setPhone] = useState(formatPhone(initialPhone ?? known.phone ?? ''));
   const [email, setEmail] = useState(initialEmail ?? known.email ?? '');
   const [agreed, setAgreed] = useState(false);
   // Per-field errors surface once a field is blurred or a submit is attempted,
@@ -92,7 +92,7 @@ export function CallbackForm({
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-ink">
           {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <PhoneIcon size={20} aria-hidden="true" />}
         </span>
         <div className="min-w-0 flex-1">
@@ -141,7 +141,7 @@ export function CallbackForm({
           inputMode="tel"
           autoComplete="tel"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => setPhone(formatPhone(e.target.value))}
           onBlur={() => touch('phone')}
           placeholder="(555) 123-4567"
           aria-invalid={show('phone') && !!phoneErr}

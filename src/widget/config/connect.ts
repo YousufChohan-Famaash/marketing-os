@@ -81,9 +81,9 @@ export interface ChannelMeta {
 
 export const CHANNEL_META: Record<ConnectChannel, ChannelMeta> = {
   call: { id: 'call', label: 'Call me now', sublabel: "We'll ring you in under 60 seconds", rank: 0 },
-  chat: { id: 'chat', label: 'Start a conversation', sublabel: 'Message us now, we reply in seconds', rank: 1 },
+  chat: { id: 'chat', label: 'Chat with us', sublabel: 'Message us now, we reply in seconds', rank: 1 },
   text: { id: 'text', label: 'Text me', sublabel: 'SMS or WhatsApp, on your phone', rank: 2 },
-  schedule: { id: 'schedule', label: 'Schedule a callback', sublabel: 'Pick a time that works for you', rank: 3 },
+  schedule: { id: 'schedule', label: 'Book a call', sublabel: 'Pick a time that works for you', rank: 3 },
   email: {
     id: 'email',
     label: 'Send your details',

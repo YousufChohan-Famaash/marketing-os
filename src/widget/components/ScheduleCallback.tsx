@@ -204,7 +204,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   if (phase === 'unavailable') {
     return (
       <div className="flex flex-col items-center py-8 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-famaash-soft text-ink">
           <PhoneIcon size={26} aria-hidden="true" />
         </span>
         <h3 className="mt-4 text-[18px] font-bold text-ink">No times to show right now</h3>
@@ -241,7 +241,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-ink">
           <CalendarIcon size={20} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">

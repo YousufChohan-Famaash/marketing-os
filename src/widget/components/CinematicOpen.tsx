@@ -26,7 +26,7 @@ const SHORT: Record<ConnectChannel, string> = {
   call: "Call",
   chat: "Chat",
   text: "Text",
-  schedule: "Schedule",
+  schedule: "Book",
   email: "Email",
 };
 

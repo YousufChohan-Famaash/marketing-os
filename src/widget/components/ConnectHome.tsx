@@ -104,7 +104,7 @@ function RowChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => vo
       onClick={onClick}
       className="flex w-full items-center gap-3 rounded-2xl border border-hairline bg-white px-4 py-3 text-left transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-ink">
         <Icon size={19} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ function GridChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => v
       onClick={onClick}
       className="flex items-center gap-2.5 rounded-2xl border border-hairline bg-white p-2.5 text-left transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-ink">
         <Icon size={16} aria-hidden="true" />
       </span>
       <span className="min-w-0">

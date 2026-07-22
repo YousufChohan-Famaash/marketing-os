@@ -23,7 +23,7 @@ export function RetainerCard({ message, onReviewAndSign }: RetainerCardProps) {
         <div
           className={cn(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-md',
-            signed ? 'bg-success/15 text-success' : 'bg-famaash-light text-famaash',
+            signed ? 'bg-success/15 text-success' : 'bg-famaash-light text-ink',
           )}
         >
           {signed ? <CheckIcon size={18} /> : <SignatureIcon size={18} />}

@@ -48,6 +48,12 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
       ? settings.storyVideoPoster
       : resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
 
+  // This is a recorded greeting, not a live stream, so we caption it instead of
+  // tagging it "LIVE". Firm-authored caption wins, else "A welcome from <first name>".
+  const firstName = (branding?.assistantName ?? '').trim().split(/\s+/)[0];
+  const welcome =
+    branding?.introVideoCaption?.trim() || (firstName ? `A welcome from ${firstName}` : 'A welcome');
+
   useEffect(() => {
     if (!src) return;
     const v = videoRef.current;
@@ -111,11 +117,14 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
           }
         }}
       />
-      {/* Live presence */}
-      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#5BD6A0]" aria-hidden="true" />
-        Live
-      </span>
+      {/* Recorded greeting caption (no "LIVE" tag). Hidden on the tiny thumbnail,
+          where the play control alone conveys a playable recording. */}
+      {!compact && (
+        <span className="absolute left-2.5 top-2.5 inline-flex max-w-[calc(100%-20px)] items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur">
+          <PlayIcon size={10} aria-hidden="true" />
+          <span className="truncate">{welcome}</span>
+        </span>
+      )}
       {/* Sound toggle: tap to play with sound, tap again to mute. */}
       <button
         type="button"

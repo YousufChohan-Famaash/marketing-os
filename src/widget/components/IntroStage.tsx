@@ -148,19 +148,20 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
           </div>
         </div>
       ) : (
-        <header className="flex shrink-0 items-center justify-between gap-2 px-3 py-2.5">
+        <header className="flex shrink-0 items-center gap-2 px-3 py-2.5">
           {onBack ? (
             <button
               type="button"
               onClick={onBack}
               aria-label="Back to all options"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
             >
               <ChevronLeftIcon size={18} />
             </button>
           ) : (
-            <FamaashMark size={36} />
+            <FamaashMark size={36} className="shrink-0" />
           )}
+          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">{branding?.name}</span>
           <WidgetControls
             tone="solid"
             onClose={onClose}

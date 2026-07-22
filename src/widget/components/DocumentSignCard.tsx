@@ -57,7 +57,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
   return (
     <div className="mt-2 max-w-[85%] rounded-lg border border-famaash-border bg-white p-3 shadow-sm">
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-famaash-light text-famaash">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-famaash-light text-ink">
           <SignatureIcon size={18} />
         </div>
         <div className="min-w-0 flex-1">

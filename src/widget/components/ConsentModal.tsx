@@ -62,7 +62,7 @@ export function ConsentModal() {
       >
         {/* Header */}
         <div className="flex shrink-0 items-center gap-2.5 border-b border-hairline px-4 py-3.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-light text-famaash">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-light text-ink">
             <MessageSquareIcon size={18} aria-hidden="true" />
           </span>
           <h2 id="consent-title" className="flex-1 text-[16px] font-semibold text-ink">

@@ -23,7 +23,7 @@ interface ChannelViewProps {
 const TITLES: Record<ChannelViewProps['channel'], string> = {
   call: 'Call me now',
   text: 'Text me',
-  schedule: 'Schedule a callback',
+  schedule: 'Book a call',
   email: 'Send your details',
 };
 
@@ -57,8 +57,17 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     ? consentLabel
     : `I agree to receive texts from ${firmName} about my inquiry. Message and data rates may apply. Reply STOP to opt out. Consent isn't a condition of hiring the firm.`;
 
-  const knownPhone = known.phone;
-  const hasContext = Boolean(knownPhone) || useWidgetStore.getState().messages.length > 0;
+  // Only claim what we actually have on file (and prefill into the form below),
+  // and name those fields, so the banner never says "we kept it" over blanks.
+  const kept = [
+    known.name?.trim() && 'name',
+    known.phone?.trim() && 'phone',
+    known.email?.trim() && 'email',
+  ].filter(Boolean) as string[];
+  const keptLabel =
+    kept.length <= 1
+      ? kept[0] ?? ''
+      : `${kept.slice(0, -1).join(', ')} and ${kept[kept.length - 1]}`;
 
   const [done, setDone] = useState<string | null>(null);
   const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(settings.textMethods[0] ?? 'sms');
@@ -230,10 +239,10 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
           <Confirmation message={done} onBack={back} />
         ) : (
           <>
-            {hasContext && (
+            {kept.length > 0 && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-famaash-stroke bg-famaash-soft px-3 py-2 text-[12px] text-famaash">
                 <CheckIcon size={14} aria-hidden="true" />
-                <span>We kept what you shared. Edit anything below.</span>
+                <span>We kept your {keptLabel}. Edit anything below.</span>
               </div>
             )}
 

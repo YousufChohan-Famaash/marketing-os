@@ -10,7 +10,7 @@ import {
 } from '../services/api';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
-import { nameError, phoneError, emailError as validateEmail } from '../utils/validation';
+import { nameError, phoneError, emailError as validateEmail, formatPhone } from '../utils/validation';
 import { PresenceVideo } from './PresenceVideo';
 
 interface SendDetailsProps {
@@ -82,7 +82,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const [severity, setSeverity] = useState<string | null>(null); // option value
   const [timing, setTiming] = useState<string | null>(null); // option value
   const [name, setName] = useState(prefill.name ?? '');
-  const [phone, setPhone] = useState(prefill.phone ?? '');
+  const [phone, setPhone] = useState(formatPhone(prefill.phone ?? ''));
   const [email, setEmail] = useState(prefill.email ?? '');
   const [agreed, setAgreed] = useState(false);
   const [touched, setTouched] = useState<{ name?: boolean; phone?: boolean; email?: boolean }>({});
@@ -197,7 +197,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   if (phase === 'unavailable') {
     return (
       <div className="flex flex-col items-center py-8 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-famaash-soft text-ink">
           <FileIcon size={26} aria-hidden="true" />
         </span>
         <h3 className="mt-4 text-[18px] font-bold text-ink">Not available right now</h3>
@@ -228,7 +228,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
     <div className="space-y-4">
       {/* Intro badge */}
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-ink">
           <FileIcon size={20} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
@@ -327,7 +327,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
               inputMode="tel"
               autoComplete="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               onBlur={() => touch('phone')}
               placeholder="(555) 123-4567"
               aria-invalid={show('phone') && !!phoneErr}

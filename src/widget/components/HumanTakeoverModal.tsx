@@ -88,7 +88,7 @@ export function HumanTakeoverModal() {
           <li>
             <OptionCard
               icon={<CalendarIcon size={18} />}
-              title="Schedule a call"
+              title="Book a call"
               subtitle="Pick a specific date and time."
               onClick={() => setView('schedule')}
             />
@@ -190,7 +190,7 @@ function OptionCard({
       onClick={onClick}
       className="flex w-full items-center gap-3 rounded-xl border border-hairline bg-white p-3 text-left transition-colors hover:border-famaash-border hover:bg-famaash-light/40"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-famaash">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-ink">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
