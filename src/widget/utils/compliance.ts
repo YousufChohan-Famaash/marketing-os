@@ -1,4 +1,4 @@
-import type { ComplianceConfig } from '../types/domain';
+import type { ComplianceConfig, ConsentChannel } from '../types/domain';
 
 /** Compliant default when the firm has authored no TCPA copy at all. */
 export const DEFAULT_TCPA_CONSENT =
@@ -20,6 +20,8 @@ export interface ResolvedTcpa {
  * tab for the lead's language.
  *
  * Resolution order (mirrors the backend's `resolve_tcpa`):
+ *   0. `tcpaByChannel[channel][language]` — channel-specific consent (call vs
+ *      SMS vs booking vs form), when a channel is given and the firm authored it
  *   1. `tcpaTemplates[language]` — the per-language template the admin authored
  *   2. `tcpaConsent` — the legacy single string (firm never used the new tab)
  *   3. a compliant hardcoded default
@@ -29,7 +31,13 @@ export interface ResolvedTcpa {
 export function resolveTcpa(
   compliance: ComplianceConfig | null | undefined,
   language: string,
+  channel?: ConsentChannel,
 ): ResolvedTcpa {
+  if (channel) {
+    const byChannel = compliance?.tcpaByChannel?.[channel]?.[language];
+    if (byChannel?.text) return { text: byChannel.text, version: byChannel.version };
+  }
+
   const item = compliance?.tcpaTemplates?.[language];
   if (item?.text) return { text: item.text, version: item.version };
 

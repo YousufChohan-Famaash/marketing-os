@@ -229,6 +229,9 @@ export interface TemplateItem {
   updatedBy: string | null;
 }
 
+/** Contact channel a consent string applies to (call/SMS/booking/web form). */
+export type ConsentChannel = 'call' | 'sms' | 'booking' | 'form';
+
 export interface ComplianceConfig {
   aiDisclosure: string;
   /**
@@ -243,6 +246,15 @@ export interface ComplianceConfig {
    * `tcpaConsent`. Empty ({}) for firms that never touched the tab.
    */
   tcpaTemplates?: Record<string, TemplateItem>;
+  /**
+   * Optional per-channel consent, so a call/booking screen shows call consent
+   * and a text screen shows SMS consent instead of one string reused
+   * everywhere (SMS "reply STOP" wording must not sit on a call screen). Keyed
+   * by channel then language, mirroring `tcpaTemplates`. When a channel/language
+   * is absent, resolution falls back to `tcpaTemplates` -> `tcpaConsent` -> a
+   * compliant default. Populated by the backend from the Compliance tab.
+   */
+  tcpaByChannel?: Partial<Record<ConsentChannel, Record<string, TemplateItem>>>;
   privacyUrl: string;
   termsUrl: string;
 }

@@ -46,7 +46,12 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // falling back to legacy/default copy. `consentVersion` is recorded with the
   // consent so the exact wording is provable in the audit log.
   const language = useWidgetStore((s) => s.language);
-  const tcpa = resolveTcpa(compliance, language);
+  // Consent is resolved for THIS channel, so a call/booking screen never shows
+  // SMS "reply STOP" wording. Falls back to the firm's single consent when no
+  // channel-specific copy is authored (see resolveTcpa + tcpaByChannel).
+  const consentChannel =
+    channel === 'text' ? 'sms' : channel === 'schedule' ? 'booking' : channel === 'email' ? 'form' : 'call';
+  const tcpa = resolveTcpa(compliance, language, consentChannel);
   const consentLabel = tcpa.text;
   const consentVersion = tcpa.version;
 

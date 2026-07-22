@@ -41,11 +41,15 @@ export function Avatar({ src, name, size = 28, fallback = 'initials', className 
   // 'none' fallback: only ever a photo — nothing while loading or on failure.
   if (fallback === 'none' && !showImg) return null;
 
+  // No photo → a confident brand "orb" (the firm's colour, white monogram),
+  // not a faint 10%-opacity letter. The firm can upload a real avatar/monogram
+  // (assistantAvatarUrl) to replace it; this is the fallback.
+  const orb = fallback !== 'none';
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full text-famaash',
-        fallback === 'none' ? 'bg-transparent' : 'bg-famaash/10',
+        'inline-flex shrink-0 select-none items-center justify-center overflow-hidden rounded-full',
+        orb ? 'bg-famaash text-white' : 'bg-transparent text-famaash',
         className,
       )}
       style={dim}
@@ -60,7 +64,7 @@ export function Avatar({ src, name, size = 28, fallback = 'initials', className 
           onError={() => setFailed(true)}
         />
       ) : text ? (
-        <span className="text-[11px] font-semibold leading-none">{text}</span>
+        <span className="font-bold leading-none" style={{ fontSize: Math.round(size * 0.4) }}>{text}</span>
       ) : (
         <svg width={Math.round(size * 0.6)} height={Math.round(size * 0.6)} viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6Z" />

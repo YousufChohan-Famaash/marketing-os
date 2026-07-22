@@ -5,6 +5,7 @@ import { resolveCinematicVideo, resolveIntroVideo } from '../config/demoMedia';
 import { CaptureDrawer } from './CaptureDrawer';
 import { CaptureProgress } from './CaptureProgress';
 import { ChannelView } from './ChannelView';
+import { ChatDisclosure } from './ChatDisclosure';
 import { ChatHeader } from './ChatHeader';
 import { CinematicOpen } from './CinematicOpen';
 import { Composer, type ComposerHandle } from './Composer';
@@ -161,6 +162,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
       <CaptureDrawer />
       <MessageList onScrolledChange={hasIntroVideo ? setPastVideo : undefined} />
       <SafetyButtons />
+      <ChatDisclosure />
       <Composer ref={composerRef} />
       <PoweredByFooter />
     </div>
