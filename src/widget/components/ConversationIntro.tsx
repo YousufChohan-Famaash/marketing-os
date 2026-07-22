@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { useWidgetStore } from '../store/widgetStore';
-import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
-import { ChevronLeftIcon, PlayIcon } from '../utils/icons';
-import { WidgetControls } from './WidgetControls';
+import { useEffect, useRef, useState } from "react";
+import { useWidgetStore } from "../store/widgetStore";
+import {
+  resolveAssistantAvatar,
+  resolveIntroPoster,
+  resolveIntroVideo,
+} from "../config/demoMedia";
+import { ChevronLeftIcon, PlayIcon } from "../utils/icons";
+import { Avatar } from "./Avatar";
+import { WidgetControls } from "./WidgetControls";
 
 /** Header controls overlaid on the intro video (so they scroll away with it). */
 export interface IntroControls {
@@ -22,12 +27,17 @@ export interface IntroControls {
  */
 export function ConversationIntro({ controls }: { controls?: IntroControls }) {
   const branding = useWidgetStore((s) => s.branding);
-  const firmName = branding?.name ?? 'our team';
+  const assistantName =
+    branding?.assistantName ?? branding?.name ?? "Assistant";
+  const assistantAvatar = resolveAssistantAvatar(branding?.assistantAvatarUrl);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [played, setPlayed] = useState(false);
 
   const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
-  const posterUrl = resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
+  const posterUrl = resolveIntroPoster(
+    branding?.introVideoPoster,
+    branding?.introVideoUrl,
+  );
 
   // Muted autoplay that plays through once (no loop, per CEO feedback); the
   // play button unmutes and replays it from the start.
@@ -103,10 +113,25 @@ export function ConversationIntro({ controls }: { controls?: IntroControls }) {
           </div>
         )}
       </div>
-      <div className="w-full">
-        <h2 className="text-[16px] font-bold leading-snug tracking-[-0.02em] text-[#1A1A1A]">
-          Hi <span aria-hidden="true">👋</span> I&apos;m an AI intake assistant for {firmName}
-        </h2>
+      <div className="flex w-full items-start gap-3">
+        <div className="relative shrink-0">
+          <Avatar src={assistantAvatar} name={assistantName} size={40} />
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-success"
+            aria-hidden="true"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[16px] font-bold leading-snug tracking-[-0.02em] text-[#1A1A1A]">
+            Let&apos;s talk about it
+          </h2>
+          <p className="mt-1 text-[12.5px] leading-snug text-muted">
+            {/* I&apos;m {firmName}&apos;s AI assistant, and a real person takes it
+            from here. */}
+            Chat with us! You can also continue this on your phone or schedule a
+            call with one of our experts.
+          </p>
+        </div>
       </div>
     </div>
   );

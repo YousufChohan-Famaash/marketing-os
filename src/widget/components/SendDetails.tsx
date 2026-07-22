@@ -10,6 +10,7 @@ import {
 } from '../services/api';
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
+import { nameError, phoneError, emailError as validateEmail } from '../utils/validation';
 import { PresenceVideo } from './PresenceVideo';
 
 interface SendDetailsProps {
@@ -84,6 +85,8 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const [phone, setPhone] = useState(prefill.phone ?? '');
   const [email, setEmail] = useState(prefill.email ?? '');
   const [agreed, setAgreed] = useState(false);
+  const [touched, setTouched] = useState<{ name?: boolean; phone?: boolean; email?: boolean }>({});
+  const [attempted, setAttempted] = useState(false);
   const [honeypot, setHoneypot] = useState(''); // bots fill this; humans never see it
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,10 +124,13 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
 
   const consentDisplay = config?.consentText || consentLabel;
 
-  const nameValid = name.trim().length >= 2;
-  const phoneValid = phone.replace(/\D/g, '').length >= 7;
-  const emailValid = !email.trim() || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
-  const canSubmit = nameValid && phoneValid && emailValid && agreed && !submitting;
+  const nameErr = nameError(name);
+  const phoneErr = phoneError(phone);
+  const emailErr = validateEmail(email); // optional field: only errors when malformed
+  const consentErr = !agreed;
+  const canSubmit = !nameErr && !phoneErr && !emailErr && !consentErr && !submitting;
+  const touch = (f: 'name' | 'phone' | 'email') => setTouched((t) => ({ ...t, [f]: true }));
+  const show = (f: 'name' | 'phone' | 'email') => touched[f] || attempted;
 
   const advance = () => setStep((s) => Math.min(s + 1, 3));
 
@@ -303,53 +309,76 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
             onChange={(e) => setHoneypot(e.target.value)}
             style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
           />
-          <Field label="Your name">
+          <Field label="Your name" error={show('name') ? nameErr : null}>
             <input
               type="text"
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => touch('name')}
               placeholder="First and last name"
-              className={inputCls}
+              aria-invalid={show('name') && !!nameErr}
+              className={fieldCls(show('name') && !!nameErr)}
             />
           </Field>
-          <Field label="Phone number">
+          <Field label="Phone number" error={show('phone') ? phoneErr : null}>
             <input
               type="tel"
               inputMode="tel"
               autoComplete="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              onBlur={() => touch('phone')}
               placeholder="(555) 123-4567"
-              className={inputCls}
+              aria-invalid={show('phone') && !!phoneErr}
+              className={fieldCls(show('phone') && !!phoneErr)}
             />
           </Field>
-          <Field label="Email" hint="optional">
+          <Field label="Email" hint="optional" error={show('email') ? emailErr : null}>
             <input
               type="email"
               inputMode="email"
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => touch('email')}
               placeholder="you@example.com"
-              className={inputCls}
+              aria-invalid={show('email') && !!emailErr}
+              className={fieldCls(show('email') && !!emailErr)}
             />
           </Field>
 
-          <label className="flex items-start gap-2.5 rounded-lg border border-hairline bg-subtle px-3 py-2.5">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-famaash"
-            />
-            <span className="text-[11.5px] leading-relaxed text-muted">{consentDisplay}</span>
-          </label>
+          <div>
+            <label
+              className={cn(
+                'flex items-start gap-2.5 rounded-lg border bg-subtle px-3 py-2.5',
+                attempted && consentErr ? 'border-danger' : 'border-hairline',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-famaash"
+              />
+              <span className="text-[11.5px] leading-relaxed text-muted">{consentDisplay}</span>
+            </label>
+            {attempted && consentErr && (
+              <p className="mt-1 text-[11.5px] text-danger">Please agree before we continue.</p>
+            )}
+          </div>
 
           <button
             type="button"
-            onClick={() => void submit()}
-            disabled={!canSubmit}
+            onClick={() => {
+              if (submitting) return;
+              if (!canSubmit) {
+                setAttempted(true);
+                return;
+              }
+              void submit();
+            }}
+            disabled={submitting}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
           >
             {submitting ? 'Sending…' : 'Submit my details'}
@@ -360,16 +389,30 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   );
 }
 
-const inputCls =
-  'w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none';
+const fieldCls = (hasError: boolean) =>
+  cn(
+    'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+    hasError ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
+  );
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  error,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  error?: string | null;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label className="mb-1.5 block text-[12px] font-medium text-ink-soft">
         {label} {hint && <span className="text-muted-soft">({hint})</span>}
       </label>
       {children}
+      {error && <p className="mt-1 text-[11.5px] text-danger">{error}</p>}
     </div>
   );
 }

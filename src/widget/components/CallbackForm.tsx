@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { MessageSquareIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
+import { nameError, phoneError, emailError as validateEmail } from '../utils/validation';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 
@@ -62,10 +63,18 @@ export function CallbackForm({
   const [phone, setPhone] = useState(initialPhone ?? known.phone ?? '');
   const [email, setEmail] = useState(initialEmail ?? known.email ?? '');
   const [agreed, setAgreed] = useState(false);
-  const phoneValid = phone.replace(/\D/g, '').length >= 7;
-  const nameValid = !collectName || name.trim().length >= 2;
-  const emailValid = !collectEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
-  const valid = phoneValid && nameValid && emailValid && (!consentLabel || agreed);
+  // Per-field errors surface once a field is blurred or a submit is attempted,
+  // so we guide (not nag) and never send unvalidated data.
+  const [touched, setTouched] = useState<{ name?: boolean; phone?: boolean; email?: boolean }>({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const touch = (f: 'name' | 'phone' | 'email') => setTouched((t) => ({ ...t, [f]: true }));
+  const show = (f: 'name' | 'phone' | 'email') => touched[f] || submitAttempted;
+
+  const nameErr = collectName ? nameError(name) : null;
+  const phoneErr = phoneError(phone);
+  const emailErr = collectEmail ? validateEmail(email, true) : null;
+  const consentErr = consentLabel && !agreed;
+  const valid = !nameErr && !phoneErr && !emailErr && !consentErr;
   const brand = variant === 'brand';
   const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
@@ -107,9 +116,15 @@ export function CallbackForm({
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => touch('name')}
             placeholder="First and last name"
-            className="w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none"
+            aria-invalid={show('name') && !!nameErr}
+            className={cn(
+              'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+              show('name') && nameErr ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
+            )}
           />
+          {show('name') && nameErr && <p className="mt-1 text-[11.5px] text-danger">{nameErr}</p>}
         </div>
       )}
 
@@ -127,9 +142,15 @@ export function CallbackForm({
           autoComplete="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          onBlur={() => touch('phone')}
           placeholder="(555) 123-4567"
-          className="w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none"
+          aria-invalid={show('phone') && !!phoneErr}
+          className={cn(
+            'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+            show('phone') && phoneErr ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
+          )}
         />
+        {show('phone') && phoneErr && <p className="mt-1 text-[11.5px] text-danger">{phoneErr}</p>}
       </div>
 
       {collectEmail && (
@@ -147,32 +168,53 @@ export function CallbackForm({
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => touch('email')}
             placeholder="you@example.com"
+            aria-invalid={(show('email') && !!emailErr) || !!emailError}
             className={cn(
               'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
-              emailError ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
+              (show('email') && emailErr) || emailError
+                ? 'border-danger focus:border-danger'
+                : 'border-hairline focus:border-famaash',
             )}
           />
-          {emailError && <p className="mt-1 text-[11.5px] text-danger">{emailError}</p>}
+          {((show('email') && emailErr) || emailError) && (
+            <p className="mt-1 text-[11.5px] text-danger">{(show('email') && emailErr) || emailError}</p>
+          )}
         </div>
       )}
 
       {consentLabel && (
-        <label className="flex items-start gap-2.5 rounded-lg border border-hairline bg-subtle px-3 py-2.5">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-famaash"
-          />
-          <span className="text-[11.5px] leading-relaxed text-muted">{consentLabel}</span>
-        </label>
+        <div>
+          <label
+            className={cn(
+              'flex items-start gap-2.5 rounded-lg border bg-subtle px-3 py-2.5',
+              submitAttempted && consentErr ? 'border-danger' : 'border-hairline',
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-famaash"
+            />
+            <span className="text-[11.5px] leading-relaxed text-muted">{consentLabel}</span>
+          </label>
+          {submitAttempted && consentErr && (
+            <p className="mt-1 text-[11.5px] text-danger">Please agree before we continue.</p>
+          )}
+        </div>
       )}
 
       <button
         type="button"
         onClick={() => {
-          if (!valid || busy) return;
+          if (busy) return;
+          if (!valid) {
+            // Reveal every field's error instead of silently doing nothing.
+            setSubmitAttempted(true);
+            return;
+          }
           const p = phone.trim();
           const n = collectName ? name.trim() : undefined;
           const e = collectEmail ? email.trim() : undefined;
@@ -180,7 +222,7 @@ export function CallbackForm({
           rememberContact({ phone: p, name: n, email: e });
           onSubmit(p, n, e);
         }}
-        disabled={!valid || busy}
+        disabled={busy}
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
       >
         <CtaIcon size={16} aria-hidden="true" />
