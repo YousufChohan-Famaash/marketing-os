@@ -1,19 +1,18 @@
 import { useWidgetStore } from '../store/widgetStore';
+import { resolveAiDisclosure } from '../utils/compliance';
 
 /**
  * Quiet, persistent AI disclosure shown just above the composer during a chat
- * (feedback round 1, 4.4: "disclose quietly"). The copy is the firm-authored
- * `compliance.aiDisclosure` when set, so it stays multi-tenant; otherwise a
- * sensible default that names the firm. A Privacy link is appended when the firm
- * has a privacy URL on file.
+ * (feedback round 1, 4.4: "disclose quietly"). Copy is the firm-authored
+ * disclosure for the active language (`resolveAiDisclosure`), so it stays
+ * multi-tenant and multi-language. A Privacy link is appended when the firm has
+ * a privacy URL on file.
  */
 export function ChatDisclosure() {
   const compliance = useWidgetStore((s) => s.compliance);
-  const firm = useWidgetStore((s) => s.branding)?.name;
+  const language = useWidgetStore((s) => s.language);
 
-  const text =
-    compliance?.aiDisclosure?.trim() ||
-    `You're chatting with ${firm ? `${firm}'s` : 'our'} AI assistant. A real person can join anytime.`;
+  const text = resolveAiDisclosure(compliance, language);
   const privacyUrl = compliance?.privacyUrl?.trim();
 
   return (

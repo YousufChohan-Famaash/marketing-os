@@ -28,6 +28,25 @@ interface ScheduleCallbackProps {
   onFallback: () => void;
 }
 
+/** An "Add to calendar" .ics data URI for the booked slot (works with any calendar app). */
+function calendarHref(start: string, end: string, title: string, details: string): string {
+  const stamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const esc = (t: string) => t.replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Famaash//Chat Widget//EN',
+    'BEGIN:VEVENT',
+    `DTSTART:${stamp(start)}`,
+    `DTEND:${stamp(end)}`,
+    `SUMMARY:${esc(title)}`,
+    `DESCRIPTION:${esc(details)}`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+}
+
 /** Today's date in the visitor's local zone, as a YYYY-MM-DD key. */
 function dayKey(d: Date, tz: string): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -57,6 +76,7 @@ interface DayGroup {
 export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFallback }: ScheduleCallbackProps) {
   const firmId = useWidgetStore((s) => s.firmId);
   const conversationId = useWidgetStore((s) => s.conversationId);
+  const firmName = useWidgetStore((s) => s.branding)?.name ?? 'the firm';
 
   const [phase, setPhase] = useState<'loading' | 'pick' | 'unavailable' | 'booked'>('loading');
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -68,6 +88,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   const [emailError, setEmailError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [bookedInfo, setBookedInfo] = useState<{ start: string; end: string; callFrom?: string } | null>(null);
 
   // Render in the response's timezone (always Eastern), never the browser's.
   const displayTz = serverTz ?? ET;
@@ -174,6 +195,8 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         consentText: consentLabel,
         copyVersion: consentVersion,
       });
+      const slot = slots.find((s) => s.start === selectedStart);
+      setBookedInfo({ start: selectedStart, end: slot?.end ?? selectedStart, callFrom: res.callFromNumber });
       setConfirmLabel(res.chip?.label ?? "Callback booked. We'll call you then");
       setPhase('booked');
     } catch (err) {
@@ -235,6 +258,14 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   }
 
   if (phase === 'booked') {
+    const cal = bookedInfo
+      ? calendarHref(
+          bookedInfo.start,
+          bookedInfo.end,
+          `Call with ${firmName}`,
+          `${firmName} will call you about your inquiry.`,
+        )
+      : null;
     return (
       <div className="flex flex-col items-center py-8 text-center">
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
@@ -244,6 +275,21 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
           Check your email for the confirmation and calendar invite. We'll call you at the time you picked.
         </p>
+        {bookedInfo?.callFrom && (
+          <p className="mt-3 rounded-lg bg-famaash-soft px-3 py-2 text-[12.5px] leading-relaxed text-ink">
+            We'll call from <span className="font-semibold">{bookedInfo.callFrom}</span>. Save it so you don't miss us.
+          </p>
+        )}
+        {cal && (
+          <a
+            href={cal}
+            download="callback.ics"
+            className="mt-5 inline-flex items-center gap-2 rounded-pill border border-famaash-stroke px-5 py-2.5 text-[13px] font-semibold text-famaash hover:bg-famaash-soft"
+          >
+            <CalendarIcon size={15} aria-hidden="true" />
+            Add to calendar
+          </a>
+        )}
       </div>
     );
   }

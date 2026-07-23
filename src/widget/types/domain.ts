@@ -233,7 +233,14 @@ export interface TemplateItem {
 export type ConsentChannel = 'call' | 'sms' | 'booking' | 'form';
 
 export interface ComplianceConfig {
+  /** Legacy single-string AI disclosure. Fallback when no per-language template. */
   aiDisclosure: string;
+  /**
+   * Per-language AI disclosure templates keyed by language code, authored in the
+   * Compliance tab. Resolve with `resolveAiDisclosure()`, which falls back to the
+   * 'en' template, then the legacy `aiDisclosure`, then a built-in default.
+   */
+  aiDisclosureTemplates?: Record<string, TemplateItem>;
   /**
    * Legacy single-string TCPA consent. Kept as the fallback for firms that
    * haven't authored per-language templates in the Compliance tab.
@@ -310,6 +317,12 @@ export interface WidgetBootConfig {
   plan: Plan;
   features: FeatureFlags;
   branding: FirmBranding;
+  /**
+   * Ordered list of language codes the firm offers, already narrowed by the
+   * backend to languages that have consent copy. `languages[0]` is the default.
+   * Absent or single-entry means no language picker. Drives the language UI.
+   */
+  languages?: string[];
   /** Connect launcher settings (size, channels, video). Resolved with defaults. */
   connect?: Partial<ConnectSettings>;
   flowId: string;

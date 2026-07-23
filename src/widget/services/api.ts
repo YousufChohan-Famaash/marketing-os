@@ -344,6 +344,10 @@ export interface ScheduleCallbackResponse {
   chip?: { kind: string; label: string };
   slotStart?: string;
   booking_id?: string;
+  /** The number the firm's AI will call from, so we can tell the lead to save it
+   *  ("we'll call from ..."). Optional: only shown when the backend provides it,
+   *  never hardcoded per firm. */
+  callFromNumber?: string;
 }
 
 export function scheduleCallback(args: {

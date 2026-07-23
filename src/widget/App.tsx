@@ -60,6 +60,7 @@ export function App() {
   const setExpanded = useWidgetStore((s) => s.setExpanded);
   const connectView = useWidgetStore((s) => s.connectView);
   const conversationStarted = useWidgetStore((s) => s.conversationStarted);
+  const language = useWidgetStore((s) => s.language);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
   const [bridgeReady, setBridgeReady] = useState(false);
   // Deferred LiveKit connection (Option B): the socket is created on the
@@ -329,7 +330,7 @@ export function App() {
       onReset={() => setBootStatus('idle')}
     >
       <SocketContext.Provider value={socket}>
-        <div className="relative flex h-full w-full flex-col">
+        <div className="relative flex h-full w-full flex-col" dir={language === 'ar' ? 'rtl' : 'ltr'}>
           <WidgetShell onClose={handleClose} onMinimize={handleMinimize} onExpand={handleExpand} isExpanded={isExpanded} />
           <ModalHost />
           <ConsentModal />

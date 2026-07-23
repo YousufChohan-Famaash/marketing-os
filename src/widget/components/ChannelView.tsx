@@ -46,21 +46,23 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // falling back to legacy/default copy. `consentVersion` is recorded with the
   // consent so the exact wording is provable in the audit log.
   const language = useWidgetStore((s) => s.language);
-  // Consent is resolved for THIS channel, so a call/booking screen never shows
-  // SMS "reply STOP" wording. Falls back to the firm's single consent when no
-  // channel-specific copy is authored (see resolveTcpa + tcpaByChannel).
+  const firmName = branding?.name ?? 'the firm';
+  // Consent copy for THIS channel. Proper, channel-appropriate defaults so a
+  // call/booking screen never shows SMS-only wording or a bare placeholder. A
+  // firm-authored value wins, but a too-short one (e.g. a "Please agree"
+  // placeholder in the config) is treated as not-authored and replaced.
   const consentChannel =
     channel === 'text' ? 'sms' : channel === 'schedule' ? 'booking' : channel === 'email' ? 'form' : 'call';
-  const tcpa = resolveTcpa(compliance, language, consentChannel);
-  const consentLabel = tcpa.text;
-  const consentVersion = tcpa.version;
-
-  // SMS (TCPA) requires explicit STOP opt-out + rates wording. If the firm's
-  // consent copy already carries it, use it; otherwise use compliant text copy.
-  const firmName = branding?.name ?? 'the firm';
-  const textConsentLabel = /stop/i.test(consentLabel)
-    ? consentLabel
-    : `I agree to receive texts from ${firmName} about my inquiry. Message and data rates may apply. Reply STOP to opt out. Consent isn't a condition of hiring the firm.`;
+  const CONSENT_DEFAULTS: Record<'call' | 'sms' | 'booking' | 'form', string> = {
+    call: `By sharing your number, you agree that ${firmName} may call you about your inquiry. Consent isn't a condition of hiring the firm.`,
+    sms: `I agree to receive texts from ${firmName} about my inquiry. Message and data rates may apply. Reply STOP to opt out. Consent isn't a condition of hiring the firm.`,
+    booking: `By booking, you agree that ${firmName} may call you at the time you selected about your inquiry. Consent isn't a condition of hiring the firm.`,
+    form: `By submitting, you agree that ${firmName} may contact you about your inquiry.`,
+  };
+  const resolvedTcpa = resolveTcpa(compliance, language, consentChannel);
+  const authoredConsent = resolvedTcpa.text.trim().length >= 30 ? resolvedTcpa.text : null;
+  const consentLabel = authoredConsent ?? CONSENT_DEFAULTS[consentChannel];
+  const consentVersion = authoredConsent ? resolvedTcpa.version : undefined;
 
   // Only claim what we actually have on file (and prefill into the form below),
   // and name those fields, so the banner never says "we kept it" over blanks.
@@ -169,13 +171,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     try {
       let out;
       try {
-        out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
+        out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: consentLabel, copyVersion: consentVersion });
       } catch (err) {
         // WhatsApp unreachable for this firm → fall back to SMS automatically.
         if (err instanceof ApiError && err.status === 503 && channel === 'whatsapp') {
           channel = 'sms';
           setTextMethod('sms');
-          out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: textConsentLabel, copyVersion: consentVersion });
+          out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: consentLabel, copyVersion: consentVersion });
         } else {
           throw err;
         }
@@ -210,7 +212,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={TITLES[channel]}>
+    <div className="fa-view-in flex h-full w-full flex-col bg-white" role="dialog" aria-label={TITLES[channel]}>
       <header className="flex shrink-0 items-center gap-2 border-b border-hairline-soft px-2 py-2">
         <button
           type="button"
@@ -308,7 +310,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                         : 'Text me'
                   }
                   busy={texting}
-                  consentLabel={textConsentLabel}
+                  consentLabel={consentLabel}
                   media={<PresenceVideo />}
                   onSubmit={finishText}
                 />
@@ -353,13 +355,17 @@ function CallCountdown({
   const R = 46;
   const C = 2 * Math.PI * R;
   const offset = C * (1 - Math.max(0, Math.min(60, seconds)) / 60);
-  const mmss = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-  const connecting = seconds <= 0;
+  const first = name?.trim().split(/\s+/)[0];
 
   return (
     <div className="flex flex-col items-center py-6 text-center">
       <div className="relative h-[120px] w-[120px]">
-        <svg viewBox="0 0 110 110" className="h-full w-full -rotate-90">
+        {/* Live "ringing" pulse behind the phone (off for reduced-motion users). */}
+        <span
+          className="absolute left-1/2 top-1/2 h-[68px] w-[68px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-famaash/20 motion-safe:animate-ping"
+          aria-hidden="true"
+        />
+        <svg viewBox="0 0 110 110" className="relative h-full w-full -rotate-90">
           <circle cx="55" cy="55" r={R} fill="none" stroke="var(--hairline)" strokeWidth="6" />
           <circle
             cx="55"
@@ -374,27 +380,14 @@ function CallCountdown({
             style={{ transition: 'stroke-dashoffset 1s linear' }}
           />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {connecting ? (
-            <PhoneIcon size={26} className="text-famaash" aria-hidden="true" />
-          ) : (
-            <>
-              <span className="text-[26px] font-bold tabular-nums text-ink">{mmss}</span>
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-soft">
-                until we call
-              </span>
-            </>
-          )}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <PhoneIcon size={30} className="text-famaash" aria-hidden="true" />
         </div>
       </div>
 
-      <h3 className="mt-5 text-[18px] font-bold text-ink">
-        {connecting ? 'Connecting your call…' : `Calling you ${name ? name.split(' ')[0] : 'shortly'}`}
-      </h3>
+      <h3 className="mt-5 text-[18px] font-bold text-ink">We&apos;re dialing you now</h3>
       <p className="mt-2 max-w-[32ch] text-[13.5px] leading-relaxed text-muted">
-        {connecting
-          ? `Your phone should ring at ${phone} any moment now.`
-          : `Hang tight, we'll ring ${phone} in under a minute. Keep your phone nearby.`}
+        Your phone should ring at {phone} in a few seconds{first ? `, ${first}` : ''}. Keep it nearby.
       </p>
       <button
         type="button"

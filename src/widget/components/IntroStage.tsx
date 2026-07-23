@@ -107,7 +107,7 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-white">
+    <div className="fa-view-in flex h-full w-full flex-col bg-white">
       {hasVideo ? (
         <div className="relative shrink-0">
           <video

@@ -5,7 +5,7 @@
  * Penpal RPC, and exposes a tiny `window.Famaash` API for programmatic control.
  *
  * Security:
- *   - The iframe is created with sandbox="allow-scripts allow-forms allow-popups allow-same-origin".
+ *   - The iframe is created with sandbox="allow-scripts allow-forms allow-popups allow-downloads allow-same-origin".
  *   - Penpal connects with an explicit childOrigin (the widget's origin).
  *   - The iframe origin is read from the script tag's src attribute.
  */
@@ -38,7 +38,7 @@ const LAUNCHER_ID = 'famaash-launcher';
 const DOCK_ID = 'famaash-dock';
 const IFRAME_ID = 'famaash-iframe';
 const Z_INDEX = '2147483647';
-const SANDBOX = 'allow-scripts allow-forms allow-popups allow-same-origin';
+const SANDBOX = 'allow-scripts allow-forms allow-popups allow-downloads allow-same-origin';
 const FALLBACK_ACCENT = '#534FEB';
 
 const styles = `
@@ -219,6 +219,15 @@ const styles = `
   transition: width 0.24s cubic-bezier(0.22, 1, 0.36, 1), height 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 #${IFRAME_ID}.is-hidden { display: none; }
+/* One gentle spring entrance the first time the panel opens (no hard pop-in);
+   disabled for reduced-motion. Reopen after minimize is instant. */
+@keyframes fa-panel-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #${IFRAME_ID}.is-entering { animation: fa-panel-in 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+}
 /* Conversations + channel views need more room (scrolling chat, forms). */
 #${IFRAME_ID}.is-tall {
   height: min(700px, calc(100vh - 36px));
@@ -832,6 +841,7 @@ function readScriptConfig(): {
   let widgetPainted = false;
   let revealArmed = false;
   let revealTimer: ReturnType<typeof setTimeout> | null = null;
+  let panelEntered = false;
   const revealPanel = () => {
     revealArmed = false;
     if (revealTimer) {
@@ -839,7 +849,14 @@ function readScriptConfig(): {
       revealTimer = null;
     }
     hideLoading();
-    iframe?.classList.remove('is-hidden');
+    if (!iframe) return;
+    iframe.classList.remove('is-hidden');
+    // One gentle entrance per session; a reopen after minimize stays instant.
+    if (!panelEntered) {
+      panelEntered = true;
+      iframe.classList.add('is-entering');
+      setTimeout(() => iframe?.classList.remove('is-entering'), 360);
+    }
   };
   const armReveal = () => {
     if (widgetPainted) {

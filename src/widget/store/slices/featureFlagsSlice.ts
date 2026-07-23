@@ -28,9 +28,12 @@ export interface FeatureFlagsSlice {
   /**
    * Active conversation language code ('en' | 'es' | 'ar'). Single source of
    * truth for both the /token language and per-language compliance copy
-   * (resolveTcpa). Defaults to 'en'; the language picker (coming soon) sets it.
+   * (resolveTcpa / resolveAiDisclosure). Auto-picked at boot from the browser
+   * language intersected with `languages`; the picker updates it.
    */
   language: string;
+  /** Ordered languages the firm offers (from /config; [] = no picker). */
+  languages: string[];
   setLanguage: (language: string) => void;
   setBootConfig: (config: WidgetBootConfig) => void;
 }
@@ -53,8 +56,14 @@ export const createFeatureFlagsSlice: StateCreator<
   allowedOrigins: [],
   connect: resolveConnectSettings(null),
   language: 'en',
+  languages: [],
   setLanguage: (language) => set({ language }),
-  setBootConfig: (config) =>
+  setBootConfig: (config) => {
+    // Auto-greet in the visitor's language when the firm offers it, else the
+    // firm default (languages[0]). Sent on /token, so the agent replies in it.
+    const offered = config.languages?.length ? config.languages : ['en'];
+    const nav = (typeof navigator !== 'undefined' ? navigator.language : 'en').slice(0, 2).toLowerCase();
+    const language = offered.includes(nav) ? nav : offered[0];
     set({
       firmId: config.firmId,
       firmName: config.firmName,
@@ -67,5 +76,8 @@ export const createFeatureFlagsSlice: StateCreator<
       dropboxSignTestMode: config.dropboxSignTestMode ?? false,
       allowedOrigins: config.allowedOrigins ?? [],
       connect: resolveConnectSettings(config),
-    }),
+      languages: config.languages ?? [],
+      language,
+    });
+  },
 });

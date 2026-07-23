@@ -98,7 +98,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // ── Connect launcher home menu ─────────────────────────────────────────────
   if (connectView === 'home') {
     return (
-      <div className="relative h-full w-full">
+      <div className="fa-view-in relative h-full w-full">
         <ConnectHome onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
         {showCinematic && <CinematicOpen />}
       </div>
@@ -137,7 +137,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   }
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-bg">
+    <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-bg">
       <ChatHeader
         onClose={onClose}
         onMinimize={onMinimize}
