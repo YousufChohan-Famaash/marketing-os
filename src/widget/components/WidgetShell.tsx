@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
-import { shouldShowCinematic } from '../config/connect';
 import { resolveCinematicVideo, resolveIntroVideo } from '../config/demoMedia';
 import { CaptureDrawer } from './CaptureDrawer';
 import { CaptureProgress } from './CaptureProgress';
 import { ChannelView } from './ChannelView';
 import { ChatDisclosure } from './ChatDisclosure';
 import { ChatHeader } from './ChatHeader';
-import { CinematicOpen } from './CinematicOpen';
+import { CinematicHome } from './CinematicHome';
 import { Composer, type ComposerHandle } from './Composer';
 import { ConnectingState } from './ConnectingState';
 import { ConnectHome } from './ConnectHome';
@@ -34,23 +33,15 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   const connectView = useWidgetStore((s) => s.connectView);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
   const backToHome = () => setConnectView('home');
-  // Cinematic full-screen open plays over the home menu, then settles into it.
+  // The looping cinematic video IS the home entry. Without a real video we fall
+  // back to the classic menu, so a firm with no video never sees a black panel.
   const connect = useWidgetStore((s) => s.connect);
-  const conversationStarted = useWidgetStore((s) => s.conversationStarted);
-  const cinematicDismissed = useWidgetStore((s) => s.cinematicDismissed);
   const branding = useWidgetStore((s) => s.branding);
-  // No real video → never play the cinematic; fall straight to the home menu.
   const cinematicVideo = resolveCinematicVideo(
     connect.videoMode,
     branding?.introVideoUrl,
     connect.storyVideoUrl,
   );
-  const showCinematic = shouldShowCinematic(connect, {
-    connectView,
-    conversationStarted,
-    cinematicDismissed,
-    hasVideo: Boolean(cinematicVideo),
-  });
 
   // Scroll-aware chat header: transparent (overlaid on the intro video) while
   // the video is in view, solid white once it scrolls away. Only the chat with
@@ -95,12 +86,15 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     );
   }
 
-  // ── Connect launcher home menu ─────────────────────────────────────────────
+  // ── Home entry: the cinematic video (looping), or the classic menu fallback ──
   if (connectView === 'home') {
     return (
       <div className="fa-view-in relative h-full w-full">
-        <ConnectHome onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
-        {showCinematic && <CinematicOpen />}
+        {cinematicVideo ? (
+          <CinematicHome onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+        ) : (
+          <ConnectHome onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+        )}
       </div>
     );
   }

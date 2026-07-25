@@ -138,31 +138,46 @@ const styles = `
 .fa-teaser.fa-lg .fa-foot { display: flex; justify-content: center; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
 .fa-teaser.fa-lg .fa-foot b { color: #64748b; font-weight: 600; }
 
-/* ---- MEDIUM: compact card, tall video tile on the left ---- */
-.fa-teaser.fa-sm { width: 424px; padding: 14px; }
-.fa-teaser.fa-sm .fa-sm-row { display: flex; gap: 13px; align-items: stretch; }
-/* Bleed the video to the card's top-left edge (no own radius) so it reads as one
-   object with the sheet instead of a rounded tile floating on a rounded card. */
-.fa-teaser.fa-sm .fa-vid { flex: 0 0 118px; width: 118px; align-self: stretch; min-height: 104px; margin: -14px 0 0 -14px; border-radius: 0; }
-.fa-teaser.fa-sm .fa-vplay { width: 38px; height: 38px; }
-.fa-teaser.fa-sm .fa-vplay svg { width: 13px; height: 13px; }
-.fa-teaser.fa-sm .fa-sm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 9px; }
-.fa-teaser.fa-sm .fa-sm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.fa-teaser.fa-sm .fa-min { position: static; flex-shrink: 0; }
-/* Channels as a single row of icon + label pills (matches the large teaser). */
-.fa-teaser.fa-sm .fa-ways { flex-wrap: nowrap; gap: 6px; }
-.fa-teaser.fa-sm .fa-way { flex: 1 1 0; min-width: 0; flex-direction: row; align-items: center; justify-content: center; gap: 0; padding: 8px 4px; border-radius: 20px; overflow: hidden; transition: flex-grow 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s ease, border-color 0.15s ease; }
-.fa-teaser.fa-sm .fa-way svg { width: 15px; height: 15px; flex-shrink: 0; }
-.fa-teaser.fa-sm .fa-way span { font-size: 11.5px; color: #0f172a; }
-.fa-teaser.fa-sm .fa-lbl { margin-left: 6px; max-width: 70px; opacity: 1; transition: max-width 0.45s ease, opacity 0.3s ease, margin-left 0.45s ease; }
-.fa-teaser.fa-sm .fa-lbl-full { transition: max-width 0.45s ease, opacity 0.4s ease 0.1s, margin-left 0.45s ease; }
-/* Hover any pill: the others ease down to even icon-chips, the hovered one takes a fair share and reveals its full label. */
-.fa-teaser.fa-sm .fa-ways:hover .fa-way { flex-grow: 1; }
-.fa-teaser.fa-sm .fa-ways:hover .fa-way .fa-lbl { max-width: 0; opacity: 0; margin-left: 0; }
-.fa-teaser.fa-sm .fa-ways:hover .fa-way:hover { flex-grow: 5; }
-.fa-teaser.fa-sm .fa-ways:hover .fa-way:hover .fa-lbl-full { max-width: 160px; opacity: 1; margin-left: 6px; }
-.fa-teaser.fa-sm .fa-foot { display: flex; justify-content: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(15, 23, 42, 0.08); font-size: 10.5px; color: #94a3b8; }
-.fa-teaser.fa-sm .fa-foot b { color: #64748b; font-weight: 600; }
+/* ---- MEDIUM: a pill that collapses to just the video thumbnail while the page
+       scrolls, shows the "Talk to us your way." text at rest, and grows on hover
+       to reveal four (show-only) quick-action icons. Any click opens the panel. ---- */
+.fa-teaser.fa-sm {
+  display: inline-flex; align-items: center; width: auto; padding: 8px; background: #fff; border-radius: 999px;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fa-teaser.fa-sm .fa-t-row { display: flex; align-items: center; gap: 14px; }
+.fa-teaser.fa-sm .fa-vid {
+  flex: 0 0 auto; width: 60px; height: 60px; border-radius: 50%; margin: 0; min-height: 0;
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1), height 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fa-teaser.fa-sm .fa-vfade { display: none; }
+/* Live video preview inside the thumbnail (a person talking), muted + looping. */
+.fa-teaser.fa-sm .fa-vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+.fa-teaser.fa-sm .fa-vid.has-video .fa-vplay { display: none; }
+.fa-teaser.fa-sm .fa-vplay { width: 26px; height: 26px; }
+.fa-teaser.fa-sm .fa-vplay svg { width: 11px; height: 11px; margin-left: 1px; }
+.fa-teaser.fa-sm .fa-t-main {
+  display: flex; flex-direction: column; gap: 4px; padding-right: 16px; overflow: hidden; max-width: 340px; opacity: 1;
+  transition: max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, padding 0.35s;
+}
+.fa-teaser.fa-sm .fa-t-title { font-size: 17px; font-weight: 700; color: #0f172a; white-space: nowrap; letter-spacing: -0.01em; }
+.fa-teaser.fa-sm .fa-t-title em { font-style: normal; font-weight: 500; color: #64748b; }
+.fa-teaser.fa-sm .fa-t-status { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; color: #475569; white-space: nowrap; }
+.fa-teaser.fa-sm .fa-t-status i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+.fa-teaser.fa-sm .fa-t-actions {
+  display: flex; gap: 8px; max-height: 0; opacity: 0; margin-top: 0; overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, margin-top 0.35s;
+}
+.fa-teaser.fa-sm .fa-t-act { width: 42px; height: 42px; border-radius: 50%; background: #eef2f7; color: #0f172a; display: grid; place-items: center; }
+.fa-teaser.fa-sm .fa-t-act svg { width: 18px; height: 18px; }
+/* Hover: enlarge the thumbnail and reveal the actions (grows the pill taller).
+   The pill and thumbnail both stay fully round. */
+.fa-teaser.fa-sm:hover { border-radius: 999px; }
+.fa-teaser.fa-sm:hover .fa-vid { width: 96px; height: 96px; border-radius: 50%; }
+.fa-teaser.fa-sm:hover .fa-t-actions { max-height: 52px; opacity: 1; margin-top: 6px; }
+/* Scrolling: collapse to the thumbnail alone. */
+.fa-teaser.fa-sm.is-scrolling .fa-t-main { max-width: 0; opacity: 0; padding-right: 0; }
+.fa-teaser.fa-sm.is-scrolling .fa-t-row { gap: 0; }
 
 /* ---- SMALL: picture-only launcher (attorney photo + greeting bubble) ---- */
 .fa-pic { display: flex; align-items: center; gap: 10px; cursor: pointer; background: none; border: none; padding: 0; }
@@ -527,11 +542,11 @@ const MIN_STORAGE_KEY = 'famaash:launcher-min';
  */
 function makeDock(
   onOpen: (view?: string) => void,
-  opts: { size: 'small' | 'medium' | 'large'; name: string; poster?: string; channels?: string[] },
+  opts: { size: 'small' | 'medium' | 'large'; name: string; poster?: string; channels?: string[]; video?: string },
 ): {
   dock: HTMLDivElement;
   setHidden: (hidden: boolean) => void;
-  applyConfig: (cfg: { poster?: string | null; channels?: string[] }) => void;
+  applyConfig: (cfg: { poster?: string | null; channels?: string[]; video?: string | null }) => void;
 } {
   const dock = document.createElement('div');
   dock.id = DOCK_ID;
@@ -594,15 +609,19 @@ function makeDock(
         <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>
       </div>`
     : `
-      <div class="fa-sm-row">
+      <div class="fa-t-row">
         ${videoSurfaceHTML(false, opts.poster)}
-        <div class="fa-sm-main">
-          <div class="fa-sm-head">${headline}${minBtnHTML('on-card')}</div>
-          <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
-          <div class="fa-ways">${channelsHtml(opts.channels)}</div>
+        <div class="fa-t-main">
+          <div class="fa-t-title">Talk to us <em>your way.</em></div>
+          <div class="fa-t-status"><i></i>Online now &middot; 24/7</div>
+          <div class="fa-t-actions" aria-hidden="true">
+            <span class="fa-t-act">${SVG.phone}</span>
+            <span class="fa-t-act">${SVG.chat}</span>
+            <span class="fa-t-act">${SVG.text}</span>
+            <span class="fa-t-act">${SVG.calendar}</span>
+          </div>
         </div>
-      </div>
-      <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>`;
+      </div>`;
 
   const bubble = document.createElement('button');
   bubble.className = 'fa-bubble';
@@ -653,6 +672,29 @@ function makeDock(
     });
   };
   bindWays();
+
+  // Play the firm's intro clip (muted + looping) inside the medium teaser's
+  // thumbnail so a live person is visible before the user even hovers. Called on
+  // build and again from applyConfig once /config resolves the real video URL.
+  const mountThumbVideo = (url?: string | null) => {
+    if (!url || large) return;
+    const vid = teaser.querySelector<HTMLElement>('.fa-vid');
+    if (!vid || vid.querySelector('video')) return;
+    const v = document.createElement('video');
+    v.src = url;
+    v.muted = true;
+    v.loop = true;
+    v.autoplay = true;
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    v.setAttribute('aria-hidden', 'true');
+    v.preload = 'auto';
+    vid.classList.add('has-video');
+    vid.appendChild(v);
+    void v.play().catch(() => undefined);
+  };
+  mountThumbVideo(opts.video);
+
   // Anywhere else on the teaser (or the video) opens the home menu.
   teaser.addEventListener('click', () => open());
   teaser.addEventListener('keydown', (e) => {
@@ -662,6 +704,21 @@ function makeDock(
     }
   });
   bubble.addEventListener('click', () => open());
+
+  // Medium teaser: collapse to just the round thumbnail while the page is
+  // scrolling, then ease the "Talk to us your way." text back once it settles.
+  if (!large) {
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    window.addEventListener(
+      'scroll',
+      () => {
+        teaser.classList.add('is-scrolling');
+        if (scrollTimer) clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => teaser.classList.remove('is-scrolling'), 260);
+      },
+      { passive: true },
+    );
+  }
 
   let startMinimized = false;
   try {
@@ -679,7 +736,7 @@ function makeDock(
     setHidden,
     // Upgrade the teaser with the firm's real config (poster, attorney name)
     // once /config resolves, so the embed snippet doesn't have to hardcode them.
-    applyConfig: ({ poster, channels }) => {
+    applyConfig: ({ poster, channels, video }) => {
       if (poster) {
         const vid = teaser.querySelector<HTMLElement>('.fa-vid');
         if (vid) {
@@ -688,6 +745,8 @@ function makeDock(
           vid.style.backgroundPosition = 'center';
         }
       }
+      // Once /config resolves, play the real intro clip in the thumbnail.
+      mountThumbVideo(video);
       // Rebuild the quick-contact chips from the firm's configured channels.
       if (channels && channels.length) {
         const ways = teaser.querySelector<HTMLElement>('.fa-ways');
@@ -1093,6 +1152,7 @@ function readScriptConfig(): {
         cfg: {
           branding?: {
             introVideoPoster?: string;
+            introVideoUrl?: string;
             launcherImageUrl?: string;
             assistantName?: string;
             name?: string;
@@ -1104,16 +1164,32 @@ function readScriptConfig(): {
             launcherOffsetY?: number;
             launcherPosition?: 'bottom-left' | 'bottom-center' | 'bottom-right';
           };
-          connect?: { size?: 'small' | 'medium' | 'large'; channels?: string[] };
+          connect?: {
+            size?: 'small' | 'medium' | 'large';
+            channels?: string[];
+            videoMode?: 'intro' | 'story' | 'none';
+            storyVideoUrl?: string;
+          };
         } | null,
       ) => {
+        // The intro clip to preview in the medium teaser's thumbnail — the same
+        // video the panel plays (story video in story mode, else the intro),
+        // unless the firm turned video off.
+        const vmode = cfg?.connect?.videoMode;
+        const thumbVideo =
+          vmode === 'none'
+            ? undefined
+            : vmode === 'story'
+              ? cfg?.connect?.storyVideoUrl || cfg?.branding?.introVideoUrl
+              : cfg?.branding?.introVideoUrl;
+
         // Teaser size from the dashboard (connect.size) — unless the embed
         // hardcoded data-size. Rebuild the dock if it differs from what we drew.
         const cfgSize = cfg?.connect?.size;
         if (!sizeExplicit && (cfgSize === 'small' || cfgSize === 'medium' || cfgSize === 'large') && cfgSize !== currentSize) {
           const wasHidden = dockApi.dock.classList.contains('is-hidden');
           dockApi.dock.remove();
-          dockApi = makeDock(openWidget, { size: cfgSize, name, poster, channels: cfg?.connect?.channels });
+          dockApi = makeDock(openWidget, { size: cfgSize, name, poster, channels: cfg?.connect?.channels, video: thumbVideo });
           currentSize = cfgSize;
           setDockHidden = dockApi.setHidden;
           document.body.appendChild(dockApi.dock);
@@ -1157,6 +1233,7 @@ function readScriptConfig(): {
         dockApi.applyConfig({
           poster: poster ? undefined : img,
           channels: cfg?.connect?.channels,
+          video: thumbVideo,
         });
       },
     )
