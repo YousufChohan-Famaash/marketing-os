@@ -145,11 +145,15 @@ const styles = `
   display: inline-flex; align-items: center; width: auto; padding: 8px; background: #fff; border-radius: 999px;
   transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.fa-teaser.fa-sm .fa-t-row { display: flex; align-items: center; gap: 14px; }
+.fa-teaser.fa-sm .fa-t-row { display: flex; align-items: center; gap: 13px; }
+.fa-teaser.fa-sm .fa-t-thumb { position: relative; flex: 0 0 auto; line-height: 0; }
 .fa-teaser.fa-sm .fa-vid {
-  flex: 0 0 auto; width: 60px; height: 60px; border-radius: 50%; margin: 0; min-height: 0;
+  flex: 0 0 auto; width: 68px; height: 68px; border-radius: 50%; margin: 0; min-height: 0;
   transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1), height 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Green "online" dot on the thumbnail's top-right (percentage keeps it on the
+   circle as the thumbnail scales on hover). */
+.fa-teaser.fa-sm .fa-t-dot { position: absolute; top: 7%; right: 7%; width: 13px; height: 13px; border-radius: 50%; background: #22c55e; border: 2px solid #fff; z-index: 3; }
 .fa-teaser.fa-sm .fa-vfade { display: none; }
 /* Live video preview inside the thumbnail (a person talking), muted + looping. */
 .fa-teaser.fa-sm .fa-vid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
@@ -157,16 +161,17 @@ const styles = `
 .fa-teaser.fa-sm .fa-vplay { width: 26px; height: 26px; }
 .fa-teaser.fa-sm .fa-vplay svg { width: 11px; height: 11px; margin-left: 1px; }
 .fa-teaser.fa-sm .fa-t-main {
-  display: flex; flex-direction: column; gap: 4px; padding-right: 16px; overflow: hidden; max-width: 340px; opacity: 1;
+  display: flex; flex-direction: column; gap: 3px; padding-right: 16px; overflow: hidden; max-width: 340px; opacity: 1;
   transition: max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, padding 0.35s;
 }
 .fa-teaser.fa-sm .fa-t-title { font-size: 17px; font-weight: 700; color: #0f172a; white-space: nowrap; letter-spacing: -0.01em; }
 .fa-teaser.fa-sm .fa-t-title em { font-style: normal; font-weight: 500; color: #64748b; }
-.fa-teaser.fa-sm .fa-t-status { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 500; color: #475569; white-space: nowrap; }
-.fa-teaser.fa-sm .fa-t-status i { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
+.fa-teaser.fa-sm .fa-t-status { font-size: 12.5px; font-weight: 500; color: #475569; white-space: nowrap; }
+/* The four action icons are collapsed to zero width at rest so they never widen
+   the resting pill; hover expands both their height and width. */
 .fa-teaser.fa-sm .fa-t-actions {
-  display: flex; gap: 8px; max-height: 0; opacity: 0; margin-top: 0; overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, margin-top 0.35s;
+  display: flex; gap: 8px; max-height: 0; max-width: 0; opacity: 0; margin-top: 0; overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, margin-top 0.35s;
 }
 .fa-teaser.fa-sm .fa-t-act { width: 42px; height: 42px; border-radius: 50%; background: #eef2f7; color: #0f172a; display: grid; place-items: center; }
 .fa-teaser.fa-sm .fa-t-act svg { width: 18px; height: 18px; }
@@ -174,7 +179,7 @@ const styles = `
    The pill and thumbnail both stay fully round. */
 .fa-teaser.fa-sm:hover { border-radius: 999px; }
 .fa-teaser.fa-sm:hover .fa-vid { width: 96px; height: 96px; border-radius: 50%; }
-.fa-teaser.fa-sm:hover .fa-t-actions { max-height: 52px; opacity: 1; margin-top: 6px; }
+.fa-teaser.fa-sm:hover .fa-t-actions { max-height: 52px; max-width: 240px; opacity: 1; margin-top: 6px; }
 /* Scrolling: collapse to the thumbnail alone. */
 .fa-teaser.fa-sm.is-scrolling .fa-t-main { max-width: 0; opacity: 0; padding-right: 0; }
 .fa-teaser.fa-sm.is-scrolling .fa-t-row { gap: 0; }
@@ -612,10 +617,10 @@ function makeDock(
       </div>`
     : `
       <div class="fa-t-row">
-        ${videoSurfaceHTML(false, opts.poster)}
+        <span class="fa-t-thumb">${videoSurfaceHTML(false, opts.poster)}<i class="fa-t-dot"></i></span>
         <div class="fa-t-main">
           <div class="fa-t-title">Talk to us <em>your way.</em></div>
-          <div class="fa-t-status"><i></i>Online now &middot; 24/7</div>
+          <div class="fa-t-status">Online now</div>
           <div class="fa-t-actions" aria-hidden="true">
             <span class="fa-t-act">${SVG.phone}</span>
             <span class="fa-t-act">${SVG.chat}</span>
@@ -708,7 +713,8 @@ function makeDock(
   bubble.addEventListener('click', () => open());
 
   // Medium teaser: collapse to just the round thumbnail while the page is
-  // scrolling, then ease the "Talk to us your way." text back once it settles.
+  // scrolling, then hold it small for a beat after scrolling stops before easing
+  // the "Talk to us your way." text back (so a quick pause doesn't flip it open).
   if (!large) {
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
     window.addEventListener(
@@ -716,7 +722,7 @@ function makeDock(
       () => {
         teaser.classList.add('is-scrolling');
         if (scrollTimer) clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => teaser.classList.remove('is-scrolling'), 260);
+        scrollTimer = setTimeout(() => teaser.classList.remove('is-scrolling'), 1100);
       },
       { passive: true },
     );
