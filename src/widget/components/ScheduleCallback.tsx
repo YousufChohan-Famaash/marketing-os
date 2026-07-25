@@ -8,7 +8,6 @@ import {
   type AvailabilitySlot,
 } from '../services/api';
 import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
-import { PresenceVideo } from './PresenceVideo';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
 
@@ -314,7 +313,6 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
             All times in Eastern Time (ET). We'll send a confirmation and a reminder.
           </p>
         </div>
-        <PresenceVideo />
       </div>
 
       {notice && (

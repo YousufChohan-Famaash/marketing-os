@@ -281,6 +281,27 @@ export type WidgetSize = 'small' | 'medium' | 'large';
 export type VideoMode = 'intro' | 'story' | 'none';
 
 /**
+ * A surface inside the widget that can play its own short video:
+ *   menu        — the cinematic home (the current intro/story clip)
+ *   call        — "Call me now" (explains: leave name + number, we'll ring you)
+ *   text        — "Text me"
+ *   schedule    — "Book a call"
+ *   chat_intro  — the "Chat with us" opener (case-type option pills)
+ *   chat        — inside the live chat conversation
+ * Each surface can show a purpose-built clip; a missing one falls back to the
+ * firm's intro/cinematic video, so nothing is blank until the firm authors them.
+ */
+export type VideoView = 'menu' | 'call' | 'text' | 'schedule' | 'chat_intro' | 'chat';
+
+/** A per-view video authored in the dashboard (Branding Studio). */
+export interface ViewVideo {
+  url: string;
+  poster?: string;
+  /** Optional short caption chip shown over the video. */
+  caption?: string;
+}
+
+/**
  * Connect launcher configuration. Owned by the Branding Studio (Law App) and
  * delivered on the boot config; the widget resolves it with defaults + URL
  * overrides (see config/connect.ts).
@@ -304,6 +325,12 @@ export interface ConnectSettings {
   /** Optional second "story" video URL/poster when videoMode === 'story'. */
   storyVideoUrl?: string;
   storyVideoPoster?: string;
+  /**
+   * Per-view videos, one optional clip per surface (see VideoView). Each entry
+   * overrides the intro video on that surface; a missing entry falls back to the
+   * intro/cinematic clip. Authored in the Branding Studio, delivered on /config.
+   */
+  channelVideos?: Partial<Record<VideoView, ViewVideo>>;
   /** Grace window (ms) to undo a just-sent message. default 5000. */
   undoWindowMs?: number;
   /** Allow leads to record voice / video notes (gated until backend ships). */

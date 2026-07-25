@@ -219,9 +219,10 @@ const styles = `
   bottom: 20px;
   right: 20px;
   width: 410px;
-  /* Portrait card for the large home; sits near the corner (the launcher is
-     hidden while open, so we don't reserve space for it). */
-  height: 540px;
+  /* Every view is a 9:16 (TikTok) portrait now that a video sits on each screen
+     (410 x 16/9 = 729). Sits near the corner (the launcher is hidden while open,
+     so we don't reserve space for it). */
+  height: 729px;
   max-height: calc(100vh - 36px);
   border: none;
   border-radius: 16px;
@@ -243,24 +244,25 @@ const styles = `
 @media (prefers-reduced-motion: no-preference) {
   #${IFRAME_ID}.is-entering { animation: fa-panel-in 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
 }
-/* Conversations + channel views need more room (scrolling chat, forms). */
+/* Conversations + channel views: same 9:16 portrait as everything else. */
 #${IFRAME_ID}.is-tall {
-  height: min(700px, calc(100vh - 36px));
+  height: min(729px, calc(100vh - 36px));
 }
-/* Home menu: taller than a short form so the hero video + every contact option
-   (incl. "Send your details") fit in one view without scrolling. */
+/* Home / cinematic: a full 9:16 (TikTok) portrait at the panel's 410px width
+   (410 x 16/9 = 729), so the looping hero video fills a tall vertical frame and
+   the contact options sit over its faded base. */
 #${IFRAME_ID}.is-home {
-  height: min(624px, calc(100vh - 36px));
+  height: min(729px, calc(100vh - 36px));
 }
 /* Opt-in wide mode via the header expand control. */
 #${IFRAME_ID}.is-expanded {
   width: min(680px, calc(100vw - 40px));
   height: min(80vh, 800px);
 }
-/* Medium/small home: a compact panel that grows the moment a conversation opens. */
+/* Medium/small home: a compact 9:16 portrait (372 x 16/9 = 661). */
 #${IFRAME_ID}.is-compact {
   width: 372px;
-  height: 384px;
+  height: min(661px, calc(100vh - 36px));
 }
 /* On phones the widget is always full-screen — this overrides every size above
    (declared last + equal-or-higher specificity). 100dvh tracks the dynamic

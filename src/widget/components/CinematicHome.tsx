@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveCinematicVideo } from '../config/demoMedia';
 import { CHANNEL_META, rankChannels } from '../config/connect';
@@ -11,6 +11,7 @@ import {
   VolumeOffIcon,
   VolumeOnIcon,
 } from '../utils/icons';
+import { useVideoSound } from '../utils/useVideoSound';
 import { WidgetControls } from './WidgetControls';
 
 const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
@@ -48,7 +49,8 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   const setConnectView = useWidgetStore((s) => s.setConnectView);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [soundOn, setSoundOn] = useState(false);
+  const { soundOn, toggleSound } = useVideoSound(videoRef);
+  const setVideoSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
   const [hovered, setHovered] = useState<ConnectChannel | null>(null);
 
   const src = resolveCinematicVideo(settings.videoMode, branding?.introVideoUrl, settings.storyVideoUrl);
@@ -59,22 +61,6 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   const primary: ConnectChannel = enabled.includes('call') ? 'call' : enabled[0] ?? 'call';
   const secondary = enabled.filter((c) => c !== primary && c !== 'email').slice(0, 3);
 
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !src) return;
-    v.muted = true;
-    v.play().catch(() => undefined);
-  }, [src]);
-
-  const toggleSound = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    const next = !soundOn;
-    v.muted = !next;
-    if (next && v.paused) void v.play();
-    setSoundOn(next);
-  };
-
   const replay = () => {
     const v = videoRef.current;
     if (!v) return;
@@ -82,12 +68,12 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
     void v.play();
   };
 
-  // Minimizing hides the panel but keeps it mounted, so silence the video (any
+  // Minimizing hides the panel but keeps it mounted, so silence every video (any
   // sound the visitor turned on) — it shouldn't keep talking from a hidden panel.
   const handleMinimize = () => {
     const v = videoRef.current;
     if (v) v.muted = true;
-    setSoundOn(false);
+    setVideoSoundOn(false);
     onMinimize();
   };
 

@@ -1,3 +1,5 @@
+import type { ConnectSettings, FirmBranding, VideoView } from '../types/domain';
+
 /**
  * Media resolvers — map the firm's boot-config branding to the URLs the widget
  * renders. No placeholders, no demo/sample assets: when a firm hasn't configured
@@ -37,4 +39,32 @@ export function resolveCinematicVideo(
   if (videoMode === 'none') return undefined;
   if (videoMode === 'story') return storyVideoUrl || resolveIntroVideo(introVideoUrl);
   return resolveIntroVideo(introVideoUrl);
+}
+
+/** A video resolved for a specific surface (view), ready to render. */
+export interface ResolvedViewVideo {
+  url: string;
+  poster?: string;
+  caption?: string;
+}
+
+/**
+ * The video to play on a given surface. A purpose-built clip authored for that
+ * view (settings.channelVideos[view]) wins; otherwise we fall back to the firm's
+ * intro/cinematic clip so the surface is never blank until per-view videos are
+ * authored in the dashboard. Returns undefined only when the firm has no video
+ * at all (or videoMode === 'none').
+ */
+export function resolveViewVideo(
+  view: VideoView,
+  settings: Pick<ConnectSettings, 'channelVideos' | 'videoMode' | 'storyVideoUrl'>,
+  branding?: Pick<FirmBranding, 'introVideoUrl' | 'introVideoPoster'> | null,
+): ResolvedViewVideo | undefined {
+  const custom = settings.channelVideos?.[view];
+  if (custom?.url) {
+    return { url: custom.url, poster: custom.poster, caption: custom.caption };
+  }
+  const url = resolveCinematicVideo(settings.videoMode, branding?.introVideoUrl, settings.storyVideoUrl);
+  if (!url) return undefined;
+  return { url, poster: resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl) };
 }

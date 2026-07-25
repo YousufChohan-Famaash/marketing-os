@@ -9,8 +9,9 @@ interface CallbackFormProps {
   heading: string;
   body: string;
   cta: string;
-  /** 'alert' — red badge + phone CTA (call/help). 'brand' — purple badge + message CTA (text). */
-  variant?: 'alert' | 'brand';
+  /** 'alert' — red badge + phone CTA (call/help). 'brand' — purple badge + message CTA (text).
+   * 'whatsapp' — like 'brand' but the CTA is WhatsApp green. */
+  variant?: 'alert' | 'brand' | 'whatsapp';
   /** TCPA consent text. When set, a required checkbox gates the CTA before we
    * ever capture the phone number. */
   consentLabel?: string;
@@ -75,7 +76,8 @@ export function CallbackForm({
   const emailErr = collectEmail ? validateEmail(email, true) : null;
   const consentErr = consentLabel && !agreed;
   const valid = !nameErr && !phoneErr && !emailErr && !consentErr;
-  const brand = variant === 'brand';
+  const whatsapp = variant === 'whatsapp';
+  const brand = variant === 'brand' || whatsapp;
   const CtaIcon = brand ? MessageSquareIcon : PhoneIcon;
 
   // When the visitor already gave us a number, don't ask for it again — confirm
@@ -223,7 +225,10 @@ export function CallbackForm({
           onSubmit(p, n, e);
         }}
         disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
+        className={cn(
+          'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]',
+          whatsapp ? 'bg-[#25D366]' : 'bg-famaash',
+        )}
       >
         <CtaIcon size={16} aria-hidden="true" />
         {cta}

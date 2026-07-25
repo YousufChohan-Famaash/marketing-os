@@ -69,8 +69,15 @@ export interface UiSlice {
   undoableMessageId: string | null;
   /** Live status of an in-progress "Call now" outbound call (null = none). */
   connectCallStatus: ConnectCallStatus | null;
+  /**
+   * Shared sound preference for every video in the widget. Videos autoplay
+   * muted; the first time the visitor unmutes any video this flips true and all
+   * subsequent videos start unmuted (and vice-versa). One toggle, one memory.
+   */
+  videoSoundOn: boolean;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
+  setVideoSoundOn: (on: boolean) => void;
   setConnectView: (view: ConnectView) => void;
   setConversationStarted: (started: boolean) => void;
   dismissCinematic: () => void;
@@ -118,8 +125,10 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   cinematicDismissed: false,
   undoableMessageId: null,
   connectCallStatus: null,
+  videoSoundOn: false,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
+  setVideoSoundOn: (on) => set({ videoSoundOn: on }),
   setConnectView: (view) => set({ connectView: view }),
   setConversationStarted: (started) => set({ conversationStarted: started }),
   dismissCinematic: () => set({ cinematicDismissed: true }),

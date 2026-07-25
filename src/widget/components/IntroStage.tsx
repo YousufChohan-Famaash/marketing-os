@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
-import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
+import { resolveIntroPoster, resolveIntroVideo, resolveViewVideo } from '../config/demoMedia';
 import { generateId } from '../utils/id';
 import { ChevronLeftIcon, PlayIcon } from '../utils/icons';
 import { useMediaQuery } from '../utils/useMediaQuery';
@@ -8,6 +8,7 @@ import { FamaashMark } from './BrandAssets';
 import { PoweredByFooter } from './PoweredByFooter';
 import { PracticeOptions } from './PracticeOptions';
 import { PresenceVideo } from './PresenceVideo';
+import { ViewHeroVideo } from './ViewHeroVideo';
 import { WidgetControls } from './WidgetControls';
 
 interface IntroStageProps {
@@ -34,6 +35,7 @@ const DEFAULT_PRACTICE_AREAS = [
  */
 export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }: IntroStageProps) {
   const branding = useWidgetStore((s) => s.branding);
+  const settings = useWidgetStore((s) => s.connect);
   const caseTypes = useWidgetStore((s) => s.caseTypes);
   const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
   const setPendingCaseType = useWidgetStore((s) => s.setPendingCaseType);
@@ -47,8 +49,11 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
   const firmName = branding?.name ?? 'our team';
   const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
   const posterUrl = resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl);
-  // As the chat channel's case-type step (onBack set), skip the hero video —
-  // the home menu already played it; show a compact header instead.
+  // The "Chat with us" opener (case-type step, onBack set) gets its own hero
+  // video — the clip authored for chat_intro, or the intro video as a fallback.
+  const chatIntroVideo = onBack ? resolveViewVideo('chat_intro', settings, branding) : undefined;
+  // Legacy home hero (no onBack) — home is the cinematic view now, so this path
+  // is effectively unused, but kept as a safe fallback.
   const hasVideo = Boolean(videoUrl) && !onBack;
   // Case-type chips from boot config; fall back to legacy free-text practice areas.
   const options = caseTypes.length
@@ -172,8 +177,10 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
         </header>
       )}
 
-      {/* Scrollable content: heading + options (subtext hidden to give the video room) */}
-      <div className="flex-1 overflow-y-auto px-5 pb-2">
+      {/* Scrollable content: the chat_intro hero (scrolls away), then greeting + options. */}
+      <div className="flex-1 overflow-y-auto pb-2">
+        {chatIntroVideo && <ViewHeroVideo view="chat_intro" />}
+        <div className="px-5">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="text-[18px] font-bold leading-tight tracking-[-0.03em] text-[#1A1A1A]">
@@ -183,12 +190,14 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
               I&apos;m {firmName}&apos;s AI assistant. Pick what fits and a real person takes it from here.
             </p>
           </div>
-          {/* No hero video on this step (chat case-type / no intro video), so keep
-              a human face in view with the compact presence thumbnail. */}
-          {!hasVideo && <PresenceVideo />}
+          {/* Keep a human face in view with the compact presence thumbnail only
+              when there's no hero video above (neither the chat_intro hero nor
+              the legacy intro hero). */}
+          {!chatIntroVideo && !hasVideo && <PresenceVideo />}
         </div>
         <div className="mt-4">
           <PracticeOptions options={options} onSelect={pick} stack={stackChips} />
+        </div>
         </div>
       </div>
 

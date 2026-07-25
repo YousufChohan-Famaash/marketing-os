@@ -1,11 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useWidgetStore } from "../store/widgetStore";
-import {
-  resolveAssistantAvatar,
-  resolveIntroPoster,
-  resolveIntroVideo,
-} from "../config/demoMedia";
-import { ChevronLeftIcon, PlayIcon } from "../utils/icons";
+import { resolveAssistantAvatar, resolveViewVideo } from "../config/demoMedia";
+import { ChevronLeftIcon, VolumeOffIcon, VolumeOnIcon } from "../utils/icons";
+import { useVideoSound } from "../utils/useVideoSound";
 import { Avatar } from "./Avatar";
 import { WidgetControls } from "./WidgetControls";
 
@@ -27,67 +24,46 @@ export interface IntroControls {
  */
 export function ConversationIntro({ controls }: { controls?: IntroControls }) {
   const branding = useWidgetStore((s) => s.branding);
+  const settings = useWidgetStore((s) => s.connect);
   const assistantName =
     branding?.assistantName ?? branding?.name ?? "Assistant";
   const assistantAvatar = resolveAssistantAvatar(branding?.assistantAvatarUrl);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [played, setPlayed] = useState(false);
+  const { soundOn, toggleSound } = useVideoSound(videoRef);
 
-  const videoUrl = resolveIntroVideo(branding?.introVideoUrl);
-  const posterUrl = resolveIntroPoster(
-    branding?.introVideoPoster,
-    branding?.introVideoUrl,
-  );
-
-  // Muted autoplay that plays through once (no loop, per CEO feedback); the
-  // play button unmutes and replays it from the start.
-  useEffect(() => {
-    if (!videoUrl) return;
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = true;
-    v.play().catch(() => undefined);
-  }, [videoUrl]);
+  // The in-chat clip (its own per-view video, falling back to the intro).
+  const video = resolveViewVideo("chat", settings, branding);
+  const videoUrl = video?.url;
+  const posterUrl = video?.poster;
 
   if (!videoUrl) return null;
-
-  const play = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = false;
-    v.currentTime = 0;
-    void v.play();
-    setPlayed(true);
-  };
 
   return (
     // -mt-3 cancels the MessageList's top padding (py-3) so the video sits flush
     // against the panel's top edge, no white gap above it (per CEO feedback).
     <div className="-mt-3 flex flex-col gap-4 pb-2">
-      {/* Full-bleed, full-size video (escapes the list's px-4) — same as the opener. */}
-      <div className="relative -mx-4 aspect-[565/728] max-h-[370px] overflow-hidden bg-obsidian">
+      {/* Portrait clip, narrower than the panel and centered so more of the
+          frame shows (less side-cropping of the person). */}
+      <div className="relative mx-auto aspect-[565/728] max-h-[440px] w-full max-w-[340px] overflow-hidden rounded-2xl bg-obsidian">
         <video
           ref={videoRef}
           src={videoUrl}
           poster={posterUrl}
-          controls={played}
           playsInline
+          loop
           preload="metadata"
           className="block h-full w-full object-cover"
           aria-label="Introduction video"
         />
-        {!played && (
-          <button
-            type="button"
-            onClick={play}
-            aria-label="Play introduction video"
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-famaash shadow-lg backdrop-blur">
-              <PlayIcon size={24} aria-hidden="true" />
-            </span>
-          </button>
-        )}
+        {/* Mute / unmute toggle (shared across every video), bottom-right. */}
+        <button
+          type="button"
+          onClick={toggleSound}
+          aria-label={soundOn ? 'Mute video' : 'Unmute video'}
+          className="absolute bottom-3 right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60"
+        >
+          {soundOn ? <VolumeOnIcon size={18} /> : <VolumeOffIcon size={18} />}
+        </button>
         {/* Controls overlay the video and scroll away with it. */}
         {controls && (
           <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">

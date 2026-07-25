@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar, resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { postVideoEvent } from '../services/api';
-import { PlayIcon, VolumeOffIcon } from '../utils/icons';
+import { PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { Avatar } from './Avatar';
 
@@ -28,7 +28,10 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
   const settings = useWidgetStore((s) => s.connect);
   const firmId = useWidgetStore((s) => s.firmId);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [soundOn, setSoundOn] = useState(false);
+  // Shared sound preference: this thumbnail starts muted/unmuted like every other
+  // video and its toggle updates the same memory.
+  const soundOn = useWidgetStore((s) => s.videoSoundOn);
+  const setVideoSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
   // Analytics: fire `play` once on first play, `complete` once near the end
   // (timeupdate-based so a looping teaser still reports completion).
   const playedRef = useRef(false);
@@ -58,11 +61,16 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
     if (!src) return;
     const v = videoRef.current;
     if (!v) return;
+    v.muted = !soundOn;
     if (settings.autoplay) {
-      v.muted = true;
-      v.play().catch(() => undefined);
+      v.play().catch(() => {
+        if (!v.muted) {
+          v.muted = true;
+          v.play().catch(() => undefined);
+        }
+      });
     }
-  }, [src, settings.autoplay]);
+  }, [src, settings.autoplay, soundOn]);
 
   // None → branded avatar tile.
   if (!src) {
@@ -89,7 +97,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
     const next = !soundOn;
     v.muted = !next;
     if (next && v.paused) void v.play();
-    setSoundOn(next);
+    setVideoSoundOn(next);
   };
 
   return (
@@ -129,7 +137,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
       <button
         type="button"
         onClick={toggleSound}
-        aria-label={soundOn ? 'Mute video' : 'Play with sound'}
+        aria-label={soundOn ? 'Mute video' : 'Unmute video'}
         className={cn(
           'absolute z-10 flex items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-transform hover:scale-105',
           compact
@@ -137,7 +145,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
             : 'left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2',
         )}
       >
-        {soundOn ? <VolumeOffIcon size={compact ? 13 : 18} /> : <PlayIcon size={compact ? 13 : 18} />}
+        {soundOn ? <VolumeOnIcon size={compact ? 13 : 18} /> : <VolumeOffIcon size={compact ? 13 : 18} />}
       </button>
     </div>
   );
