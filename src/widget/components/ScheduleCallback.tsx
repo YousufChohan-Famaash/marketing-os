@@ -10,6 +10,7 @@ import {
 import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
+import { ViewVideoThumb } from './ViewVideoThumb';
 
 // The backend returns availability in Eastern (TCPA calling-hours), and the
 // confirmation email + stored booking are Eastern too. Render the whole grid in
@@ -313,6 +314,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
             All times in Eastern Time (ET). We'll send a confirmation and a reminder.
           </p>
         </div>
+        <ViewVideoThumb view="schedule" className="h-[140px] w-[108px]" />
       </div>
 
       {notice && (

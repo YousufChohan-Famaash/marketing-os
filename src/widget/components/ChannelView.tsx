@@ -3,15 +3,13 @@ import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
 import { resolveTcpa } from '../utils/compliance';
-import { resolveViewVideo } from '../config/demoMedia';
-import type { VideoView } from '../types/domain';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
 import { ScheduleCallback } from './ScheduleCallback';
 import { SendDetails } from './SendDetails';
 import { PoweredByFooter } from './PoweredByFooter';
-import { ViewHeroVideo } from './ViewHeroVideo';
+import { ViewVideoThumb } from './ViewVideoThumb';
 import { WidgetControls } from './WidgetControls';
 
 interface ChannelViewProps {
@@ -77,14 +75,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     kept.length <= 1
       ? kept[0] ?? ''
       : `${kept.slice(0, -1).join(', ')} and ${kept[kept.length - 1]}`;
-
-  // Per-view hero video (Call / Text / Book). Falls back to the firm's intro
-  // clip until a purpose-built one is authored in the dashboard. Email keeps the
-  // plain form. Shown only in the initial form state (not the status screens),
-  // where its overlaid controls stand in for the header bar.
-  const heroView: VideoView | null =
-    channel === 'call' ? 'call' : channel === 'text' ? 'text' : channel === 'schedule' ? 'schedule' : null;
-  const heroVideo = heroView ? resolveViewVideo(heroView, settings, branding) : undefined;
 
   const [done, setDone] = useState<string | null>(null);
   const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(settings.textMethods[0] ?? 'sms');
@@ -221,11 +211,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     }
   };
 
-  // The hero sits at the top of the scroll area (not pinned) so it scrolls away
-  // and frees the space below. Shown only in the initial form state; the status
-  // screens (dialing / connected / failed / confirmation) don't need it.
-  const showHero = Boolean(heroVideo) && heroView !== null && !callPhase && !done;
-
   return (
     <div className="fa-view-in flex h-full w-full flex-col bg-white" role="dialog" aria-label={TITLES[channel]}>
       <header className="flex shrink-0 items-center gap-2 border-b border-hairline-soft px-2 py-2">
@@ -241,9 +226,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
       </header>
 
-      <div className="flex-1 overflow-y-auto">
-        {showHero && heroView && <ViewHeroVideo view={heroView} />}
-        <div className="px-5 py-4">
+      <div className="flex-1 overflow-y-auto px-5 py-4">
         {callPhase === 'calling' ? (
           <CallCountdown
             seconds={countdown ?? 0}
@@ -284,6 +267,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   cta={placing ? 'Starting your call…' : 'Call me now'}
                   collectName
                   consentLabel={consentLabel}
+                  media={<ViewVideoThumb view="call" className="h-[140px] w-[108px]" />}
                   onSubmit={finishCall}
                 />
               </>
@@ -331,6 +315,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   }
                   busy={texting}
                   consentLabel={consentLabel}
+                  media={<ViewVideoThumb view="text" className="h-[140px] w-[108px]" />}
                   onSubmit={finishText}
                 />
               </div>
@@ -353,7 +338,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             )}
           </>
         )}
-        </div>
       </div>
 
       <PoweredByFooter />
