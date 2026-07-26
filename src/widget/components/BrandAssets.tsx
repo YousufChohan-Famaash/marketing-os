@@ -233,12 +233,23 @@ function SlipGlyph({ size = 18 }: { size?: number }) {
   );
 }
 
+function WrongfulDeathGlyph({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.54718 14.312C2.16474 11.8233 1.97352 10.579 2.44402 9.47589C2.91451 8.37277 3.95836 7.61803 6.04607 6.10855L7.60591 4.98073C10.203 3.10295 11.5015 2.16406 12.9998 2.16406C14.4981 2.16406 15.7967 3.10295 18.3938 4.98073L19.9536 6.10855C22.0413 7.61803 23.0852 8.37277 23.5557 9.47589C24.0262 10.579 23.8349 11.8233 23.4525 14.312L23.1264 16.4341C22.5842 19.9621 22.3132 21.726 21.0479 22.7784C19.7827 23.8307 17.933 23.8307 14.2336 23.8307H11.7661C8.0667 23.8307 6.21699 23.8307 4.95175 22.7784C3.68652 21.726 3.41545 19.9621 2.8733 16.4341L2.54718 14.312Z" />
+      <path d="M13 10.8359V17.3359M9.75 14.0859L16.25 14.0859" />
+    </svg>
+  );
+}
+
 /** Case types whose glyph is a full JV Figma icon (own viewBox), overriding ACCIDENT_GLYPHS. */
 const FIGMA_GLYPHS: Partial<Record<string, (size: number) => ReactNode>> = {
   workplace: (s) => <WorkplaceGlyph size={s} />,
   medical: (s) => <MedicalGlyph size={s} />,
   pedestrian: (s) => <BicycleGlyph size={s} />,
   slip: (s) => <SlipGlyph size={s} />,
+  // Wrongful death: the resolver maps wrongful/death/fatal to the 'heart' key.
+  heart: (s) => <WrongfulDeathGlyph size={s} />,
 };
 
 function renderGlyph(key: string, size: number): ReactNode {
