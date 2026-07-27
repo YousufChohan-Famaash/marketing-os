@@ -173,13 +173,13 @@ const styles = `
   display: flex; gap: 8px; max-height: 0; max-width: 0; opacity: 0; margin-top: 0; overflow: hidden;
   transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, margin-top 0.35s;
 }
-.fa-teaser.fa-sm .fa-t-act { width: 42px; height: 42px; border-radius: 50%; background: #eef2f7; color: #0f172a; display: grid; place-items: center; }
-.fa-teaser.fa-sm .fa-t-act svg { width: 18px; height: 18px; }
+.fa-teaser.fa-sm .fa-t-act { width: 38px; height: 38px; border-radius: 50%; background: #eef2f7; color: #0f172a; display: grid; place-items: center; }
+.fa-teaser.fa-sm .fa-t-act svg { width: 16px; height: 16px; }
 /* Hover: enlarge the thumbnail and reveal the actions (grows the pill taller).
    The pill and thumbnail both stay fully round. */
 .fa-teaser.fa-sm:hover { border-radius: 999px; }
-.fa-teaser.fa-sm:hover .fa-vid { width: 108px; height: 108px; border-radius: 50%; }
-.fa-teaser.fa-sm:hover .fa-t-actions { max-height: 52px; max-width: 240px; opacity: 1; margin-top: 6px; }
+.fa-teaser.fa-sm:hover .fa-vid { width: 94px; height: 94px; border-radius: 50%; }
+.fa-teaser.fa-sm:hover .fa-t-actions { max-height: 44px; max-width: 220px; opacity: 1; margin-top: 6px; }
 /* Scrolling: collapse to the thumbnail alone. */
 .fa-teaser.fa-sm.is-scrolling .fa-t-main { max-width: 0; opacity: 0; padding-right: 0; }
 .fa-teaser.fa-sm.is-scrolling .fa-t-row { gap: 0; }
