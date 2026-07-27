@@ -161,6 +161,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
           avatar={32}
           stageH={300}
           onThumbClick={() => setLightboxOpen(true)}
+          paused={lightboxOpen}
         />
       )}
       {caseTypePicked && (

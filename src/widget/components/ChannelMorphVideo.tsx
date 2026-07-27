@@ -1,10 +1,9 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
 import { VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
 import { useVideoCaptions } from '../utils/useVideoCaptions';
-import { useVideoSound } from '../utils/useVideoSound';
 
 // Default collapsed-slot geometry, matched to the ChannelView header:
 // px-2 (8) + back button (32) + gap-2 (8) = 48px left; header ~50px tall.
@@ -22,6 +21,9 @@ interface ChannelMorphVideoProps {
   /** When set, tapping the COLLAPSED thumbnail calls this (e.g. open a lightbox)
    * instead of toggling sound. The expanded stage still shows the unmute button. */
   onThumbClick?: () => void;
+  /** Pause the clip entirely (e.g. while the lightbox plays it) so the two
+   * don't run — and talk over each other — at once. */
+  paused?: boolean;
 }
 
 /**
@@ -41,25 +43,60 @@ export function ChannelMorphVideo({
   avatar = DEFAULTS.avatar,
   stageH = DEFAULTS.stageH,
   onThumbClick,
+  paused = false,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
   const language = useWidgetStore((s) => s.language);
+  const soundOn = useWidgetStore((s) => s.videoSoundOn);
+  const setVideoSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
   const videoRef = useRef<HTMLVideoElement>(null);
   const video = resolveViewVideo(view, settings, branding);
   const captionsUrl = resolveCaptionsUrl(video?.captions, language);
-  const { soundOn, toggleSound } = useVideoSound(videoRef);
   const caption = useVideoCaptions(videoRef, captionsUrl);
+
+  // Own the clip's mute/play state:
+  //   paused (lightbox open) → fully paused, so it never talks over the popup
+  //   otherwise              → follows the shared sound preference (the thumbnail
+  //                            keeps its voice; a button beside it toggles it)
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (paused) {
+      v.pause();
+      return;
+    }
+    v.muted = !soundOn;
+    v.play().catch(() => {
+      if (!v.muted) {
+        v.muted = true;
+        v.play().catch(() => undefined);
+      }
+    });
+  }, [paused, soundOn]);
+
   if (!video) return null;
 
   const style = collapsed
     ? { top: avatarTop, left: avatarLeft, width: avatar, height: avatar, borderRadius: 9999 }
     : { top: headerH, left: 0, width: '100%', height: stageH, borderRadius: 0 };
 
+  // Toggle the shared sound preference (set muted synchronously so the unmute
+  // counts as a user gesture for the browser's autoplay-with-sound policy).
+  const toggleSound = () => {
+    const next = !soundOn;
+    const v = videoRef.current;
+    if (v) {
+      v.muted = !next;
+      if (next && v.paused) void v.play();
+    }
+    setVideoSoundOn(next);
+  };
   // Collapsed: whole circle is the tap target (open lightbox, or toggle sound).
   const onCollapsedTap = onThumbClick ?? toggleSound;
 
   return (
+    <>
     <div
       className="absolute z-20 overflow-hidden bg-obsidian shadow-sm transition-all duration-500 ease-out"
       style={style}
@@ -106,5 +143,19 @@ export function ChannelMorphVideo({
         {!collapsed && (soundOn ? <VolumeOnIcon size={16} /> : <VolumeOffIcon size={16} />)}
       </button>
     </div>
+    {/* Mute/unmute the thumbnail, sitting just beside it (tapping the thumbnail
+        itself opens the lightbox, so sound needs its own control here). */}
+    {collapsed && onThumbClick && (
+      <button
+        type="button"
+        onClick={toggleSound}
+        aria-label={soundOn ? 'Mute video' : 'Unmute video'}
+        className="absolute z-30 flex items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
+        style={{ top: avatarTop + (avatar - 26) / 2, left: avatarLeft + avatar + 4, width: 26, height: 26 }}
+      >
+        {soundOn ? <VolumeOnIcon size={15} /> : <VolumeOffIcon size={15} />}
+      </button>
+    )}
+    </>
   );
 }
