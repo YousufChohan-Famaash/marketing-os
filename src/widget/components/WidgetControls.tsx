@@ -61,7 +61,7 @@ export function WidgetControls({
   );
 }
 
-const LANGUAGE_NAMES: Record<string, string> = {
+export const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
   es: 'Español',
   ar: 'العربية',
@@ -71,7 +71,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   zh: '中文',
   hi: 'हिन्दी',
 };
-const languageName = (code: string) => LANGUAGE_NAMES[code] ?? code.toUpperCase();
+export const languageName = (code: string) => LANGUAGE_NAMES[code] ?? code.toUpperCase();
 
 /** Globe control that opens a menu of the firm's offered languages. */
 function LanguagePicker() {

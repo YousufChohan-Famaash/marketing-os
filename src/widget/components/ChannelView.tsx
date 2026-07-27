@@ -6,10 +6,10 @@ import { resolveTcpa } from '../utils/compliance';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
+import { ChannelHeaderVideo } from './ChannelHeaderVideo';
 import { ScheduleCallback } from './ScheduleCallback';
 import { SendDetails } from './SendDetails';
 import { PoweredByFooter } from './PoweredByFooter';
-import { ViewVideoThumb } from './ViewVideoThumb';
 import { WidgetControls } from './WidgetControls';
 
 interface ChannelViewProps {
@@ -218,11 +218,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
           type="button"
           onClick={back}
           aria-label="Back to all options"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
         >
           <ChevronLeftIcon size={18} />
         </button>
-        <h2 className="flex-1 text-[15px] font-semibold text-ink">{TITLES[channel]}</h2>
+        {/* The one video on the screen: a small live avatar in the header. */}
+        <ChannelHeaderVideo view={channel === 'email' ? null : channel} />
+        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">{TITLES[channel]}</h2>
         <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
       </header>
 
@@ -267,7 +269,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   cta={placing ? 'Starting your call…' : 'Call me now'}
                   collectName
                   consentLabel={consentLabel}
-                  media={<ViewVideoThumb view="call" className="h-[140px] w-[108px]" />}
                   onSubmit={finishCall}
                 />
               </>
@@ -315,7 +316,6 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   }
                   busy={texting}
                   consentLabel={consentLabel}
-                  media={<ViewVideoThumb view="text" className="h-[140px] w-[108px]" />}
                   onSubmit={finishText}
                 />
               </div>

@@ -184,6 +184,13 @@ export interface FirmBranding {
   introVideoUrl?: string;
   introVideoPoster?: string;
   introVideoCaption?: string;
+  /**
+   * Subtitle/caption track (WebVTT) for the intro video, keyed by language code
+   * (e.g. { en: '.../intro.en.vtt', es: '.../intro.es.vtt' }). Shown burned-in
+   * over the video (captions on by default). Backend-owned; see the captions
+   * spec. Absent → no captions rendered.
+   */
+  introVideoCaptions?: Record<string, string>;
   /** Practice-area options offered on the intro screen. First chip is the default focus target. */
   practiceAreas?: string[];
   outroVideoUrl?: string;

@@ -8,9 +8,7 @@ import {
   type AvailabilitySlot,
 } from '../services/api';
 import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
-import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
-import { ViewVideoThumb } from './ViewVideoThumb';
 
 // The backend returns availability in Eastern (TCPA calling-hours), and the
 // confirmation email + stored booking are Eastern too. Render the whole grid in
@@ -149,10 +147,11 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     return [...map.values()];
   }, [slots, displayTz]);
 
-  // Default the selected day to the first one with availability.
+  // Incremental disclosure: start with no day chosen (the day chips lead). Only
+  // clear a stale selection if a re-fetch dropped the day the visitor had picked.
   useEffect(() => {
-    if (phase === 'pick' && days.length > 0 && (!selectedDay || !days.some((d) => d.key === selectedDay))) {
-      setSelectedDay(days[0].key);
+    if (phase === 'pick' && selectedDay && !days.some((d) => d.key === selectedDay)) {
+      setSelectedDay(null);
       setSelectedStart(null);
     }
   }, [phase, days, selectedDay]);
@@ -302,6 +301,18 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         .map((label) => ({ label, slots: activeDay.slots.filter((s) => partOfDay(s.start) === label) }))
         .filter((g) => g.slots.length > 0)
     : [];
+
+  // Reveal one decision at a time: day, then time, then the form. Each made
+  // choice collapses into a summary row, so the visitor only sees the step in
+  // front of them (no long scroll). "Change" steps back one level.
+  const haveDay = Boolean(selectedDay);
+  const haveTime = Boolean(selectedStart);
+  const heading = !haveDay ? 'Pick a day' : !haveTime ? 'Pick a time' : 'Confirm your callback';
+  const changeSelection = () => {
+    if (selectedStart) setSelectedStart(null);
+    else setSelectedDay(null);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
@@ -309,111 +320,119 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           <CalendarIcon size={20} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[16px] font-bold text-ink">Pick a time</h3>
+          <h3 className="text-[16px] font-bold text-ink">{heading}</h3>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
             All times in Eastern Time (ET). We'll send a confirmation and a reminder.
           </p>
         </div>
-        <ViewVideoThumb view="schedule" className="h-[140px] w-[108px]" />
       </div>
 
       {notice && (
         <p className="rounded-lg bg-famaash-soft px-3 py-2 text-[12px] text-famaash">{notice}</p>
       )}
 
-      {/* One-tap shortcut to the soonest slot, above the grid. */}
-      {nextSlot && nextDay && (
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedDay(nextDay.key);
-            setSelectedStart(nextSlot.start);
-          }}
-          aria-pressed={selectedStart === nextSlot.start}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors',
-            selectedStart === nextSlot.start
-              ? 'border-famaash bg-famaash-soft'
-              : 'border-famaash-stroke bg-white hover:bg-subtle',
-          )}
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+      {/* Summary row: the chosen day (and time) collapse here once picked. */}
+      {haveDay && activeDay && (
+        <div className="flex items-center gap-3 rounded-2xl border border-famaash-stroke bg-famaash-soft px-4 py-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-famaash">
             <CalendarIcon size={17} aria-hidden="true" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
-              Next available
-            </span>
             <span className="block text-[14px] font-bold text-ink">
-              {nextDay.top} at {fmtTime(nextSlot.start)}
+              {haveTime ? `${activeDay.top} at ${fmtTime(selectedStart!)}` : `${activeDay.top}, ${activeDay.sub}`}
+            </span>
+            <span className="block text-[12px] text-muted">
+              {haveTime ? "We'll call you then, Eastern time" : 'Choose a time below'}
             </span>
           </span>
-        </button>
+          <button
+            type="button"
+            onClick={changeSelection}
+            className="shrink-0 rounded-pill px-2.5 py-1 text-[12px] font-semibold text-famaash hover:bg-white"
+          >
+            {haveTime ? 'Change' : 'Change day'}
+          </button>
+        </div>
       )}
 
-      <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">Or choose a day</p>
-        <div className="flex flex-wrap gap-2">
-          {days.map((d) => {
-            const active = selectedDay === d.key;
-            return (
-              <button
-                key={d.key}
-                type="button"
-                onClick={() => {
-                  setSelectedDay(d.key);
-                  setSelectedStart(null);
-                }}
-                aria-pressed={active}
-                className={cn(
-                  'flex flex-col items-center rounded-2xl border px-4 py-2 transition-colors',
-                  active ? 'border-famaash bg-famaash-soft' : 'border-famaash-stroke bg-white hover:bg-subtle',
-                )}
-              >
-                <span className={cn('text-[13px] font-bold', active ? 'text-famaash' : 'text-ink')}>{d.top}</span>
-                <span className="text-[11px] text-muted-soft">{d.sub}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Step 1: soonest-slot shortcut + day chips (until a day is chosen). */}
+      {!haveDay && (
+        <>
+          {nextSlot && nextDay && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDay(nextDay.key);
+                setSelectedStart(nextSlot.start);
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl border border-famaash-stroke bg-white px-4 py-3 text-left transition-colors hover:bg-subtle"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-famaash-soft text-famaash">
+                <CalendarIcon size={17} aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
+                  Next available
+                </span>
+                <span className="block text-[14px] font-bold text-ink">
+                  {nextDay.top} at {fmtTime(nextSlot.start)}
+                </span>
+              </span>
+            </button>
+          )}
 
-      {timeGroups.map((group) => (
-        <div key={group.label}>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">{group.label}</p>
-          <div className="grid grid-cols-3 gap-2">
-            {group.slots.map((s) => {
-              const active = selectedStart === s.start;
-              return (
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">Or choose a day</p>
+            <div className="flex flex-wrap gap-2">
+              {days.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDay(d.key);
+                    setSelectedStart(null);
+                  }}
+                  className="flex flex-col items-center rounded-2xl border border-famaash-stroke bg-white px-4 py-2 transition-colors hover:bg-subtle"
+                >
+                  <span className="text-[13px] font-bold text-ink">{d.top}</span>
+                  <span className="text-[11px] text-muted-soft">{d.sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Step 2: time slots for the chosen day (until a time is chosen). */}
+      {haveDay && !haveTime &&
+        timeGroups.map((group) => (
+          <div key={group.label}>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">{group.label}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {group.slots.map((s) => (
                 <button
                   key={s.start}
                   type="button"
                   onClick={() => setSelectedStart(s.start)}
-                  aria-pressed={active}
-                  className={cn(
-                    'rounded-lg border px-2 py-2 text-[13px] font-medium tabular-nums transition-colors',
-                    active
-                      ? 'border-famaash bg-famaash-soft text-famaash'
-                      : 'border-famaash-stroke bg-white text-ink hover:bg-subtle',
-                  )}
+                  className="rounded-lg border border-famaash-stroke bg-white px-2 py-2 text-[13px] font-medium tabular-nums text-ink transition-colors hover:border-famaash hover:bg-famaash-soft hover:text-famaash"
                 >
                   {fmtTime(s.start)}
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
-      {selectedStart && (
+      {/* Step 3: details form (once a time is chosen). */}
+      {haveTime && (
         <>
           {formError && (
             <p className="rounded-lg bg-danger-soft px-3 py-2 text-[12px] text-danger">{formError}</p>
           )}
           <CallbackForm
             variant="alert"
-            heading={`Confirm ${activeDay?.top ?? ''} at ${fmtTime(selectedStart)}`}
-            body="Where should we call you, and where should the confirmation go?"
+            heading="Where should we call you?"
+            body="Add your details and we'll call at the time above."
             cta={busy ? 'Booking your callback…' : 'Confirm booking'}
             collectName
             collectEmail

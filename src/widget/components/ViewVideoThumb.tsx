@@ -62,7 +62,8 @@ export function ViewVideoThumb({ view, className }: ViewVideoThumbProps) {
         onPlay={() => {
           if (playedRef.current || !firmId) return;
           playedRef.current = true;
-          postVideoEvent(firmId, 'intro', 'play');
+          // Report per-view (the home hero uses intro/story elsewhere).
+          postVideoEvent(firmId, view === 'menu' ? 'intro' : view, 'play');
         }}
       />
       <button

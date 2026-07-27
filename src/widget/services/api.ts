@@ -158,7 +158,9 @@ export class ApiError extends Error {
  */
 export function postVideoEvent(
   firmId: string,
-  kind: 'intro' | 'story',
+  // Home hero reports intro/story; per-view surfaces report their own view code
+  // so plays/completions attribute per screen (backend keys analytics by kind).
+  kind: 'intro' | 'story' | 'call' | 'text' | 'schedule' | 'chat_intro' | 'chat',
   event: 'play' | 'complete',
 ): void {
   try {

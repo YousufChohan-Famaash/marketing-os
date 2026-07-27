@@ -35,7 +35,7 @@ export function PracticeOptions({ options, onSelect, disabled, stack }: Practice
       className={`grid gap-2 ${stack ? 'grid-cols-1' : 'grid-cols-2'}`}
     >
       {options.map((option, i) => {
-        const icon = practiceIconFor(option, 17);
+        const icon = practiceIconFor(option, 19);
         return (
           <button
             key={option}
@@ -46,14 +46,14 @@ export function PracticeOptions({ options, onSelect, disabled, stack }: Practice
             disabled={disabled}
             onClick={() => onSelect(option)}
             onKeyDown={(e) => handleKey(e, i)}
-            className="group flex items-center gap-2 rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-3 py-3 text-left transition-colors hover:bg-[#F5F8FB] disabled:cursor-not-allowed disabled:opacity-60"
+            className="group flex items-center gap-2.5 rounded-2xl border border-[#EAEEF3] bg-white px-2.5 py-2.5 text-left transition-colors hover:border-[#D9E4EF] hover:bg-[#F5F8FB] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {icon && (
-              <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center text-ink transition-colors group-hover:text-[color:var(--practice-accent)]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F5F8FB] text-[color:var(--practice-accent)] transition-colors group-hover:bg-white">
                 {icon}
               </span>
             )}
-            <span className="line-clamp-2 flex-1 text-[13px] font-medium text-[#1A1A1A] transition-colors group-hover:text-[color:var(--practice-accent)]">
+            <span className="line-clamp-2 flex-1 text-[13px] font-semibold text-[#1A1A1A] transition-colors group-hover:text-[color:var(--practice-accent)]">
               {option}
             </span>
           </button>
