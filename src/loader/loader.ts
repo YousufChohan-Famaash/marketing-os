@@ -235,6 +235,8 @@ const styles = `
   background: white;
   z-index: ${Z_INDEX};
   color-scheme: light;
+  /* Scrolling inside the panel must not chain out to the host page behind it. */
+  overscroll-behavior: none;
   /* Animate size changes between views so switching surfaces glides instead of
      snapping (anchored bottom-right, so it grows up/left). */
   transition: width 0.24s cubic-bezier(0.22, 1, 0.36, 1), height 0.24s cubic-bezier(0.22, 1, 0.36, 1);
@@ -849,29 +851,63 @@ function readScriptConfig(): {
   let iframeHadCtx = false;
 
   // Mobile keyboard handling: on phones the panel is full-screen (100dvh), so an
-  // open on-screen keyboard would cover the composer AND the header/messages,
-  // forcing the visitor to scroll a tiny sliver. Shrink the iframe to the
-  // visible area (visualViewport) while the keyboard is up so the header,
-  // thumbnail, messages and composer all stay in view; restore on close/desktop.
+  // open on-screen keyboard would cover the composer + header/messages. Shrink the
+  // iframe to the visible area (visualViewport) while the keyboard is up.
+  //
+  // IMPORTANT: only listen to `resize` (NOT `scroll` — it fires on every touch/
+  // scroll frame and caused per-touch flicker), debounce so we apply once after
+  // the keyboard settles rather than on every animation frame, set height only
+  // (setting `top` made the panel jump around), and skip no-op writes. The
+  // iframe's own height transition smooths the one change.
   const vv = typeof window !== 'undefined' ? window.visualViewport : null;
   if (vv) {
-    const syncKeyboard = () => {
+    let kbTimer: ReturnType<typeof setTimeout> | null = null;
+    const applyKeyboard = () => {
       if (!iframe || iframe.classList.contains('is-hidden')) return;
       const mobile = window.matchMedia('(max-width: 640px)').matches;
-      const keyboardUp = mobile && window.innerHeight - vv.height > 120;
-      if (keyboardUp) {
-        iframe.style.height = `${Math.round(vv.height)}px`;
-        iframe.style.top = `${Math.round(vv.offsetTop)}px`;
-        iframe.style.bottom = 'auto';
-      } else {
-        iframe.style.height = '';
-        iframe.style.top = '';
-        iframe.style.bottom = '';
-      }
+      const keyboardUp = mobile && window.innerHeight - vv.height > 150;
+      const target = keyboardUp ? `${Math.round(vv.height)}px` : '';
+      if (iframe.style.height !== target) iframe.style.height = target;
     };
-    vv.addEventListener('resize', syncKeyboard);
-    vv.addEventListener('scroll', syncKeyboard);
+    vv.addEventListener('resize', () => {
+      if (kbTimer) clearTimeout(kbTimer);
+      kbTimer = setTimeout(applyKeyboard, 120);
+    });
   }
+
+  // Lock the HOST page's scroll while the full-screen mobile panel is open, so
+  // touch-scrolling the widget doesn't drag the site behind it (and the URL bar
+  // stays put, which also stops the keyboard-resize flicker). Mobile only;
+  // restores the scroll position on close.
+  let hostScrollY = 0;
+  let hostLocked = false;
+  const lockHostScroll = (lock: boolean) => {
+    if (typeof document === 'undefined') return;
+    if (lock) {
+      if (hostLocked || !window.matchMedia('(max-width: 640px)').matches) return;
+      hostLocked = true;
+      hostScrollY = window.scrollY || window.pageYOffset || 0;
+      const b = document.body;
+      b.style.position = 'fixed';
+      b.style.top = `-${hostScrollY}px`;
+      b.style.left = '0';
+      b.style.right = '0';
+      b.style.width = '100%';
+      b.style.overflow = 'hidden';
+    } else {
+      if (!hostLocked) return;
+      hostLocked = false;
+      const b = document.body;
+      b.style.position = '';
+      b.style.top = '';
+      b.style.left = '';
+      b.style.right = '';
+      b.style.width = '';
+      b.style.overflow = '';
+      window.scrollTo(0, hostScrollY);
+    }
+  };
+
   let setDockHidden: (hidden: boolean) => void = () => undefined;
   let launcherPos: 'bottom-left' | 'bottom-center' | 'bottom-right' | undefined;
   const positionEl = (el: HTMLElement) => {
@@ -983,10 +1019,12 @@ function readScriptConfig(): {
   const hostMethods: HostMethods = {
     requestClose: () => {
       iframe?.classList.add('is-hidden');
+      lockHostScroll(false);
       setDockHidden(false);
     },
     requestMinimize: () => {
       iframe?.classList.add('is-hidden');
+      lockHostScroll(false);
       setDockHidden(false);
     },
     requestExpand: () => {
@@ -1091,6 +1129,7 @@ function readScriptConfig(): {
     }
     // The panel opens where the teaser sits, so hide the dock while open.
     setDockHidden(true);
+    lockHostScroll(true);
     // A consultation hand-off carries `ctx` (wizard answers) the widget reads
     // from its src at boot. If we prewarmed a context-less iframe, rebuild it
     // with the ctx so the hand-off still seeds the conversation.
@@ -1135,6 +1174,7 @@ function readScriptConfig(): {
 
   function closeWidget(): void {
     iframe?.classList.add('is-hidden');
+    lockHostScroll(false);
     setDockHidden(false);
     iframeRemote?.close().catch(() => undefined);
   }

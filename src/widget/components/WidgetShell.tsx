@@ -53,10 +53,12 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const collapseStage = useCallback(() => setStageOpen(false), []);
 
-  // Fresh entry to the chat re-expands the stage.
+  // Expand the stage only on a FRESH chat (before a case type is picked).
+  // Returning to an already-started conversation keeps it collapsed, so the big
+  // video doesn't slam back over the composer/messages on re-entry.
   useEffect(() => {
-    if (connectView === 'chat') setStageOpen(true);
-  }, [connectView]);
+    if (connectView === 'chat' && !caseTypePicked) setStageOpen(true);
+  }, [connectView, caseTypePicked]);
   // Auto-collapse after a beat, and the moment the lead engages (picks a type).
   useEffect(() => {
     if (!hasChatMorph || !stageOpen) return;
