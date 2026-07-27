@@ -847,6 +847,31 @@ function readScriptConfig(): {
   // Whether the current iframe was booted with a consultation `ctx` in its src.
   // Prewarm creates a context-less iframe; a later ctx open must rebuild it.
   let iframeHadCtx = false;
+
+  // Mobile keyboard handling: on phones the panel is full-screen (100dvh), so an
+  // open on-screen keyboard would cover the composer AND the header/messages,
+  // forcing the visitor to scroll a tiny sliver. Shrink the iframe to the
+  // visible area (visualViewport) while the keyboard is up so the header,
+  // thumbnail, messages and composer all stay in view; restore on close/desktop.
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+  if (vv) {
+    const syncKeyboard = () => {
+      if (!iframe || iframe.classList.contains('is-hidden')) return;
+      const mobile = window.matchMedia('(max-width: 640px)').matches;
+      const keyboardUp = mobile && window.innerHeight - vv.height > 120;
+      if (keyboardUp) {
+        iframe.style.height = `${Math.round(vv.height)}px`;
+        iframe.style.top = `${Math.round(vv.offsetTop)}px`;
+        iframe.style.bottom = 'auto';
+      } else {
+        iframe.style.height = '';
+        iframe.style.top = '';
+        iframe.style.bottom = '';
+      }
+    };
+    vv.addEventListener('resize', syncKeyboard);
+    vv.addEventListener('scroll', syncKeyboard);
+  }
   let setDockHidden: (hidden: boolean) => void = () => undefined;
   let launcherPos: 'bottom-left' | 'bottom-center' | 'bottom-right' | undefined;
   const positionEl = (el: HTMLElement) => {

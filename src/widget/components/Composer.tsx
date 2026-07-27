@@ -374,7 +374,9 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
           onKeyDown={onKeyDown}
           placeholder={stt.listening ? "Listening…" : "Type a message…"}
           rows={1}
-          className="font-message min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[13px] leading-relaxed placeholder:text-muted-soft focus:outline-none"
+          // 16px on mobile so iOS Safari doesn't auto-zoom (and clip the sides)
+          // when the field is focused; 13px from sm up.
+          className="font-message min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-relaxed placeholder:text-muted-soft focus:outline-none sm:text-[13px]"
           style={{ maxHeight: MAX_HEIGHT_PX }}
           aria-label="Message"
         />
