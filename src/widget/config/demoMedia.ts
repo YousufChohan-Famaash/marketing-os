@@ -46,6 +46,20 @@ export interface ResolvedViewVideo {
   url: string;
   poster?: string;
   caption?: string;
+  /** WebVTT tracks keyed by language code. */
+  captions?: Record<string, string>;
+}
+
+/**
+ * Pick the caption (WebVTT) URL for the active language: exact match, then the
+ * English track, then whatever single track exists. Undefined → no captions.
+ */
+export function resolveCaptionsUrl(
+  captions: Record<string, string> | undefined,
+  language: string,
+): string | undefined {
+  if (!captions) return undefined;
+  return captions[language] ?? captions.en ?? Object.values(captions)[0];
 }
 
 /**
@@ -58,13 +72,18 @@ export interface ResolvedViewVideo {
 export function resolveViewVideo(
   view: VideoView,
   settings: Pick<ConnectSettings, 'channelVideos' | 'videoMode' | 'storyVideoUrl'>,
-  branding?: Pick<FirmBranding, 'introVideoUrl' | 'introVideoPoster'> | null,
+  branding?: Pick<FirmBranding, 'introVideoUrl' | 'introVideoPoster' | 'introVideoCaptions'> | null,
 ): ResolvedViewVideo | undefined {
   const custom = settings.channelVideos?.[view];
   if (custom?.url) {
-    return { url: custom.url, poster: custom.poster, caption: custom.caption };
+    return { url: custom.url, poster: custom.poster, caption: custom.caption, captions: custom.captions };
   }
   const url = resolveCinematicVideo(settings.videoMode, branding?.introVideoUrl, settings.storyVideoUrl);
   if (!url) return undefined;
-  return { url, poster: resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl) };
+  // Falling back to the intro clip → carry the intro's caption tracks too.
+  return {
+    url,
+    poster: resolveIntroPoster(branding?.introVideoPoster, branding?.introVideoUrl),
+    captions: branding?.introVideoCaptions,
+  };
 }

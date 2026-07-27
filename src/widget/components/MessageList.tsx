@@ -4,7 +4,8 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { CalendarPicker } from './CalendarPicker';
-import { ConversationIntro, type IntroControls } from './ConversationIntro';
+import { ChatOpenerChips } from './ChatOpenerChips';
+import { ConversationIntro } from './ConversationIntro';
 import { DocumentSignCard } from './DocumentSignCard';
 import { DocumentUploadCard } from './DocumentUploadCard';
 import { EmailInput, NameInput, NumberInput, PhoneInput } from './FieldInputs';
@@ -45,17 +46,21 @@ function normalizeOptions(raw: unknown): string[] {
 }
 
 export function MessageList({
-  introControls,
-  onScrolledChange,
+  topSpacerHeight,
+  onInteract,
 }: {
-  introControls?: IntroControls;
-  /** Fires true once the intro video has scrolled out of view (drives the
-   * scroll-aware chat header: transparent over the video, solid past it). */
-  onScrolledChange?: (scrolled: boolean) => void;
+  /** Reserves the collapsing video stage's height at the top of the scroll so
+   * the conversation sits below the video and slides up as it collapses. */
+  topSpacerHeight?: number;
+  /** Fires on scroll so the parent can collapse the video stage into the header. */
+  onInteract?: () => void;
 } = {}) {
   const messages = useWidgetStore((s) => s.messages);
   const chips = useWidgetStore((s) => s.chips);
   const isAiTyping = useWidgetStore((s) => s.isAiTyping);
+  // The case-type opener now lives inside the chat: greeting (ConversationIntro)
+  // + these pills, shown until the lead picks a type.
+  const caseTypePicked = useWidgetStore((s) => s.caseTypePicked);
   const setActiveSigning = useWidgetStore((s) => s.setActiveSigning);
   const updateMessage = useWidgetStore((s) => s.updateMessage);
 
@@ -79,16 +84,19 @@ export function MessageList({
     })),
   ].sort((a, b) => a.order - b.order);
 
+  // Auto-follow the conversation only once there are real messages — never the
+  // opener (greeting + pills), so entering the chat leaves the video stage in
+  // view instead of scrolling past it (which would look like an instant collapse).
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !pinned) return;
+    if (!el || !pinned || timeline.length === 0) return;
     el.scrollTop = el.scrollHeight;
   }, [timeline.length, isAiTyping, pinned]);
 
   // Re-pin to bottom whenever the message content of the LAST message grows.
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !pinned) return;
+    if (!el || !pinned || messages.length === 0) return;
     el.scrollTop = el.scrollHeight;
   }, [messages.map((m) => m.content).join('|'), pinned]);
 
@@ -97,8 +105,6 @@ export function MessageList({
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setPinned(distanceFromBottom <= SCROLL_TOLERANCE);
-    // The intro video tops out around 370px; treat ~300px scrolled as "past it".
-    onScrolledChange?.(el.scrollTop > 300);
   };
 
   const sendQuickReply = (msg: Message, option: string) => {
@@ -163,6 +169,11 @@ export function MessageList({
     <div
       ref={scrollRef}
       onScroll={handleScroll}
+      // Collapse the video stage only on a genuine user scroll gesture (wheel /
+      // touch) — not the programmatic auto-scroll, which would collapse it the
+      // instant the chat opens.
+      onWheel={onInteract}
+      onTouchMove={onInteract}
       className="flex-1 overflow-y-auto px-4 py-3"
       role="log"
       aria-live="polite"
@@ -170,7 +181,15 @@ export function MessageList({
       aria-atomic="false"
       aria-label="Conversation"
     >
-      <ConversationIntro controls={introControls} />
+      {topSpacerHeight != null && (
+        <div
+          className="shrink-0 transition-[height] duration-500 ease-out"
+          style={{ height: topSpacerHeight }}
+          aria-hidden="true"
+        />
+      )}
+      <ConversationIntro />
+      {!caseTypePicked && <ChatOpenerChips />}
       <div className="mt-2 flex flex-col gap-3">
         {timeline.map((item) => {
           if (item.kind === 'chip') {

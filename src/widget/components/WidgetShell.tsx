@@ -1,19 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
-import { resolveCinematicVideo, resolveIntroVideo } from '../config/demoMedia';
+import { resolveCinematicVideo, resolveViewVideo } from '../config/demoMedia';
 import { CaptureDrawer } from './CaptureDrawer';
 import { CaptureProgress } from './CaptureProgress';
 import { ChannelView } from './ChannelView';
+import { ChannelMorphVideo } from './ChannelMorphVideo';
 import { ChatDisclosure } from './ChatDisclosure';
 import { ChatHeader } from './ChatHeader';
 import { CinematicHome } from './CinematicHome';
 import { Composer, type ComposerHandle } from './Composer';
 import { ConnectingState } from './ConnectingState';
 import { ConnectHome } from './ConnectHome';
-import { IntroStage } from './IntroStage';
 import { MessageList } from './MessageList';
 import { PoweredByFooter } from './PoweredByFooter';
 import { SafetyButtons } from './SafetyButtons';
+import { VideoLightbox } from './VideoLightbox';
 
 interface WidgetShellProps {
   onClose: () => void;
@@ -43,12 +44,28 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     connect.storyVideoUrl,
   );
 
-  // Scroll-aware chat header: transparent (overlaid on the intro video) while
-  // the video is in view, solid white once it scrolls away. Only the chat with
-  // an intro video overlays; without a video the header is always solid.
-  const hasIntroVideo = Boolean(resolveIntroVideo(branding?.introVideoUrl));
-  const [pastVideo, setPastVideo] = useState(false);
-  const headerSolid = !hasIntroVideo || pastVideo;
+  // In-chat video: full-width stage on entry that collapses into the header
+  // avatar (same morph as the contact screens). Tapping the collapsed thumbnail
+  // opens the lightbox. Only present when the firm has a chat clip.
+  const hasChatMorph =
+    connectView === 'chat' && Boolean(resolveViewVideo('chat', connect, branding));
+  const [stageOpen, setStageOpen] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const collapseStage = useCallback(() => setStageOpen(false), []);
+
+  // Fresh entry to the chat re-expands the stage.
+  useEffect(() => {
+    if (connectView === 'chat') setStageOpen(true);
+  }, [connectView]);
+  // Auto-collapse after a beat, and the moment the lead engages (picks a type).
+  useEffect(() => {
+    if (!hasChatMorph || !stageOpen) return;
+    const t = setTimeout(() => setStageOpen(false), 5000);
+    return () => clearTimeout(t);
+  }, [hasChatMorph, stageOpen]);
+  useEffect(() => {
+    if (caseTypePicked) setStageOpen(false);
+  }, [caseTypePicked]);
 
   // Focus management — push focus to the composer once we're into the chat.
   useEffect(() => {
@@ -117,19 +134,11 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     );
   }
 
-  // ── Chat channel: case-type opener, then the conversation ──────────────────
-  if (!caseTypePicked) {
-    return (
-      <IntroStage
-        onClose={onClose}
-        onMinimize={onMinimize}
-        onExpand={onExpand}
-        isExpanded={isExpanded}
-        onBack={backToHome}
-      />
-    );
-  }
-
+  // ── Chat channel ───────────────────────────────────────────────────────────
+  // The case-type opener (greeting + pills) now renders INSIDE the chat itself
+  // (MessageList → ConversationIntro + ChatOpenerChips), not a separate screen.
+  // The conversation chrome (capture, safety, disclosure, composer) appears once
+  // a case type is picked and the agent flow starts.
   return (
     <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-bg">
       <ChatHeader
@@ -138,27 +147,49 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
         onExpand={onExpand}
         isExpanded={isExpanded}
         onBack={backToHome}
-        solid={headerSolid}
-        className={hasIntroVideo ? 'absolute inset-x-0 top-0 z-30' : undefined}
+        hasMorph={hasChatMorph}
       />
-      {hasIntroVideo ? (
-        // Capture pill floats below the overlay header so it doesn't take space.
-        <div className="pointer-events-none absolute inset-x-0 top-[52px] z-20 flex justify-center">
-          <div className="pointer-events-auto">
-            <CaptureProgress />
-          </div>
-        </div>
-      ) : (
+      {/* Full-width video that collapses into the header slot; tap it (collapsed)
+          to open the welcome in a lightbox. */}
+      {hasChatMorph && (
+        <ChannelMorphVideo
+          view="chat"
+          collapsed={!stageOpen}
+          headerH={52}
+          avatarLeft={52}
+          avatarTop={10}
+          avatar={32}
+          stageH={300}
+          onThumbClick={() => setLightboxOpen(true)}
+        />
+      )}
+      {caseTypePicked && (
         <div className="flex justify-center pb-1">
           <CaptureProgress />
         </div>
       )}
-      <CaptureDrawer />
-      <MessageList onScrolledChange={hasIntroVideo ? setPastVideo : undefined} />
+      {caseTypePicked && <CaptureDrawer />}
+      {/* The opener (greeting + case-type pills) lives inside the list until a
+          type is picked; the conversation chrome stays visible throughout. */}
+      <MessageList
+        topSpacerHeight={hasChatMorph ? (stageOpen ? 300 : 0) : undefined}
+        onInteract={collapseStage}
+      />
       <SafetyButtons />
       <ChatDisclosure />
       <Composer ref={composerRef} />
       <PoweredByFooter />
+      {lightboxOpen && (
+        <VideoLightbox
+          view="chat"
+          onClose={() => setLightboxOpen(false)}
+          onCall={() => {
+            setLightboxOpen(false);
+            setConnectView('call');
+          }}
+          onChat={() => setLightboxOpen(false)}
+        />
+      )}
     </div>
   );
 }

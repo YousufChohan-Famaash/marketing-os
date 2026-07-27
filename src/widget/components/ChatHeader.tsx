@@ -14,6 +14,8 @@ interface ChatHeaderProps {
   onBack?: () => void;
   /** Solid white bar (default) vs. transparent overlay on the intro video. */
   solid?: boolean;
+  /** A morphing video occupies the avatar slot — reserve it (the video collapses in). */
+  hasMorph?: boolean;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export function ChatHeader({
   isExpanded,
   onBack,
   solid = true,
+  hasMorph = false,
   className,
 }: ChatHeaderProps) {
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
@@ -72,6 +75,9 @@ export function ChatHeader({
               </p>
             </div>
           </div>
+        ) : hasMorph ? (
+          // The morphing video collapses into this slot; keep the space for it.
+          <span className="h-8 w-8 shrink-0" aria-hidden="true" />
         ) : (
           <span
             className={cn(

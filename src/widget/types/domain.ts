@@ -306,6 +306,9 @@ export interface ViewVideo {
   poster?: string;
   /** Optional short caption chip shown over the video. */
   caption?: string;
+  /** WebVTT subtitle tracks keyed by language code ({ en: '.../call.en.vtt' }).
+   * Backend-generated per offered language; absent → no captions. */
+  captions?: Record<string, string>;
 }
 
 /**

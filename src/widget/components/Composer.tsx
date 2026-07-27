@@ -38,6 +38,12 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
   const flags = useWidgetStore((s) => s.flags);
   const addMessage = useWidgetStore((s) => s.addMessage);
   const beginTyping = useWidgetStore((s) => s.beginTyping);
+  // Before a case type is picked, the first typed message doubles as the
+  // (free-text) case-type selection and kicks off the agent flow.
+  const caseTypePicked = useWidgetStore((s) => s.caseTypePicked);
+  const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
+  const setPendingCaseType = useWidgetStore((s) => s.setPendingCaseType);
+  const setConversationStarted = useWidgetStore((s) => s.setConversationStarted);
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const conversationEnded = useWidgetStore((s) => s.conversationEnded);
   const allowVoiceNotes = useWidgetStore((s) => s.connect.allowVoiceNotes);
@@ -158,7 +164,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
 
   const submit = () => {
     const trimmed = value.trim();
-    if (!trimmed || !socket) return;
+    if (!trimmed) return;
     stt.stop();
     const clientId = generateId("msg_lead");
     addMessage({
@@ -169,11 +175,20 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
       timestamp: Date.now(),
       status: "sent",
     });
-    socket.send({
-      type: "lead_message",
-      content: trimmed,
-      clientMessageId: clientId,
-    });
+    // No case type picked yet → the socket isn't up. Treat this message as the
+    // free-text case-type selection: it starts the flow, and App flushes it to
+    // the agent once the socket is ready (queued in pendingCaseType).
+    if (!caseTypePicked) {
+      setPendingCaseType({ type: "practice_area_selected", value: trimmed });
+      setCaseTypePicked(true);
+      setConversationStarted(true);
+    } else if (socket) {
+      socket.send({
+        type: "lead_message",
+        content: trimmed,
+        clientMessageId: clientId,
+      });
+    }
     // Show the typing dots immediately while we wait for the AI's reply.
     beginTyping();
     // Offer an Undo for the grace window.
