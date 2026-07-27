@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
 import { resolveTcpa } from '../utils/compliance';
+import { resolveViewVideo } from '../config/demoMedia';
+import type { VideoView } from '../types/domain';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
 import { ChannelHeaderVideo } from './ChannelHeaderVideo';
+import { ChannelMorphVideo } from './ChannelMorphVideo';
 import { ScheduleCallback } from './ScheduleCallback';
 import { SendDetails } from './SendDetails';
 import { PoweredByFooter } from './PoweredByFooter';
@@ -90,6 +93,25 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // Text-me lifecycle: hand the intake off to the visitor's phone (WhatsApp/SMS).
   const [texting, setTexting] = useState(false);
   const [textError, setTextError] = useState<string | null>(null);
+
+  // ── Video collapse choreography ─────────────────────────────────────────────
+  // On landing a contact screen the intro clip greets full-width at the top, then
+  // collapses into the small header-avatar slot after a beat (or the first scroll
+  // / field focus). It's ONE element that only animates its geometry — never
+  // remounts — so playback stays continuous through the collapse (no restart).
+  const headerVideoView: VideoView | null = channel === 'email' ? null : channel;
+  const inFormState = !callPhase && !done;
+  const hasStageVideo = headerVideoView ? Boolean(resolveViewVideo(headerVideoView, settings, branding)) : false;
+  const hasMorph = hasStageVideo && inFormState && headerVideoView !== null;
+  const [stageOpen, setStageOpen] = useState(true);
+  const collapseStage = useCallback(() => setStageOpen(false), []);
+
+  // Auto-collapse after a few seconds if the visitor hasn't engaged.
+  useEffect(() => {
+    if (!hasMorph || !stageOpen) return;
+    const t = setTimeout(() => setStageOpen(false), 5000);
+    return () => clearTimeout(t);
+  }, [hasMorph, stageOpen]);
 
   // Tick the connecting countdown.
   useEffect(() => {
@@ -212,7 +234,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   };
 
   return (
-    <div className="fa-view-in flex h-full w-full flex-col bg-white" role="dialog" aria-label={TITLES[channel]}>
+    <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-white" role="dialog" aria-label={TITLES[channel]}>
       <header className="flex shrink-0 items-center gap-2 border-b border-hairline-soft px-2 py-2">
         <button
           type="button"
@@ -222,13 +244,36 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         >
           <ChevronLeftIcon size={18} />
         </button>
-        {/* The one video on the screen: a small live avatar in the header. */}
-        <ChannelHeaderVideo view={channel === 'email' ? null : channel} />
+        {/* While the morphing video is present, reserve its collapsed slot so the
+            title never sits under it; otherwise show the static firm/head avatar. */}
+        {hasMorph ? (
+          <span className="h-[34px] w-[34px] shrink-0" aria-hidden="true" />
+        ) : (
+          <ChannelHeaderVideo view={headerVideoView} />
+        )}
         <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">{TITLES[channel]}</h2>
         <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      {/* One video element: full-width stage on landing, morphs into the header
+          slot on collapse (never remounts, so playback keeps its timestamp). */}
+      {hasMorph && headerVideoView && <ChannelMorphVideo view={headerVideoView} collapsed={!stageOpen} />}
+
+      <div
+        className="flex-1 overflow-y-auto"
+        onScroll={collapseStage}
+        onFocusCapture={collapseStage}
+      >
+        {/* Spacer that reserves the stage's height and collapses with it, so the
+            form sits below the video and slides up as it morphs away. */}
+        {hasMorph && (
+          <div
+            className="shrink-0 transition-[height] duration-500 ease-out"
+            style={{ height: stageOpen ? 300 : 0 }}
+            aria-hidden="true"
+          />
+        )}
+        <div className="px-5 py-4">
         {callPhase === 'calling' ? (
           <CallCountdown
             seconds={countdown ?? 0}
@@ -338,6 +383,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             )}
           </>
         )}
+        </div>
       </div>
 
       <PoweredByFooter />

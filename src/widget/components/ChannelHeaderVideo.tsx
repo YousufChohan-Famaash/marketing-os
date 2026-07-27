@@ -17,8 +17,9 @@ export function ChannelHeaderVideo({ view, size = 34 }: { view: VideoView | null
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { soundOn, toggleSound } = useVideoSound(videoRef);
   const video = view ? resolveViewVideo(view, settings, branding) : undefined;
+  // Resume where the collapsing stage left off (same clip URL) instead of from 0.
+  const { soundOn, toggleSound } = useVideoSound(videoRef, video?.url);
 
   if (!video) {
     return (
