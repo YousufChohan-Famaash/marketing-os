@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
-import { resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
+import { resolveAssistantAvatar, resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { generateId } from '../utils/id';
 import { ChevronLeftIcon, PlayIcon } from '../utils/icons';
 import { useMediaQuery } from '../utils/useMediaQuery';
-import { FamaashMark } from './BrandAssets';
+import { Avatar } from './Avatar';
 import { PoweredByFooter } from './PoweredByFooter';
 import { PracticeOptions } from './PracticeOptions';
 import { ViewVideoThumb } from './ViewVideoThumb';
@@ -161,7 +161,11 @@ export function IntroStage({ onClose, onMinimize, onExpand, isExpanded, onBack }
               <ChevronLeftIcon size={18} />
             </button>
           ) : (
-            <FamaashMark size={36} className="shrink-0" />
+            <Avatar
+              src={resolveAssistantAvatar(branding?.assistantAvatarUrl)}
+              name={branding?.assistantName ?? branding?.name ?? 'Assistant'}
+              size={36}
+            />
           )}
           <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-ink">{branding?.name}</span>
           <WidgetControls

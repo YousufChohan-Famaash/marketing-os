@@ -148,7 +148,7 @@ const styles = `
 .fa-teaser.fa-sm .fa-t-row { display: flex; align-items: center; gap: 13px; }
 .fa-teaser.fa-sm .fa-t-thumb { position: relative; flex: 0 0 auto; line-height: 0; }
 .fa-teaser.fa-sm .fa-vid {
-  flex: 0 0 auto; width: 68px; height: 68px; border-radius: 50%; margin: 0; min-height: 0;
+  flex: 0 0 auto; width: 84px; height: 84px; border-radius: 50%; margin: 0; min-height: 0;
   transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1), height 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 /* Green "online" dot on the thumbnail's top-right (percentage keeps it on the
@@ -178,7 +178,7 @@ const styles = `
 /* Hover: enlarge the thumbnail and reveal the actions (grows the pill taller).
    The pill and thumbnail both stay fully round. */
 .fa-teaser.fa-sm:hover { border-radius: 999px; }
-.fa-teaser.fa-sm:hover .fa-vid { width: 96px; height: 96px; border-radius: 50%; }
+.fa-teaser.fa-sm:hover .fa-vid { width: 108px; height: 108px; border-radius: 50%; }
 .fa-teaser.fa-sm:hover .fa-t-actions { max-height: 52px; max-width: 240px; opacity: 1; margin-top: 6px; }
 /* Scrolling: collapse to the thumbnail alone. */
 .fa-teaser.fa-sm.is-scrolling .fa-t-main { max-width: 0; opacity: 0; padding-right: 0; }
@@ -1119,6 +1119,26 @@ function readScriptConfig(): {
   setDockHidden = dockApi.setHidden;
   document.body.appendChild(dockApi.dock);
 
+  // Avoid the "old widget flashes then swaps" on load. The teaser size comes from
+  // /config, but the default draw is 'large' — so a 'medium' firm would see the
+  // large teaser for a beat before it rebuilds into the pill. Keep the launcher
+  // hidden until /config resolves the real size (or a short fallback fires), then
+  // reveal it already at the right size. When the embed pins data-size there is
+  // no rebuild, so show it immediately.
+  let dockRevealed = false;
+  let moduleDisabled = false;
+  const revealDock = () => {
+    if (dockRevealed || moduleDisabled) return;
+    dockRevealed = true;
+    setDockHidden(false);
+  };
+  if (sizeExplicit) {
+    revealDock();
+  } else {
+    setDockHidden(true);
+    setTimeout(revealDock, 2000);
+  }
+
   // Prewarm the panel in the background so opening is instant: create the hidden
   // iframe early so the widget bundle downloads, mounts, and fetches /config
   // before the user clicks — then the reveal shows already-rendered content, not
@@ -1150,6 +1170,7 @@ function readScriptConfig(): {
     .then((r) => {
       if (r.status === 403) {
         // Module not enabled — don't show the launcher at all.
+        moduleDisabled = true;
         setDockHidden(true);
         return null;
       }
@@ -1204,6 +1225,11 @@ function readScriptConfig(): {
           setDockHidden(wasHidden);
         }
 
+        // We now know the firm's real size (rebuilt above if needed) — reveal the
+        // launcher. Any branding tweaks below apply in the same tick, so the first
+        // paint already shows the correctly sized + themed teaser.
+        revealDock();
+
         const b = cfg?.branding;
         if (!b) return;
         launcherPos = b.launcherPosition;
@@ -1245,7 +1271,7 @@ function readScriptConfig(): {
         });
       },
     )
-    .catch(() => undefined);
+    .catch(() => revealDock());
 
   type FamaashApi = {
     // `ctx` is the Free Consultation hand-off payload (case type, injury, timing);

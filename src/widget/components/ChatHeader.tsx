@@ -1,6 +1,7 @@
 import { useWidgetStore } from '../store/widgetStore';
+import { resolveAssistantAvatar } from '../config/demoMedia';
 import { ChevronLeftIcon } from '../utils/icons';
-import { FamaashMark } from './BrandAssets';
+import { Avatar } from './Avatar';
 import { WidgetControls } from './WidgetControls';
 import { cn } from '../utils/cn';
 
@@ -26,6 +27,7 @@ export function ChatHeader({
   className,
 }: ChatHeaderProps) {
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
+  const branding = useWidgetStore((s) => s.branding);
 
   return (
     <header
@@ -77,7 +79,11 @@ export function ChatHeader({
               !solid && 'bg-white/70 p-1 backdrop-blur',
             )}
           >
-            <FamaashMark size={32} />
+            <Avatar
+              src={resolveAssistantAvatar(branding?.assistantAvatarUrl)}
+              name={branding?.assistantName ?? branding?.name ?? 'Assistant'}
+              size={32}
+            />
           </span>
         )}
       </div>
