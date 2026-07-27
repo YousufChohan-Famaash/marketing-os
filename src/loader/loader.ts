@@ -850,29 +850,51 @@ function readScriptConfig(): {
   // Prewarm creates a context-less iframe; a later ctx open must rebuild it.
   let iframeHadCtx = false;
 
-  // Mobile keyboard handling: on phones the panel is full-screen (100dvh), so an
-  // open on-screen keyboard would cover the composer + header/messages. Shrink the
-  // iframe to the visible area (visualViewport) while the keyboard is up.
+  // Mobile keyboard handling. On phones the panel is full-screen (100dvh) and
+  // position:fixed, which pins it to the LAYOUT viewport. When the on-screen
+  // keyboard opens, the browser shrinks the VISUAL viewport and offsets it
+  // (scrolls it down to reveal the focused field) — so a fixed panel keeps its
+  // full height behind the keyboard AND has its top scrolled out of sight (the
+  // user "has to scroll up to see the widget", with the host page showing in the
+  // gap). Fix both at once: size the panel to the visible height and translate
+  // it to the visual viewport's top, so it always fills exactly what's visible.
   //
-  // IMPORTANT: only listen to `resize` (NOT `scroll` — it fires on every touch/
-  // scroll frame and caused per-touch flicker), debounce so we apply once after
-  // the keyboard settles rather than on every animation frame, set height only
-  // (setting `top` made the panel jump around), and skip no-op writes. The
-  // iframe's own height transition smooths the one change.
+  // We listen to resize AND scroll (offsetTop changes as the browser reveals
+  // different fields), coalesce to one write per frame via rAF, skip no-op
+  // writes, and reposition with `transform` (compositor-only, not in the CSS
+  // transition list → no lag/flicker). Height + transform are applied with
+  // transition:none so the top and bottom land together in a single frame
+  // instead of one snapping while the other eases.
   const vv = typeof window !== 'undefined' ? window.visualViewport : null;
   if (vv) {
-    let kbTimer: ReturnType<typeof setTimeout> | null = null;
+    let kbRaf = 0;
     const applyKeyboard = () => {
+      kbRaf = 0;
       if (!iframe || iframe.classList.contains('is-hidden')) return;
       const mobile = window.matchMedia('(max-width: 640px)').matches;
       const keyboardUp = mobile && window.innerHeight - vv.height > 150;
-      const target = keyboardUp ? `${Math.round(vv.height)}px` : '';
-      if (iframe.style.height !== target) iframe.style.height = target;
+      if (!keyboardUp) {
+        // Keyboard down (or desktop): drop the inline overrides and let CSS own
+        // the panel's size/position again (including the .fa-pos-center offset).
+        if (iframe.style.height) iframe.style.height = '';
+        if (iframe.style.transform) iframe.style.transform = '';
+        if (iframe.style.transition) iframe.style.transition = '';
+        return;
+      }
+      // Preserve the centered launcher's horizontal offset if present.
+      const centered = iframe.classList.contains('fa-pos-center');
+      const tf = `${centered ? 'translateX(-50%) ' : ''}translateY(${Math.round(vv.offsetTop)}px)`;
+      const h = `${Math.round(vv.height)}px`;
+      if (iframe.style.transition !== 'none') iframe.style.transition = 'none';
+      if (iframe.style.height !== h) iframe.style.height = h;
+      if (iframe.style.transform !== tf) iframe.style.transform = tf;
     };
-    vv.addEventListener('resize', () => {
-      if (kbTimer) clearTimeout(kbTimer);
-      kbTimer = setTimeout(applyKeyboard, 120);
-    });
+    const schedule = () => {
+      if (kbRaf) return;
+      kbRaf = requestAnimationFrame(applyKeyboard);
+    };
+    vv.addEventListener('resize', schedule);
+    vv.addEventListener('scroll', schedule);
   }
 
   // Lock the HOST page's scroll while the full-screen mobile panel is open, so
