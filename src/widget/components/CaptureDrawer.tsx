@@ -73,7 +73,7 @@ export function CaptureDrawer() {
                             value={draft}
                             onChange={(e) => setDraft(e.target.value)}
                             onBlur={submitEdit}
-                            className="w-full rounded border border-famaash-border bg-white px-1.5 py-0.5 text-[13px] focus:outline-none"
+                            className="w-full rounded border border-famaash-border bg-white px-1.5 py-0.5 text-[16px] focus:outline-none sm:text-[13px]"
                             aria-label={`Edit ${field.displayName}`}
                           />
                         </form>

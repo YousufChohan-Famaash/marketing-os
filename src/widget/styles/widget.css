@@ -62,6 +62,19 @@
     color: inherit;
   }
 
+  /* Mobile zoom guard. Any text field whose font is under 16px makes the
+     browser zoom the page on focus; that zoom shrinks visualViewport.height,
+     which our keyboard handler reads and collapses the panel to a small box.
+     Force >=16px on phones regardless of utility classes so focus never
+     triggers a zoom. Desktop keeps the intended smaller sizes. */
+  @media (max-width: 640px) {
+    input:not([type='checkbox']):not([type='radio']),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

@@ -122,7 +122,7 @@ export function CallbackForm({
             placeholder="First and last name"
             aria-invalid={show('name') && !!nameErr}
             className={cn(
-              'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+              'w-full rounded-lg border bg-white px-3 py-2.5 text-[16px] text-ink placeholder:text-muted-soft focus:outline-none sm:text-[14px]',
               show('name') && nameErr ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
             )}
           />
@@ -148,7 +148,7 @@ export function CallbackForm({
           placeholder="(555) 123-4567"
           aria-invalid={show('phone') && !!phoneErr}
           className={cn(
-            'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+            'w-full rounded-lg border bg-white px-3 py-2.5 text-[16px] text-ink placeholder:text-muted-soft focus:outline-none sm:text-[14px]',
             show('phone') && phoneErr ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
           )}
         />
@@ -174,7 +174,7 @@ export function CallbackForm({
             placeholder="you@example.com"
             aria-invalid={(show('email') && !!emailErr) || !!emailError}
             className={cn(
-              'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+              'w-full rounded-lg border bg-white px-3 py-2.5 text-[16px] text-ink placeholder:text-muted-soft focus:outline-none sm:text-[14px]',
               (show('email') && emailErr) || emailError
                 ? 'border-danger focus:border-danger'
                 : 'border-hairline focus:border-famaash',

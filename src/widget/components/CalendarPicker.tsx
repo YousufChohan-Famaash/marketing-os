@@ -154,7 +154,7 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
           max={maxDate}
           onChange={onTyped}
           aria-label="Type a date"
-          className="cal-typed min-w-0 flex-1 rounded-lg border border-hairline bg-white px-3 py-2 text-[14px] text-ink focus:border-famaash focus:outline-none"
+          className="cal-typed min-w-0 flex-1 rounded-lg border border-hairline bg-white px-3 py-2 text-[16px] text-ink focus:border-famaash focus:outline-none sm:text-[14px]"
         />
         <button
           type="button"

@@ -9,7 +9,7 @@ import { cn } from '../utils/cn';
  */
 
 const FIELD =
-  'w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none';
+  'w-full rounded-lg border border-hairline bg-white px-3 py-2.5 text-[16px] text-ink placeholder:text-muted-soft focus:border-famaash focus:outline-none sm:text-[14px]';
 
 function SubmitButton({
   disabled,
@@ -82,7 +82,7 @@ export function PhoneInput({ onSubmit }: { onSubmit: (content: string) => void }
           value={code}
           onChange={(e) => setCode(e.target.value)}
           aria-label="Country code"
-          className="rounded-lg border border-hairline bg-white px-2 py-2.5 text-[14px] text-ink focus:border-famaash focus:outline-none"
+          className="rounded-lg border border-hairline bg-white px-2 py-2.5 text-[16px] text-ink focus:border-famaash focus:outline-none sm:text-[14px]"
         >
           {COUNTRY_CODES.map((c) => (
             <option key={c} value={c}>

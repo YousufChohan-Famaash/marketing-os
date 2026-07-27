@@ -391,7 +391,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
 
 const fieldCls = (hasError: boolean) =>
   cn(
-    'w-full rounded-lg border bg-white px-3 py-2.5 text-[14px] text-ink placeholder:text-muted-soft focus:outline-none',
+    'w-full rounded-lg border bg-white px-3 py-2.5 text-[16px] text-ink placeholder:text-muted-soft focus:outline-none sm:text-[14px]',
     hasError ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
   );
 
