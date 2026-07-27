@@ -67,11 +67,17 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
     if (caseTypePicked) setStageOpen(false);
   }, [caseTypePicked]);
 
-  // Focus management — push focus to the composer once we're into the chat.
+  // Focus the composer once we're into the chat — but NOT on touch devices.
+  // Auto-focusing there force-opens the on-screen keyboard the instant a case
+  // type is picked, and iOS's fixed-iframe + keyboard handling then shoves the
+  // panel into a broken state (blank gap, content scrolled above the keyboard).
+  // Let mobile visitors tap the field when they're ready.
   useEffect(() => {
-    if (bootStatus === 'ready' && connectView === 'chat' && caseTypePicked) {
-      composerRef.current?.focus();
-    }
+    if (bootStatus !== 'ready' || connectView !== 'chat' || !caseTypePicked) return;
+    const coarse =
+      typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+    if (coarse) return;
+    composerRef.current?.focus();
   }, [bootStatus, connectView, caseTypePicked]);
 
   // Esc closes the widget.
