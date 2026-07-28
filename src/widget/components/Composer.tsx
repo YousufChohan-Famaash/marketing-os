@@ -34,7 +34,16 @@ export interface ComposerHandle {
   focus(): void;
 }
 
-export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
+interface ComposerProps {
+  /** Fired when the field is focused — a clear engagement signal (e.g. collapse
+   *  the in-chat video into the header thumbnail without waiting for the timer). */
+  onFocus?: () => void;
+}
+
+export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer(
+  { onFocus },
+  ref,
+) {
   const flags = useWidgetStore((s) => s.flags);
   const addMessage = useWidgetStore((s) => s.addMessage);
   const beginTyping = useWidgetStore((s) => s.beginTyping);
@@ -372,6 +381,7 @@ export const Composer = forwardRef<ComposerHandle>(function Composer(_, ref) {
             autoResize();
           }}
           onKeyDown={onKeyDown}
+          onFocus={onFocus}
           placeholder={stt.listening ? "Listening…" : "Type a message…"}
           rows={1}
           // 16px on mobile so iOS Safari doesn't auto-zoom (and clip the sides)

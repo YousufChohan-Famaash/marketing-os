@@ -186,7 +186,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
       />
       <SafetyButtons />
       <ChatDisclosure />
-      <Composer ref={composerRef} />
+      <Composer ref={composerRef} onFocus={collapseStage} />
       <PoweredByFooter />
       {lightboxOpen && (
         <VideoLightbox
