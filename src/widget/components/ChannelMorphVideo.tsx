@@ -3,6 +3,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
 import { VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
+import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
 import { useVideoCaptions } from '../utils/useVideoCaptions';
 
 // Default collapsed-slot geometry, matched to the ChannelView header:
@@ -53,7 +54,8 @@ export function ChannelMorphVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
   const video = resolveViewVideo(view, settings, branding);
   const captionsUrl = resolveCaptionsUrl(video?.captions, language);
-  const caption = useVideoCaptions(videoRef, captionsUrl);
+  const { crossOrigin, useCaptions, onError } = useCaptionSafeVideo(videoRef, captionsUrl);
+  const caption = useVideoCaptions(videoRef, useCaptions ? captionsUrl : undefined);
 
   // Own the clip's mute/play state:
   //   paused (lightbox open) → fully paused, so it never talks over the popup
@@ -108,11 +110,12 @@ export function ChannelMorphVideo({
         playsInline
         loop
         preload="auto"
-        crossOrigin={captionsUrl ? 'anonymous' : undefined}
+        crossOrigin={crossOrigin}
+        onError={onError}
         className="h-full w-full object-cover"
         aria-label="Attorney video"
       >
-        {captionsUrl && (
+        {useCaptions && captionsUrl && (
           <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
         )}
       </video>

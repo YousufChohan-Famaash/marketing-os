@@ -12,6 +12,7 @@ import {
   VolumeOffIcon,
   VolumeOnIcon,
 } from '../utils/icons';
+import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
 import { useVideoSound } from '../utils/useVideoSound';
 import { WidgetControls, languageName } from './WidgetControls';
 
@@ -69,10 +70,13 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   // the video autoplays. Backend-owned — absent until the captions spec ships.
   const caps = branding?.introVideoCaptions;
   const captionsUrl = caps?.[language] ?? caps?.en ?? (caps ? Object.values(caps)[0] : undefined);
+  // If the CDN blocks the captioned (crossOrigin) load, fall back to a plain
+  // playable video so the panel is never blank; captions gracefully degrade.
+  const { crossOrigin, useCaptions, onError } = useCaptionSafeVideo(videoRef, captionsUrl);
   const [caption, setCaption] = useState('');
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !captionsUrl) {
+    if (!v || !useCaptions || !captionsUrl) {
       setCaption('');
       return;
     }
@@ -85,7 +89,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
     };
     track.addEventListener('cuechange', onCue);
     return () => track.removeEventListener('cuechange', onCue);
-  }, [captionsUrl]);
+  }, [captionsUrl, useCaptions]);
 
   // Primary is Call; the rest (chat / text / book, never email) are secondary.
   const enabled = rankChannels(settings);
@@ -116,11 +120,12 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
         playsInline
         loop
         preload="auto"
-        crossOrigin={captionsUrl ? 'anonymous' : undefined}
+        crossOrigin={crossOrigin}
+        onError={onError}
         className="absolute inset-0 h-full w-full object-cover"
         aria-label="Attorney introduction video"
       >
-        {captionsUrl && (
+        {useCaptions && captionsUrl && (
           <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
         )}
       </video>

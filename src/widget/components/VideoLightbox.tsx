@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
+import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
 import { useVideoCaptions } from '../utils/useVideoCaptions';
 import { ChatIcon, CloseIcon, PauseIcon, PhoneIcon, PlayIcon } from '../utils/icons';
 
@@ -35,7 +36,8 @@ export function VideoLightbox({ view = 'chat', onClose, onCall, onChat }: VideoL
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(0);
   const captionsUrl = resolveCaptionsUrl(video?.captions, language);
-  const caption = useVideoCaptions(videoRef, captionsUrl);
+  const { crossOrigin, useCaptions, onError } = useCaptionSafeVideo(videoRef, captionsUrl);
+  const caption = useVideoCaptions(videoRef, useCaptions ? captionsUrl : undefined);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -88,7 +90,8 @@ export function VideoLightbox({ view = 'chat', onClose, onCall, onChat }: VideoL
             src={video.url}
             poster={video.poster}
             playsInline
-            crossOrigin={captionsUrl ? 'anonymous' : undefined}
+            crossOrigin={crossOrigin}
+            onError={onError}
             className="h-full w-full object-cover"
             onTimeUpdate={(e) => {
               const v = e.currentTarget;
@@ -97,7 +100,7 @@ export function VideoLightbox({ view = 'chat', onClose, onCall, onChat }: VideoL
             }}
             onEnded={() => setPlaying(false)}
           >
-            {captionsUrl && (
+            {useCaptions && captionsUrl && (
               <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
             )}
           </video>
