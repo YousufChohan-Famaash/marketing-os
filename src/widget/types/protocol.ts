@@ -315,6 +315,12 @@ export interface IframeBridge {
   setView(view: string): Promise<void>;
   setContext(metadata: Record<string, unknown>): Promise<void>;
   identify(user: IdentifyPayload): Promise<void>;
+  /**
+   * Step the widget back one level, for the mobile hardware/gesture Back button.
+   * Resolves true if the widget closed (it was at home), false if it navigated
+   * internally (a routed channel → home) and remains open.
+   */
+  back(): Promise<boolean>;
 }
 
 /** Methods the host page exposes to the iframe. */
@@ -337,6 +343,12 @@ export interface HostBridge {
    * handshake and the widget's first paint.
    */
   notifyReady(): Promise<void>;
+  /**
+   * Fired when an input inside the widget is focused or blurred, so the loader
+   * can re-run its mobile keyboard sizing across the keyboard's animation (iOS
+   * Safari fires no viewport event on focus under a scroll-locked host body).
+   */
+  syncKeyboard(): Promise<void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────

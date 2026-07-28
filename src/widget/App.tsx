@@ -207,6 +207,19 @@ export function App() {
               if (v) useWidgetStore.getState().setConnectView(v);
               openWidget();
             },
+            // Mobile Back button: step back one level inside the widget. A routed
+            // channel (Call / Book / etc.) or chat goes to the widget home; from
+            // home the widget closes. Returning false keeps the panel open so the
+            // loader re-arms the trap; true tells it the panel closed.
+            onBack: () => {
+              const st = useWidgetStore.getState();
+              if (st.connectView !== 'home') {
+                st.setConnectView('home');
+                return false;
+              }
+              st.closeWidget();
+              return true;
+            },
           },
           config.allowedOrigins ?? [],
         );
@@ -290,6 +303,27 @@ export function App() {
     if (!bridgeReady) return;
     bridgeRef.current?.notifyReady();
   }, [bridgeReady]);
+
+  // Ping the loader when any field is focused/blurred so it can resize the panel
+  // for the mobile keyboard. iOS Safari fires no visualViewport event on focus
+  // under a scroll-locked host body, so without this nudge the panel only
+  // resizes once the user manually scrolls — the loader re-checks on this ping
+  // across the keyboard's open/close animation.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const isField = (t: EventTarget | null) =>
+      t instanceof HTMLElement &&
+      (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+    const onFocusChange = (e: FocusEvent) => {
+      if (isField(e.target)) bridgeRef.current?.syncKeyboard();
+    };
+    document.addEventListener('focusin', onFocusChange);
+    document.addEventListener('focusout', onFocusChange);
+    return () => {
+      document.removeEventListener('focusin', onFocusChange);
+      document.removeEventListener('focusout', onFocusChange);
+    };
+  }, []);
 
   const notifyHostEvent = (event: AnalyticsEvent) => {
     bridgeRef.current?.notifyEvent(event);

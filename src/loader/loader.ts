@@ -19,6 +19,9 @@ interface IframeMethods {
   setView(view: string): Promise<void>;
   setContext(metadata: Record<string, unknown>): Promise<void>;
   identify(user: { id: string; email: string; name?: string }): Promise<void>;
+  /** Step the widget back one level. Resolves true if it closed (was at home),
+   *  false if it navigated internally (e.g. a channel → home) and stays open. */
+  back(): Promise<boolean>;
 }
 
 interface HostMethods {
@@ -32,6 +35,9 @@ interface HostMethods {
   getHostContext(): { url: string; referrer: string; utm: Record<string, string> };
   notifyEvent(event: { type: string; data: unknown }): void;
   notifyReady(): void;
+  /** The widget focused/blurred an input — re-run mobile keyboard sizing across
+   *  the keyboard's animation (iOS fires no viewport event under a scroll lock). */
+  syncKeyboard(): void;
 }
 
 const LAUNCHER_ID = 'famaash-launcher';
@@ -865,6 +871,16 @@ function readScriptConfig(): {
   // transition list → no lag/flicker). Height + transform are applied with
   // transition:none so the top and bottom land together in a single frame
   // instead of one snapping while the other eases.
+  //
+  // iOS Safari extra wrinkle: with a fixed panel + a scroll-locked host body, it
+  // often does NOT fire `resize`/`scroll` on focus — the visual viewport only
+  // updates once the user manually scrolls, so the panel appears not to resize
+  // until you drag it. The widget therefore pings us (syncKeyboard, via the
+  // bridge) the moment an input is focused/blurred, and we re-check across the
+  // keyboard's animation (it settles late). We also detect the keyboard against
+  // the LARGER of innerHeight / clientHeight, since iOS sometimes shrinks
+  // innerHeight along with the visual viewport (which would hide the keyboard).
+  let kickKeyboardSync: () => void = () => undefined;
   const vv = typeof window !== 'undefined' ? window.visualViewport : null;
   if (vv) {
     let kbRaf = 0;
@@ -872,7 +888,11 @@ function readScriptConfig(): {
       kbRaf = 0;
       if (!iframe || iframe.classList.contains('is-hidden')) return;
       const mobile = window.matchMedia('(max-width: 640px)').matches;
-      const keyboardUp = mobile && window.innerHeight - vv.height > 150;
+      const refH = Math.max(
+        window.innerHeight || 0,
+        document.documentElement?.clientHeight || 0,
+      );
+      const keyboardUp = mobile && refH - vv.height > 150;
       if (!keyboardUp) {
         // Keyboard down (or desktop): drop the inline overrides and let CSS own
         // the panel's size/position again (including the .fa-pos-center offset).
@@ -895,6 +915,18 @@ function readScriptConfig(): {
     };
     vv.addEventListener('resize', schedule);
     vv.addEventListener('scroll', schedule);
+    // Re-check across the whole keyboard animation (iOS settles the visual
+    // viewport late, and fires no event at all under a scroll lock). Cheap:
+    // applyKeyboard no-ops when nothing changed.
+    const kbTimers: number[] = [];
+    kickKeyboardSync = () => {
+      kbTimers.forEach((t) => clearTimeout(t));
+      kbTimers.length = 0;
+      schedule();
+      [80, 180, 320, 500, 700].forEach((d) => {
+        kbTimers.push(window.setTimeout(schedule, d));
+      });
+    };
   }
 
   // Lock the HOST page's scroll while the full-screen mobile panel is open, so
@@ -1038,15 +1070,82 @@ function readScriptConfig(): {
   let connection: Connection<IframeMethods> | null = null;
   let iframeReady: Promise<IframeMethods> | null = null;
 
+  // ── Mobile back-button trap ────────────────────────────────────────────────
+  // On phones the hardware/gesture Back should navigate WITHIN the widget (a
+  // routed channel → widget home → close), never leave the host page: pressing
+  // Back inside "Book a call" was navigating the site away and forfeiting the
+  // whole chat session. We push one sentinel history entry when the panel opens;
+  // each Back is consumed as an in-widget "back" and re-armed, until the widget
+  // is at home — there the next Back closes it and hands control back to the page.
+  // Mobile only; on desktop the browser's Back is left alone.
+  let historyTrapped = false;
+  let programmaticPop = false;
+  const armHistoryTrap = () => {
+    if (typeof history === 'undefined') return;
+    if (historyTrapped || !window.matchMedia('(max-width: 640px)').matches) return;
+    historyTrapped = true;
+    try {
+      history.pushState({ famaashWidget: true }, '');
+    } catch {
+      historyTrapped = false;
+    }
+  };
+  const disarmHistoryTrap = () => {
+    if (!historyTrapped) return;
+    historyTrapped = false;
+    // Pop our own sentinel so a later Back doesn't waste a press on a stale entry.
+    programmaticPop = true;
+    try {
+      history.back();
+    } catch {
+      programmaticPop = false;
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('popstate', () => {
+      if (programmaticPop) {
+        programmaticPop = false;
+        return;
+      }
+      if (!historyTrapped) return;
+      // Back pressed while the panel is open. Ask the widget to step back one
+      // level; re-arm unless it closed itself (was already at home).
+      void (async () => {
+        let closed = true;
+        try {
+          const remote = iframeRemote ?? (iframeReady ? await iframeReady : null);
+          closed = (await remote?.back()) ?? true;
+        } catch {
+          closed = true;
+        }
+        if (closed) {
+          historyTrapped = false;
+          iframe?.classList.add('is-hidden');
+          lockHostScroll(false);
+          setDockHidden(false);
+        } else {
+          // Deeper view collapsed to home → keep trapping the next Back.
+          try {
+            history.pushState({ famaashWidget: true }, '');
+          } catch {
+            historyTrapped = false;
+          }
+        }
+      })();
+    });
+  }
+
   const hostMethods: HostMethods = {
     requestClose: () => {
       iframe?.classList.add('is-hidden');
       lockHostScroll(false);
+      disarmHistoryTrap();
       setDockHidden(false);
     },
     requestMinimize: () => {
       iframe?.classList.add('is-hidden');
       lockHostScroll(false);
+      disarmHistoryTrap();
       setDockHidden(false);
     },
     requestExpand: () => {
@@ -1083,6 +1182,10 @@ function readScriptConfig(): {
     notifyReady: () => {
       widgetPainted = true;
       if (revealArmed) revealPanel();
+    },
+    // An input was focused/blurred inside the widget — nudge the keyboard sizing.
+    syncKeyboard: () => {
+      kickKeyboardSync();
     },
   };
 
@@ -1152,6 +1255,7 @@ function readScriptConfig(): {
     // The panel opens where the teaser sits, so hide the dock while open.
     setDockHidden(true);
     lockHostScroll(true);
+    armHistoryTrap();
     // A consultation hand-off carries `ctx` (wizard answers) the widget reads
     // from its src at boot. If we prewarmed a context-less iframe, rebuild it
     // with the ctx so the hand-off still seeds the conversation.
@@ -1197,6 +1301,7 @@ function readScriptConfig(): {
   function closeWidget(): void {
     iframe?.classList.add('is-hidden');
     lockHostScroll(false);
+    disarmHistoryTrap();
     setDockHidden(false);
     iframeRemote?.close().catch(() => undefined);
   }

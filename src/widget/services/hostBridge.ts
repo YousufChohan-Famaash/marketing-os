@@ -26,6 +26,9 @@ export interface IframeBridgeHandlers {
   onSetView?: (view: string) => void;
   onSetContext?: (metadata: Record<string, unknown>) => void;
   onIdentify?: (user: IdentifyPayload) => void;
+  /** Mobile Back pressed. Return true if the widget closed (was at home), false
+   *  if it navigated back internally and stays open. */
+  onBack?: () => boolean;
 }
 
 export interface HostBridgeClient {
@@ -40,6 +43,8 @@ export interface HostBridgeClient {
   notifyEvent(event: AnalyticsEvent): void;
   /** Tell the host the widget has painted, so it can reveal the panel. */
   notifyReady(): void;
+  /** Nudge the host to re-run mobile keyboard sizing (input focus/blur). */
+  syncKeyboard(): void;
   destroy(): void;
   isConnected(): boolean;
 }
@@ -107,6 +112,9 @@ export function createHostBridge(
     },
     async identify(user: IdentifyPayload) {
       handlers.onIdentify?.(user);
+    },
+    async back() {
+      return handlers.onBack?.() ?? true;
     },
   };
 
@@ -179,6 +187,11 @@ export function createHostBridge(
         r?.notifyReady?.().catch(() => undefined);
       });
     },
+    syncKeyboard() {
+      void ready.then((r) => {
+        r?.syncKeyboard?.().catch(() => undefined);
+      });
+    },
     destroy() {
       connection.destroy();
       connected = false;
@@ -202,6 +215,7 @@ function makeNoOpClient(): HostBridgeClient {
     getHostContext: async () => null,
     notifyEvent: () => undefined,
     notifyReady: () => undefined,
+    syncKeyboard: () => undefined,
     destroy: () => undefined,
     isConnected: () => false,
   };
