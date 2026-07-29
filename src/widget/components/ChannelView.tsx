@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
@@ -104,14 +104,21 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const hasStageVideo = headerVideoView ? Boolean(resolveViewVideo(headerVideoView, settings, branding)) : false;
   const hasMorph = hasStageVideo && inFormState && headerVideoView !== null;
   const [stageOpen, setStageOpen] = useState(true);
-  const collapseStage = useCallback(() => setStageOpen(false), []);
+  // The greeting auto-collapses only ONCE. After that, a tap on the thumbnail can
+  // re-expand and replay the clip in full without the timer cutting it off.
+  const collapsedOnce = useRef(false);
+  const collapseStage = useCallback(() => {
+    collapsedOnce.current = true;
+    setStageOpen(false);
+  }, []);
 
-  // Auto-collapse after a few seconds if the visitor hasn't engaged.
+  // Auto-collapse the initial greeting after a few seconds if the visitor hasn't
+  // engaged (skipped once it has collapsed once, so replays play through).
   useEffect(() => {
-    if (!hasMorph || !stageOpen) return;
-    const t = setTimeout(() => setStageOpen(false), 5000);
+    if (!hasMorph || !stageOpen || collapsedOnce.current) return;
+    const t = setTimeout(collapseStage, 5000);
     return () => clearTimeout(t);
-  }, [hasMorph, stageOpen]);
+  }, [hasMorph, stageOpen, collapseStage]);
 
   // Tick the connecting countdown.
   useEffect(() => {
@@ -248,7 +255,14 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
           playback keeps its timestamp). Rendered before the header so the header
           floats on top of it. */}
       {hasMorph && headerVideoView && (
-        <ChannelMorphVideo view={headerVideoView} collapsed={!stageOpen} fullBleed headerH={HEADER_H} stageH={STAGE_H} />
+        <ChannelMorphVideo
+          view={headerVideoView}
+          collapsed={!stageOpen}
+          fullBleed
+          headerH={HEADER_H}
+          stageH={STAGE_H}
+          onThumbClick={() => setStageOpen(true)}
+        />
       )}
 
       {/* Header floats over the video while the stage is open (transparent, light

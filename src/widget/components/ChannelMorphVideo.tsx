@@ -1,8 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
-import { VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
+import { PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
 import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
 import { useVideoCaptions } from '../utils/useVideoCaptions';
 
@@ -29,15 +29,20 @@ interface ChannelMorphVideoProps {
    * header area too, so the header floats over the video transparently instead of
    * a solid bar pushing the video down. A top gradient keeps the header legible. */
   fullBleed?: boolean;
+  /** Show the little mute toggle beside the collapsed thumbnail. Only where the
+   * header has room for it (the chat) — a titled header (contact screens) would
+   * collide with the title, and there the shared mute + expanded control cover it. */
+  showThumbSound?: boolean;
 }
 
 /**
  * ONE video element that greets full-width at the top of a screen, then animates
  * into the small header-avatar slot. Because it's a single element that only
  * changes geometry (never remounts), playback is continuous through the collapse
- * — it keeps its timestamp instead of restarting. Muted + looping; the unmute
- * control shows in the expanded stage. The parent drives `collapsed`, geometry,
- * and (optionally) what tapping the collapsed thumbnail does.
+ * — it keeps its timestamp instead of restarting. It plays ONCE (no loop); once
+ * it ends a play button offers a replay, and re-expanding the thumbnail replays
+ * it. The parent drives `collapsed`, geometry, and (optionally) what tapping the
+ * collapsed thumbnail does.
  */
 export function ChannelMorphVideo({
   view,
@@ -50,6 +55,7 @@ export function ChannelMorphVideo({
   onThumbClick,
   paused = false,
   fullBleed = false,
+  showThumbSound = false,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
@@ -73,6 +79,10 @@ export function ChannelMorphVideo({
       v.pause();
       return;
     }
+    // A finished clip stays finished (it shows a replay affordance) — don't let a
+    // sound toggle or the lightbox closing silently restart it. Explicit replay
+    // paths (the play button, re-expanding, unmuting) handle restarting.
+    if (v.ended) return;
     v.muted = !soundOn;
     v.play().catch(() => {
       if (!v.muted) {
@@ -81,6 +91,18 @@ export function ChannelMorphVideo({
       }
     });
   }, [paused, soundOn]);
+
+  // Play-once state: the clip doesn't loop, so track when it finishes to offer a
+  // replay. Re-expanding the collapsed thumbnail replays an ended clip.
+  const [ended, setEnded] = useState(false);
+  useEffect(() => {
+    if (collapsed) return;
+    const v = videoRef.current;
+    if (v?.ended) {
+      v.currentTime = 0;
+      void v.play();
+    }
+  }, [collapsed]);
 
   if (!video) return null;
 
@@ -101,8 +123,18 @@ export function ChannelMorphVideo({
     }
     setVideoSoundOn(next);
   };
-  // Collapsed: whole circle is the tap target (open lightbox, or toggle sound).
+  // Collapsed: whole circle is the tap target (open lightbox, re-expand, or
+  // toggle sound as a last resort).
   const onCollapsedTap = onThumbClick ?? toggleSound;
+  // Replay from the start (the clip plays once; this is the "watch again").
+  const replay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.muted = !soundOn;
+    setEnded(false);
+    void v.play();
+  };
 
   return (
     <>
@@ -120,10 +152,11 @@ export function ChannelMorphVideo({
         src={video.url}
         poster={video.poster}
         playsInline
-        loop
         preload="auto"
         crossOrigin={crossOrigin}
         onError={onError}
+        onEnded={() => setEnded(true)}
+        onPlay={() => setEnded(false)}
         className="h-full w-full object-cover"
         aria-label="Attorney video"
       >
@@ -153,6 +186,25 @@ export function ChannelMorphVideo({
           </span>
         </div>
       )}
+      {/* Finished (expanded): a center play button to watch it again. */}
+      {!collapsed && ended && (
+        <button
+          type="button"
+          onClick={replay}
+          aria-label="Replay video"
+          className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white ring-1 ring-white/50 backdrop-blur transition-transform hover:scale-105"
+        >
+          <PlayIcon size={22} className="ml-0.5" />
+        </button>
+      )}
+      {/* Finished (collapsed): a small play glyph hints the thumbnail replays. */}
+      {collapsed && ended && (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-black/50 text-white">
+            <PlayIcon size={10} className="ml-px" />
+          </span>
+        </span>
+      )}
       <button
         type="button"
         onClick={collapsed ? onCollapsedTap : toggleSound}
@@ -168,7 +220,7 @@ export function ChannelMorphVideo({
     </div>
     {/* Mute/unmute the thumbnail, sitting just beside it (tapping the thumbnail
         itself opens the lightbox, so sound needs its own control here). */}
-    {collapsed && onThumbClick && (
+    {collapsed && showThumbSound && (
       <button
         type="button"
         onClick={toggleSound}

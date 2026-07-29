@@ -172,6 +172,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
           stageH={300}
           onThumbClick={() => setLightboxOpen(true)}
           paused={lightboxOpen}
+          showThumbSound
         />
       )}
       {/* Floats over the video while the stage is open (transparent), reverts to
