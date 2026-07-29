@@ -305,7 +305,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           e.preventDefault();
           submit();
         }}
-        className="flex items-center gap-2"
+        className="flex items-center gap-1 rounded-3xl border border-hairline bg-[#F7F8FA] py-1 pl-1.5 pr-1.5"
       >
         {/* Attachment menu: voice note, talk-to-type, video — behind a plus button. */}
         {hasAttachments && (
@@ -318,7 +318,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
               aria-expanded={menuOpen}
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-                menuOpen ? "bg-famaash text-white" : "bg-[#EEEEFF] text-[#6B6B8A] hover:text-famaash",
+                menuOpen ? "bg-famaash text-white" : "text-muted hover:bg-white hover:text-famaash",
               )}
             >
               <PlusIcon size={18} className={cn("transition-transform duration-200", menuOpen && "rotate-45")} />
@@ -392,32 +392,17 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           aria-label="Message"
         />
 
-        {/* Send pill */}
+        {/* Send: a single clean circle, brand-filled once there's something to send. */}
         <button
           type="submit"
           disabled={!canSend}
           aria-label="Send message"
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-pill py-1.5 pr-1.5 transition-colors",
-            canSend ? "bg-[#EEEEFF]" : "pl-3.5 cursor-not-allowed opacity-60",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-colors",
+            canSend ? "bg-famaash hover:opacity-95" : "cursor-not-allowed bg-muted-soft",
           )}
         >
-          <span
-            className={cn(
-              "overflow-hidden whitespace-nowrap text-[13px] font-medium text-[#1A1A1A] transition-all duration-150",
-              canSend ? "max-w-0 opacity-0" : "max-w-[40px] opacity-100",
-            )}
-          >
-            Send
-          </span>
-          <span
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-full text-white transition-colors",
-              canSend ? "bg-famaash" : "bg-muted-soft",
-            )}
-          >
-            <SendArrowIcon size={15} />
-          </span>
+          <SendArrowIcon size={16} />
         </button>
       </form>
     </div>
