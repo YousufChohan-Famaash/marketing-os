@@ -15,7 +15,9 @@ const DEFAULT_PRACTICE_AREAS = [
  * lead picks a type — the pick drops a lead bubble and starts the agent flow
  * (same behavior the former opener screen had).
  */
-export function ChatOpenerChips({ variant = "grid" }: { variant?: "grid" | "overlay" } = {}) {
+export function ChatOpenerChips({
+  variant = "grid",
+}: { variant?: "grid" | "overlay" } = {}) {
   const caseTypes = useWidgetStore((s) => s.caseTypes);
   const branding = useWidgetStore((s) => s.branding);
   const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
@@ -69,8 +71,12 @@ export function ChatOpenerChips({ variant = "grid" }: { variant?: "grid" | "over
                 onClick={() => pick(opt)}
                 className="flex flex-col items-center justify-start gap-1 rounded-xl bg-white/15 px-1 py-2 text-center text-white ring-1 ring-white/25 backdrop-blur transition-colors hover:bg-white/25"
               >
-                {icon && <span className="flex items-center text-white">{icon}</span>}
-                <span className="text-[11px] font-semibold leading-tight">{opt}</span>
+                {icon && (
+                  <span className="flex items-center text-white">{icon}</span>
+                )}
+                <span className="text-[11px] font-semibold leading-tight">
+                  {opt}
+                </span>
               </button>
             );
           })}
@@ -98,7 +104,7 @@ export function ChatOpenerChips({ variant = "grid" }: { variant?: "grid" | "over
               className="group flex flex-col items-center justify-start gap-1.5 rounded-2xl border border-hairline bg-white px-1.5 py-3 text-center transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
             >
               {icon && (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-[color:var(--practice-accent)] transition-colors group-hover:bg-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-black transition-colors group-hover:bg-white">
                   {icon}
                 </span>
               )}

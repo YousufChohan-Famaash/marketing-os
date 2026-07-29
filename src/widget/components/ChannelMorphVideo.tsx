@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
-import { PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
+import { ChevronDownIcon, PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
 import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
 import { useVideoCaptions } from '../utils/useVideoCaptions';
 
@@ -103,6 +103,28 @@ export function ChannelMorphVideo({
   // Play-once state: the clip doesn't loop, so track when it finishes to offer a
   // replay. Re-expanding the collapsed thumbnail replays an ended clip.
   const [ended, setEnded] = useState(false);
+
+  // Scroll hint for the overlay: show a small "scroll" nudge at the bottom when
+  // the overlay content overflows, then hide it once the user scrolls or after 3s.
+  const overlayScrollRef = useRef<HTMLDivElement>(null);
+  const hasOverlay = !collapsed && Boolean(overlay);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  useEffect(() => {
+    if (!hasOverlay) {
+      setShowScrollHint(false);
+      return undefined;
+    }
+    const el = overlayScrollRef.current;
+    if (!el) return undefined;
+    // Only nudge if there's actually more below the fold.
+    if (el.scrollHeight - el.clientHeight <= 8) {
+      setShowScrollHint(false);
+      return undefined;
+    }
+    setShowScrollHint(true);
+    const t = setTimeout(() => setShowScrollHint(false), 3000);
+    return () => clearTimeout(t);
+  }, [hasOverlay, fillHeight]);
   useEffect(() => {
     if (collapsed) return;
     const v = videoRef.current;
@@ -192,9 +214,27 @@ export function ChannelMorphVideo({
       {/* Overlay content (e.g. the opener pills) over the lower part of the video,
           on a dark scrim. Replaces the caption + white fade while shown. */}
       {!collapsed && overlay && (
-        <div className="absolute inset-x-0 bottom-0 z-10 max-h-[42%] overflow-y-auto bg-gradient-to-t from-black/88 via-black/65 to-transparent px-3 pb-3 pt-8">
-          {overlay}
-        </div>
+        <>
+          <div
+            ref={overlayScrollRef}
+            onScroll={() => setShowScrollHint(false)}
+            className="absolute inset-x-0 bottom-0 z-10 max-h-[42%] overflow-y-auto bg-gradient-to-t from-black/88 via-black/65 to-transparent px-3 pb-3 pt-8"
+          >
+            {overlay}
+          </div>
+          {/* Pinned "scroll for more" nudge; fades on scroll or after ~3s. */}
+          <div
+            className={`pointer-events-none absolute inset-x-0 bottom-1.5 z-20 flex justify-center transition-opacity duration-300 ${
+              showScrollHint ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-hidden="true"
+          >
+            <span className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[10.5px] font-medium text-white backdrop-blur">
+              <ChevronDownIcon size={12} />
+              Scroll for more
+            </span>
+          </div>
+        </>
       )}
       {/* Captions over the expanded stage (hidden once collapsed to a thumbnail). */}
       {!collapsed && !overlay && caption && (
