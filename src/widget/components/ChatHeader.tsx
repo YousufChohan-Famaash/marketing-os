@@ -14,8 +14,12 @@ interface ChatHeaderProps {
   onBack?: () => void;
   /** Solid white bar (default) vs. transparent overlay on the intro video. */
   solid?: boolean;
-  /** A morphing video occupies the avatar slot — reserve it (the video collapses in). */
+  /** The firm has a morphing chat video (drives the Avatar-vs-slot choice). */
   hasMorph?: boolean;
+  /** The morph video is currently COLLAPSED into the header, so reserve its slot.
+   * While the video is full-bleed (expanded) there's no thumbnail here, so the
+   * title sits flush after the back button instead of past an empty gap. */
+  thumbInHeader?: boolean;
   className?: string;
 }
 
@@ -27,6 +31,7 @@ export function ChatHeader({
   onBack,
   solid = true,
   hasMorph = false,
+  thumbInHeader = false,
   className,
 }: ChatHeaderProps) {
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
@@ -81,9 +86,12 @@ export function ChatHeader({
           </div>
         ) : (
           <>
-            {hasMorph ? (
-              // The morphing video collapses into this slot; keep the space for it.
+            {thumbInHeader ? (
+              // The morph video is collapsed into this slot; reserve the space.
               <span className="h-10 w-10 shrink-0" aria-hidden="true" />
+            ) : hasMorph ? (
+              // Video is full-bleed (no thumbnail here) → title flush, no slot.
+              null
             ) : (
               <span
                 className={cn(

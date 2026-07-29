@@ -60,6 +60,9 @@ export function WidgetShell({
   // the panel and the header floats over it transparently. CHAT_HEADER_H must
   // match the header height so the panel's top padding clears the floating header.
   const CHAT_HEADER_H = 52;
+  // A touch taller than the contact screens so the attorney has room under the
+  // floating header while the video is edge-to-edge.
+  const CHAT_STAGE_H = 344;
   const stageActive = hasChatMorph && stageOpen;
 
   // Expand the stage only on a FRESH chat (before a case type is picked).
@@ -179,17 +182,20 @@ export function WidgetShell({
         <ChannelMorphVideo
           view="chat"
           collapsed={!stageOpen}
+          fullBleed
           headerH={CHAT_HEADER_H}
           avatarLeft={52}
           avatarTop={6}
           avatar={40}
-          stageH={300}
+          stageH={CHAT_STAGE_H}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}
         />
       )}
-      {/* Solid header bar above the video (not floating over it) so the attorney's
-          head has clean space from the top instead of sitting under the controls. */}
+      {/* Floats over the video while the stage is open (transparent), reverts to
+          the solid bar with the collapsed avatar once it tucks away. The avatar
+          slot is only reserved once the thumbnail is actually in the header, so
+          the title isn't indented past an empty gap while the video is full. */}
       <ChatHeader
         onClose={onClose}
         onMinimize={onMinimize}
@@ -197,6 +203,8 @@ export function WidgetShell({
         isExpanded={isExpanded}
         onBack={backToHome}
         hasMorph={hasChatMorph}
+        thumbInHeader={hasChatMorph && !stageOpen}
+        solid={!stageActive}
         className="absolute inset-x-0 top-0 z-30"
       />
       {caseTypePicked && (
@@ -208,7 +216,7 @@ export function WidgetShell({
       {/* The opener (greeting + case-type pills) lives inside the list until a
           type is picked; the conversation chrome stays visible throughout. */}
       <MessageList
-        topSpacerHeight={hasChatMorph ? (stageOpen ? 300 : 0) : undefined}
+        topSpacerHeight={hasChatMorph ? (stageOpen ? CHAT_STAGE_H : 0) : undefined}
         onInteract={collapseStage}
         hideIntro={stageActive}
       />
