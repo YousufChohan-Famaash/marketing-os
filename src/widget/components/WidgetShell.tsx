@@ -7,6 +7,7 @@ import { ChannelView } from "./ChannelView";
 import { ChannelMorphVideo } from "./ChannelMorphVideo";
 import { ChatDisclosure } from "./ChatDisclosure";
 import { ChatHeader } from "./ChatHeader";
+import { ChatOpenerChips } from "./ChatOpenerChips";
 import { CinematicHome } from "./CinematicHome";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConnectingState } from "./ConnectingState";
@@ -64,6 +65,29 @@ export function WidgetShell({
   // floating header while the video is edge-to-edge.
   const CHAT_STAGE_H = 344;
   const stageActive = hasChatMorph && stageOpen;
+
+  // While the video is expanded it fills all the way down to just above the
+  // bottom chrome (composer etc.), with the pills overlaid on it, so no space
+  // is wasted. Measure where the chrome starts (its offset from the panel top)
+  // and let the video fill to there. Re-measures on any resize (keyboard, etc.).
+  const chromeRef = useRef<HTMLDivElement>(null);
+  const [stageFillH, setStageFillH] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    if (!hasChatMorph) return undefined;
+    const measure = () => {
+      const el = chromeRef.current;
+      if (el) setStageFillH(el.offsetTop);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (chromeRef.current) ro.observe(chromeRef.current);
+    if (chromeRef.current?.parentElement) ro.observe(chromeRef.current.parentElement);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hasChatMorph, caseTypePicked, stageOpen]);
 
   // Expand the stage only on a FRESH chat (before a case type is picked).
   // Returning to an already-started conversation keeps it collapsed, so the big
@@ -188,6 +212,8 @@ export function WidgetShell({
           avatarTop={6}
           avatar={40}
           stageH={CHAT_STAGE_H}
+          fillHeight={stageActive ? stageFillH : undefined}
+          overlay={stageActive && !caseTypePicked ? <ChatOpenerChips variant="overlay" /> : undefined}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}
         />
@@ -220,11 +246,13 @@ export function WidgetShell({
         onInteract={collapseStage}
         hideIntro={stageActive}
       />
-      <ChatDisclosure />
-      <SafetyButtons />
-
-      <Composer ref={composerRef} onFocus={collapseStage} />
-      <PoweredByFooter />
+      {/* Bottom chrome, measured so the expanded video can fill down to its top. */}
+      <div ref={chromeRef} className="shrink-0">
+        <ChatDisclosure />
+        <SafetyButtons />
+        <Composer ref={composerRef} onFocus={collapseStage} />
+        <PoweredByFooter />
+      </div>
     </div>
   );
 }

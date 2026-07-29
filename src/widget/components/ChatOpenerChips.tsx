@@ -15,7 +15,7 @@ const DEFAULT_PRACTICE_AREAS = [
  * lead picks a type — the pick drops a lead bubble and starts the agent flow
  * (same behavior the former opener screen had).
  */
-export function ChatOpenerChips({ variant = 'grid' }: { variant?: 'grid' | 'overlay' } = {}) {
+export function ChatOpenerChips({ variant = "grid" }: { variant?: "grid" | "overlay" } = {}) {
   const caseTypes = useWidgetStore((s) => s.caseTypes);
   const branding = useWidgetStore((s) => s.branding);
   const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
@@ -51,16 +51,15 @@ export function ChatOpenerChips({ variant = 'grid' }: { variant?: 'grid' | 'over
     useWidgetStore.getState().setConversationStarted(true);
   };
 
-  if (variant === 'overlay') {
-    // Compact glassy tiles laid over the lower part of the (edge-to-edge) video,
-    // so the pills are visible without stealing layout space. Scrolls internally
-    // if there are more than fit; the parent supplies the scrim + max height.
+  if (variant === "overlay") {
+    // Compact glassy tiles laid over the lower part of the (edge-to-edge) video.
+    // The parent supplies the scrim + max height; scrolls internally if needed.
     return (
-      <div className="flex max-h-full flex-col">
-        <p className="mb-2 shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-white/80">
+      <div>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-white/80">
           What happened?
         </p>
-        <div className="grid grid-cols-3 gap-1.5 overflow-y-auto pb-0.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {options.map((opt) => {
             const icon = practiceIconFor(opt, 16);
             return (

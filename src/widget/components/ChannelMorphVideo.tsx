@@ -32,6 +32,10 @@ interface ChannelMorphVideoProps {
   /** Fired when the clip finishes playing (it plays once) so the parent can
    * morph it into the thumbnail. */
   onFinish?: () => void;
+  /** Expanded full-bleed height override, in px. When set, the expanded stage
+   * fills to this height (used to reach just above the composer) instead of
+   * headerH + stageH. */
+  fillHeight?: number;
   /** Content laid over the lower part of the EXPANDED video (e.g. the opener
    * pills), on a dark scrim. Replaces the caption + white fade while present. */
   overlay?: import('react').ReactNode;
@@ -58,6 +62,7 @@ export function ChannelMorphVideo({
   paused = false,
   fullBleed = false,
   onFinish,
+  fillHeight,
   overlay,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
@@ -112,7 +117,7 @@ export function ChannelMorphVideo({
   const style = collapsed
     ? { top: avatarTop, left: avatarLeft, width: avatar, height: avatar, borderRadius: 9999 }
     : fullBleed
-      ? { top: 0, left: 0, width: '100%', height: headerH + stageH, borderRadius: 0 }
+      ? { top: 0, left: 0, width: '100%', height: fillHeight ?? headerH + stageH, borderRadius: 0 }
       : { top: headerH, left: 0, width: '100%', height: stageH, borderRadius: 0 };
 
   // Toggle the shared sound preference (set muted synchronously so the unmute
@@ -187,7 +192,7 @@ export function ChannelMorphVideo({
       {/* Overlay content (e.g. the opener pills) over the lower part of the video,
           on a dark scrim. Replaces the caption + white fade while shown. */}
       {!collapsed && overlay && (
-        <div className="absolute inset-x-0 bottom-0 z-10 max-h-[64%] overflow-y-auto bg-gradient-to-t from-black/85 via-black/60 to-transparent px-3 pb-3 pt-10">
+        <div className="absolute inset-x-0 bottom-0 z-10 max-h-[42%] overflow-y-auto bg-gradient-to-t from-black/88 via-black/65 to-transparent px-3 pb-3 pt-8">
           {overlay}
         </div>
       )}
@@ -226,8 +231,8 @@ export function ChannelMorphVideo({
           collapsed
             ? 'absolute inset-0'
             : `absolute z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60 ${
-                // With the pills overlaid on the bottom, move the mute control up to
-                // the top-right (just below the header) so it doesn't sit on a pill.
+                // With pills overlaid on the bottom, move the mute control to the
+                // top-right (below the header) so it doesn't sit on a pill.
                 overlay ? 'right-2.5 top-14' : 'bottom-2.5 right-2.5'
               }`
         }
