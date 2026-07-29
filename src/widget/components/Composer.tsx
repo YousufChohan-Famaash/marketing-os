@@ -384,9 +384,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           onFocus={onFocus}
           placeholder={stt.listening ? "Listening…" : "Type a message…"}
           rows={1}
-          // 16px on mobile so iOS Safari doesn't auto-zoom (and clip the sides)
-          // when the field is focused; 13px from sm up.
-          className="font-message min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-relaxed placeholder:text-muted-soft focus:outline-none sm:text-[13px]"
+          // Match the widget's UI font (not the message serif) so the input
+          // doesn't read as a foreign field. 16px on mobile so iOS Safari doesn't
+          // auto-zoom (the field is centered); 15px from sm up.
+          className="min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-relaxed placeholder:text-muted-soft focus:outline-none sm:text-[15px]"
           style={{ maxHeight: MAX_HEIGHT_PX }}
           aria-label="Message"
         />

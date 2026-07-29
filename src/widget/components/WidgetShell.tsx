@@ -162,8 +162,8 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
           fullBleed
           headerH={CHAT_HEADER_H}
           avatarLeft={52}
-          avatarTop={10}
-          avatar={32}
+          avatarTop={6}
+          avatar={40}
           stageH={300}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}

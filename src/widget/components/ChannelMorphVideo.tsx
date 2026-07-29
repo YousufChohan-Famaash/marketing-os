@@ -225,17 +225,18 @@ export function ChannelMorphVideo({
         {!collapsed && (soundOn ? <VolumeOnIcon size={16} /> : <VolumeOffIcon size={16} />)}
       </button>
     </div>
-    {/* Mute/unmute the thumbnail, sitting just beside it (tapping the thumbnail
-        itself opens the lightbox, so sound needs its own control here). */}
+    {/* Mute/unmute as a small badge on the thumbnail's corner (tapping the
+        thumbnail itself re-expands, so sound gets its own tap target). Sits above
+        the avatar with a white ring so it reads as part of it, not loose chrome. */}
     {collapsed && showThumbSound && (
       <button
         type="button"
         onClick={toggleSound}
         aria-label={soundOn ? 'Mute video' : 'Unmute video'}
-        className="absolute z-30 flex items-center justify-center rounded-full text-muted transition-colors hover:bg-subtle hover:text-ink"
-        style={{ top: avatarTop + (avatar - 26) / 2, left: avatarLeft + avatar + 4, width: 26, height: 26 }}
+        className="absolute z-50 flex items-center justify-center rounded-full bg-black/70 text-white ring-2 ring-white transition-colors hover:bg-black/85"
+        style={{ top: avatarTop + avatar - 20, left: avatarLeft + avatar - 20, width: 20, height: 20 }}
       >
-        {soundOn ? <VolumeOnIcon size={15} /> : <VolumeOffIcon size={15} />}
+        {soundOn ? <VolumeOnIcon size={11} /> : <VolumeOffIcon size={11} />}
       </button>
     )}
     </>

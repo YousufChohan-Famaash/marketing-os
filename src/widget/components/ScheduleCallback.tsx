@@ -229,7 +229,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     return (
       <div className="flex flex-col items-center py-10 text-center">
         <span className="h-7 w-7 animate-spin rounded-full border-2 border-hairline border-t-famaash" />
-        <p className="mt-3 text-[13px] text-muted">Checking available times…</p>
+        <p className="mt-3 text-[14px] text-muted">Checking available times…</p>
       </div>
     );
   }
@@ -241,7 +241,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           <PhoneIcon size={26} aria-hidden="true" />
         </span>
         <h3 className="mt-4 text-[18px] font-bold text-ink">No times to show right now</h3>
-        <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
+        <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
           Online scheduling isn't available at the moment. Leave your number and we'll call you instead.
         </p>
         <button
@@ -271,7 +271,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           <CheckIcon size={26} aria-hidden="true" />
         </span>
         <h3 className="mt-4 text-[18px] font-bold text-ink">{confirmLabel}</h3>
-        <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
+        <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
           Check your email for the confirmation and calendar invite. We'll call you at the time you picked.
         </p>
         {bookedInfo?.callFrom && (
@@ -320,8 +320,8 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           <CalendarIcon size={20} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[16px] font-bold text-ink">{heading}</h3>
-          <p className="mt-1 text-[13px] leading-relaxed text-muted">
+          <h3 className="text-[18px] font-bold text-ink">{heading}</h3>
+          <p className="mt-1 text-[14px] leading-relaxed text-muted">
             All times in Eastern Time (ET). We'll send a confirmation and a reminder.
           </p>
         </div>
@@ -371,7 +371,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
                 <CalendarIcon size={17} aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
+                <span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-soft">
                   Next available
                 </span>
                 <span className="block text-[14px] font-bold text-ink">
@@ -382,7 +382,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           )}
 
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">Or choose a day</p>
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-soft">Or choose a day</p>
             <div className="flex flex-wrap gap-2">
               {days.map((d) => (
                 <button
@@ -394,8 +394,8 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
                   }}
                   className="flex flex-col items-center rounded-2xl border border-famaash-stroke bg-white px-4 py-2 transition-colors hover:bg-subtle"
                 >
-                  <span className="text-[13px] font-bold text-ink">{d.top}</span>
-                  <span className="text-[11px] text-muted-soft">{d.sub}</span>
+                  <span className="text-[14px] font-bold text-ink">{d.top}</span>
+                  <span className="text-[12px] text-muted-soft">{d.sub}</span>
                 </button>
               ))}
             </div>
@@ -407,14 +407,14 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       {haveDay && !haveTime &&
         timeGroups.map((group) => (
           <div key={group.label}>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">{group.label}</p>
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-soft">{group.label}</p>
             <div className="grid grid-cols-3 gap-2">
               {group.slots.map((s) => (
                 <button
                   key={s.start}
                   type="button"
                   onClick={() => setSelectedStart(s.start)}
-                  className="rounded-lg border border-famaash-stroke bg-white px-2 py-2 text-[13px] font-medium tabular-nums text-ink transition-colors hover:border-famaash hover:bg-famaash-soft hover:text-famaash"
+                  className="rounded-lg border border-famaash-stroke bg-white px-2 py-2.5 text-[14px] font-medium tabular-nums text-ink transition-colors hover:border-famaash hover:bg-famaash-soft hover:text-famaash"
                 >
                   {fmtTime(s.start)}
                 </button>

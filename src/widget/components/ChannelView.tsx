@@ -285,7 +285,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         )}
         <h2
           className={cn(
-            'min-w-0 flex-1 truncate text-[15px] font-semibold transition-colors',
+            'min-w-0 flex-1 truncate text-[16px] font-semibold transition-colors',
             stageActive ? 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]' : 'text-ink',
           )}
         >
@@ -331,8 +331,8 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         ) : (
           <>
             {kept.length > 0 && (
-              <div className="mb-4 flex items-center gap-2 rounded-lg border border-famaash-stroke bg-famaash-soft px-3 py-2 text-[12px] text-famaash">
-                <CheckIcon size={14} aria-hidden="true" />
+              <div className="mb-4 flex items-center gap-2 rounded-lg border border-famaash-stroke bg-famaash-soft px-3 py-2.5 text-[13px] text-famaash">
+                <CheckIcon size={15} aria-hidden="true" />
                 <span>We kept your {keptLabel}. Edit anything below.</span>
               </div>
             )}
@@ -473,7 +473,7 @@ function CallCountdown({
       </div>
 
       <h3 className="mt-5 text-[18px] font-bold text-ink">We&apos;re dialing you now</h3>
-      <p className="mt-2 max-w-[32ch] text-[13.5px] leading-relaxed text-muted">
+      <p className="mt-2 max-w-[32ch] text-[14px] leading-relaxed text-muted">
         Your phone should ring at {phone} in a few seconds{first ? `, ${first}` : ''}. Keep it nearby.
       </p>
       <button
@@ -495,7 +495,7 @@ function CallConnected({ phone, name, onBack }: { phone: string; name?: string; 
         <PhoneIcon size={26} aria-hidden="true" />
       </span>
       <h3 className="mt-4 text-[18px] font-bold text-ink">You&apos;re connected</h3>
-      <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
+      <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
         {first ? `${first}, you're` : "You're"} on the line with our team
         {phone ? ` at ${phone}` : ''}.
       </p>
@@ -525,7 +525,7 @@ function CallFailed({
         <PhoneOffIcon size={26} aria-hidden="true" />
       </span>
       <h3 className="mt-4 text-[18px] font-bold text-ink">We couldn&apos;t reach you</h3>
-      <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
+      <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
         We tried calling {phone || 'your number'} but couldn&apos;t connect. Want us to try again?
       </p>
       <div className="mt-6 flex gap-2">
@@ -555,7 +555,7 @@ function Confirmation({ message, onBack }: { message: string; onBack: () => void
         <CheckIcon size={26} aria-hidden="true" />
       </span>
       <h3 className="mt-4 text-[18px] font-bold text-ink">You're all set</h3>
-      <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">{message}</p>
+      <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">{message}</p>
       <button
         type="button"
         onClick={onBack}

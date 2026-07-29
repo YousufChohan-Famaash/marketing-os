@@ -83,7 +83,7 @@ export function ChatHeader({
           <>
             {hasMorph ? (
               // The morphing video collapses into this slot; keep the space for it.
-              <span className="h-8 w-8 shrink-0" aria-hidden="true" />
+              <span className="h-10 w-10 shrink-0" aria-hidden="true" />
             ) : (
               <span
                 className={cn(
@@ -94,7 +94,7 @@ export function ChatHeader({
                 <Avatar
                   src={resolveAssistantAvatar(branding?.assistantAvatarUrl)}
                   name={branding?.assistantName ?? branding?.name ?? 'Assistant'}
-                  size={32}
+                  size={40}
                 />
               </span>
             )}
@@ -104,7 +104,7 @@ export function ChatHeader({
               <div className="min-w-0 leading-tight">
                 <p
                   className={cn(
-                    'truncate text-[13px] font-semibold',
+                    'truncate text-[14.5px] font-semibold',
                     solid ? 'text-ink' : 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]',
                   )}
                 >
@@ -112,7 +112,7 @@ export function ChatHeader({
                 </p>
                 <p
                   className={cn(
-                    'flex items-center gap-1 truncate text-[11px]',
+                    'flex items-center gap-1 truncate text-[12px]',
                     solid ? 'text-muted' : 'text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.4)]',
                   )}
                 >

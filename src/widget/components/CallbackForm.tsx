@@ -98,8 +98,8 @@ export function CallbackForm({
           {brand ? <MessageSquareIcon size={20} aria-hidden="true" /> : <PhoneIcon size={20} aria-hidden="true" />}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[16px] font-bold text-ink">{shownHeading}</h3>
-          <p className="mt-1 text-[13px] leading-relaxed text-muted">{shownBody}</p>
+          <h3 className="text-[18px] font-bold text-ink">{shownHeading}</h3>
+          <p className="mt-1 text-[14px] leading-relaxed text-muted">{shownBody}</p>
         </div>
         {media}
       </div>
@@ -108,7 +108,7 @@ export function CallbackForm({
         <div>
           <label
             htmlFor="callback-name"
-            className="mb-1.5 block text-[12px] font-medium text-ink-soft"
+            className="mb-1.5 block text-[13px] font-medium text-ink-soft"
           >
             Your name
           </label>
@@ -133,7 +133,7 @@ export function CallbackForm({
       <div>
         <label
           htmlFor="callback-phone"
-          className="mb-1.5 block text-[12px] font-medium text-ink-soft"
+          className="mb-1.5 block text-[13px] font-medium text-ink-soft"
         >
           Phone Number
         </label>
@@ -159,7 +159,7 @@ export function CallbackForm({
         <div>
           <label
             htmlFor="callback-email"
-            className="mb-1.5 block text-[12px] font-medium text-ink-soft"
+            className="mb-1.5 block text-[13px] font-medium text-ink-soft"
           >
             Email <span className="text-muted-soft">(for your confirmation)</span>
           </label>
@@ -200,7 +200,7 @@ export function CallbackForm({
               onChange={(e) => setAgreed(e.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-famaash"
             />
-            <span className="text-[11.5px] leading-relaxed text-muted">{consentLabel}</span>
+            <span className="text-[12.5px] leading-relaxed text-muted">{consentLabel}</span>
           </label>
           {submitAttempted && consentErr && (
             <p className="mt-1 text-[11.5px] text-danger">Please agree before we continue.</p>
@@ -226,7 +226,7 @@ export function CallbackForm({
         }}
         disabled={busy}
         className={cn(
-          'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]',
+          'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-[15px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]',
           whatsapp ? 'bg-[#25D366]' : 'bg-famaash',
         )}
       >
