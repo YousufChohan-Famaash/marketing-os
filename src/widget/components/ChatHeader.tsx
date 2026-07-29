@@ -31,6 +31,10 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
   const branding = useWidgetStore((s) => s.branding);
+  // "Live chat with {firm}" identity beside the avatar. Multi-tenant: the firm's
+  // own name (then the assistant name), with a graceful fallback so it never
+  // renders a blank title.
+  const firmName = (branding?.name ?? branding?.assistantName ?? '').trim();
 
   return (
     <header
@@ -75,22 +79,59 @@ export function ChatHeader({
               </p>
             </div>
           </div>
-        ) : hasMorph ? (
-          // The morphing video collapses into this slot; keep the space for it.
-          <span className="h-8 w-8 shrink-0" aria-hidden="true" />
         ) : (
-          <span
-            className={cn(
-              'flex items-center justify-center rounded-full',
-              !solid && 'bg-white/70 p-1 backdrop-blur',
+          <>
+            {hasMorph ? (
+              // The morphing video collapses into this slot; keep the space for it.
+              <span className="h-8 w-8 shrink-0" aria-hidden="true" />
+            ) : (
+              <span
+                className={cn(
+                  'flex items-center justify-center rounded-full',
+                  !solid && 'bg-white/70 p-1 backdrop-blur',
+                )}
+              >
+                <Avatar
+                  src={resolveAssistantAvatar(branding?.assistantAvatarUrl)}
+                  name={branding?.assistantName ?? branding?.name ?? 'Assistant'}
+                  size={32}
+                />
+              </span>
             )}
-          >
-            <Avatar
-              src={resolveAssistantAvatar(branding?.assistantAvatarUrl)}
-              name={branding?.assistantName ?? branding?.name ?? 'Assistant'}
-              size={32}
-            />
-          </span>
+            {/* Live-chat identity. Over the video (transparent header) it goes
+                white with a shadow; on the solid bar it's ink + muted. */}
+            {firmName ? (
+              <div className="min-w-0 leading-tight">
+                <p
+                  className={cn(
+                    'truncate text-[13px] font-semibold',
+                    solid ? 'text-ink' : 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]',
+                  )}
+                >
+                  {firmName}
+                </p>
+                <p
+                  className={cn(
+                    'flex items-center gap-1 truncate text-[11px]',
+                    solid ? 'text-muted' : 'text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.4)]',
+                  )}
+                >
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                  Live chat
+                </p>
+              </div>
+            ) : (
+              <p
+                className={cn(
+                  'flex items-center gap-1.5 truncate text-[13px] font-semibold',
+                  solid ? 'text-ink' : 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.45)]',
+                )}
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                Live chat
+              </p>
+            )}
+          </>
         )}
       </div>
 
