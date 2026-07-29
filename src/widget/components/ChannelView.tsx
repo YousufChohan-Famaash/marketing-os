@@ -270,12 +270,14 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         >
           <ChevronLeftIcon size={18} />
         </button>
-        {/* While the morphing video is present, reserve its collapsed slot so the
-            title never sits under it; otherwise show the static firm/head avatar. */}
-        {hasMorph ? (
-          <span className="h-[34px] w-[34px] shrink-0" aria-hidden="true" />
-        ) : (
+        {/* Reserve the avatar slot only once the video has collapsed into it.
+            While it's full-bleed there's nothing there, so the title sits right
+            after the back button instead of being indented past an empty gap.
+            With no morph at all, show the static firm/head avatar. */}
+        {!hasMorph ? (
           <ChannelHeaderVideo view={headerVideoView} />
+        ) : stageActive ? null : (
+          <span className="h-[34px] w-[34px] shrink-0" aria-hidden="true" />
         )}
         <h2
           className={cn(
