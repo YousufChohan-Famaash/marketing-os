@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useWidgetStore } from '../store/widgetStore';
-import { resolveCinematicVideo, resolveViewVideo } from '../config/demoMedia';
-import { CaptureDrawer } from './CaptureDrawer';
-import { CaptureProgress } from './CaptureProgress';
-import { ChannelView } from './ChannelView';
-import { ChannelMorphVideo } from './ChannelMorphVideo';
-import { ChatDisclosure } from './ChatDisclosure';
-import { ChatHeader } from './ChatHeader';
-import { CinematicHome } from './CinematicHome';
-import { Composer, type ComposerHandle } from './Composer';
-import { ConnectingState } from './ConnectingState';
-import { ConnectHome } from './ConnectHome';
-import { MessageList } from './MessageList';
-import { PoweredByFooter } from './PoweredByFooter';
-import { SafetyButtons } from './SafetyButtons';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useWidgetStore } from "../store/widgetStore";
+import { resolveCinematicVideo, resolveViewVideo } from "../config/demoMedia";
+import { CaptureDrawer } from "./CaptureDrawer";
+import { CaptureProgress } from "./CaptureProgress";
+import { ChannelView } from "./ChannelView";
+import { ChannelMorphVideo } from "./ChannelMorphVideo";
+import { ChatDisclosure } from "./ChatDisclosure";
+import { ChatHeader } from "./ChatHeader";
+import { CinematicHome } from "./CinematicHome";
+import { Composer, type ComposerHandle } from "./Composer";
+import { ConnectingState } from "./ConnectingState";
+import { ConnectHome } from "./ConnectHome";
+import { MessageList } from "./MessageList";
+import { PoweredByFooter } from "./PoweredByFooter";
+import { SafetyButtons } from "./SafetyButtons";
 
 interface WidgetShellProps {
   onClose: () => void;
@@ -22,7 +22,12 @@ interface WidgetShellProps {
   isExpanded: boolean;
 }
 
-export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: WidgetShellProps) {
+export function WidgetShell({
+  onClose,
+  onMinimize,
+  onExpand,
+  isExpanded,
+}: WidgetShellProps) {
   const composerRef = useRef<ComposerHandle>(null);
   const bootStatus = useWidgetStore((s) => s.bootStatus);
   const bootError = useWidgetStore((s) => s.bootError);
@@ -32,7 +37,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // Which Connect surface is showing (home menu vs. a routed channel).
   const connectView = useWidgetStore((s) => s.connectView);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
-  const backToHome = () => setConnectView('home');
+  const backToHome = () => setConnectView("home");
   // The looping cinematic video IS the home entry. Without a real video we fall
   // back to the classic menu, so a firm with no video never sees a black panel.
   const connect = useWidgetStore((s) => s.connect);
@@ -47,7 +52,8 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // avatar (same morph as the contact screens). Tapping the collapsed thumbnail
   // opens the lightbox. Only present when the firm has a chat clip.
   const hasChatMorph =
-    connectView === 'chat' && Boolean(resolveViewVideo('chat', connect, branding));
+    connectView === "chat" &&
+    Boolean(resolveViewVideo("chat", connect, branding));
   const [stageOpen, setStageOpen] = useState(true);
   const collapseStage = useCallback(() => setStageOpen(false), []);
   // The video is edge-to-edge (v12) while the stage is open: it fills the top of
@@ -60,7 +66,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // Returning to an already-started conversation keeps it collapsed, so the big
   // video doesn't slam back over the composer/messages on re-entry.
   useEffect(() => {
-    if (connectView === 'chat' && !caseTypePicked) setStageOpen(true);
+    if (connectView === "chat" && !caseTypePicked) setStageOpen(true);
   }, [connectView, caseTypePicked]);
   // The clip morphs into the thumbnail on ONE of two cues: it finishes playing
   // (onFinish below), or the lead engages (picks a case type / scrolls / focuses
@@ -75,9 +81,11 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // panel into a broken state (blank gap, content scrolled above the keyboard).
   // Let mobile visitors tap the field when they're ready.
   useEffect(() => {
-    if (bootStatus !== 'ready' || connectView !== 'chat' || !caseTypePicked) return;
+    if (bootStatus !== "ready" || connectView !== "chat" || !caseTypePicked)
+      return;
     const coarse =
-      typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(pointer: coarse)").matches;
     if (coarse) return;
     composerRef.current?.focus();
   }, [bootStatus, connectView, caseTypePicked]);
@@ -85,40 +93,52 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // Esc closes the widget.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   // Fail closed: the firm doesn't have the chat_widget module — render nothing.
-  if (bootStatus === 'disabled') {
+  if (bootStatus === "disabled") {
     return null;
   }
 
-  if (bootStatus === 'loading' || bootStatus === 'idle') {
+  if (bootStatus === "loading" || bootStatus === "idle") {
     return <ConnectingState />;
   }
 
-  if (bootStatus === 'error') {
+  if (bootStatus === "error") {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-bg p-6 text-center">
         <p className="text-[14px] font-semibold text-ink">
           We can't reach the chat right now.
         </p>
-        <p className="mt-2 text-[12px] text-muted">{bootError ?? 'Please try again.'}</p>
+        <p className="mt-2 text-[12px] text-muted">
+          {bootError ?? "Please try again."}
+        </p>
       </div>
     );
   }
 
   // ── Home entry: the cinematic video (looping), or the classic menu fallback ──
-  if (connectView === 'home') {
+  if (connectView === "home") {
     return (
       <div className="fa-view-in relative h-full w-full">
         {cinematicVideo ? (
-          <CinematicHome onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+          <CinematicHome
+            onClose={onClose}
+            onMinimize={onMinimize}
+            onExpand={onExpand}
+            isExpanded={isExpanded}
+          />
         ) : (
-          <ConnectHome onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+          <ConnectHome
+            onClose={onClose}
+            onMinimize={onMinimize}
+            onExpand={onExpand}
+            isExpanded={isExpanded}
+          />
         )}
       </div>
     );
@@ -126,10 +146,10 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
 
   // ── Routed contact channels (reversible → back to the menu) ────────────────
   if (
-    connectView === 'call' ||
-    connectView === 'text' ||
-    connectView === 'schedule' ||
-    connectView === 'email'
+    connectView === "call" ||
+    connectView === "text" ||
+    connectView === "schedule" ||
+    connectView === "email"
   ) {
     return (
       <ChannelView
@@ -194,8 +214,9 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
         onInteract={collapseStage}
         hideIntro={stageActive}
       />
-      <SafetyButtons />
       <ChatDisclosure />
+      <SafetyButtons />
+
       <Composer ref={composerRef} onFocus={collapseStage} />
       <PoweredByFooter />
     </div>

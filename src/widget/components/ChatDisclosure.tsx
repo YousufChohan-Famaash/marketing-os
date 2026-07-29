@@ -1,5 +1,5 @@
-import { useWidgetStore } from '../store/widgetStore';
-import { resolveAiDisclosure } from '../utils/compliance';
+import { useWidgetStore } from "../store/widgetStore";
+import { resolveAiDisclosure } from "../utils/compliance";
 
 /**
  * Quiet, persistent AI disclosure shown just above the composer during a chat
@@ -16,11 +16,11 @@ export function ChatDisclosure() {
   const privacyUrl = compliance?.privacyUrl?.trim();
 
   return (
-    <div className="shrink-0 px-4 pb-1 text-center text-[10.5px] leading-snug text-muted-soft">
+    <div className="shrink-0 px-4 py-2 text-center text-[10.5px] leading-snug text-muted-soft">
       {text}
       {privacyUrl && (
         <>
-          {' '}
+          {" "}
           <a
             href={privacyUrl}
             target="_blank"

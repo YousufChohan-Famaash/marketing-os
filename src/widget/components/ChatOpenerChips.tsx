@@ -56,10 +56,10 @@ export function ChatOpenerChips() {
       <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted-soft">
         What happened?
       </p>
-      {/* A calm, uniform grid instead of a jagged wrap of pills: equal-width
-          tiles, each icon contained in a soft well, so it reads premium and
-          scannable rather than a busy pile of buttons. */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* Three-up grid of stacked tiles (icon on top, centered label): the icon in
+          a soft well, the label with the full tile width to wrap cleanly. Calm and
+          scannable rather than a jagged wrap of pills. */}
+      <div className="grid grid-cols-3 gap-2">
         {options.map((opt) => {
           const icon = practiceIconFor(opt, 18);
           return (
@@ -67,14 +67,16 @@ export function ChatOpenerChips() {
               key={opt}
               type="button"
               onClick={() => pick(opt)}
-              className="group flex items-center gap-2.5 rounded-2xl border border-hairline bg-white px-3 py-3 text-left transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
+              className="group flex flex-col items-center justify-start gap-1.5 rounded-2xl border border-hairline bg-white px-1.5 py-3 text-center transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
             >
               {icon && (
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-[color:var(--practice-accent)] transition-colors group-hover:bg-white">
                   {icon}
                 </span>
               )}
-              <span className="min-w-0 text-[14px] font-semibold leading-tight text-ink">{opt}</span>
+              <span className="text-[12px] font-semibold leading-tight text-ink">
+                {opt}
+              </span>
             </button>
           );
         })}
