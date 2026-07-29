@@ -211,6 +211,26 @@ export function placeCallNow(args: {
   });
 }
 
+/**
+ * GET /connect/call-status — the persisted live state of the outbound call.
+ * Public, pollable. Works for launcher-direct calls (no chat session, so the
+ * data-channel `connect_call_status` never fires) and survives a reload. Returns
+ * 'unknown' on any network/HTTP error so the caller's poll loop never needs
+ * error special-casing (guide: call-status-polling-frontend-guide.md).
+ */
+export async function fetchCallStatus(conversationId: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `${getApiBase()}/connect/call-status?conversationId=${encodeURIComponent(conversationId)}`,
+    );
+    if (!res.ok) return 'unknown';
+    const data = (await res.json()) as { status?: string };
+    return data?.status ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** POST /connect/text — hand the intake off to the visitor's phone (WhatsApp/SMS). */
 export interface TextConnectResponse {
   ok: boolean;

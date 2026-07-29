@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
-import { ApiError, connectText, errorDetail, placeCallNow } from '../services/api';
+import { ApiError, connectText, errorDetail, fetchCallStatus, placeCallNow } from '../services/api';
 import { resolveTcpa } from '../utils/compliance';
 import { resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
+import type { ConnectCallStatus } from '../types/protocol';
 import { CheckIcon, ChevronLeftIcon, PhoneIcon, PhoneOffIcon } from '../utils/icons';
 import { cn } from '../utils/cn';
 import { CallbackForm } from './CallbackForm';
@@ -136,6 +137,35 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   useEffect(() => {
     if (callPhase === 'calling' && countdown === 0) setCallPhase('failed');
   }, [callPhase, countdown]);
+
+  // Poll the persisted dial state every 2s while dialing. The data-channel event
+  // above only fires when there's an open chat session; a launcher-direct call
+  // has none, so without this the widget sat on "dialing" until the timeout even
+  // after the visitor answered. Both paths write the same store value and the
+  // effect above is guarded on `callPhase === 'calling'`, so whichever lands
+  // first flips the screen and the other is a no-op (guide: call-status-polling).
+  useEffect(() => {
+    if (callPhase !== 'calling' || !conversationId) return undefined;
+    let cancelled = false;
+    const id = setInterval(async () => {
+      const status = await fetchCallStatus(conversationId);
+      if (cancelled) return;
+      if (
+        status === 'connected' ||
+        status === 'completed' ||
+        status === 'no_answer' ||
+        status === 'busy' ||
+        status === 'failed'
+      ) {
+        setConnectCallStatus(status as ConnectCallStatus);
+      }
+      // 'dialing' | 'unknown' → keep polling; the countdown above is the backstop.
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [callPhase, conversationId, setConnectCallStatus]);
 
   const resetCall = () => {
     setCallPhase(null);
