@@ -32,6 +32,9 @@ interface ChannelMorphVideoProps {
   /** Fired when the clip finishes playing (it plays once) so the parent can
    * morph it into the thumbnail. */
   onFinish?: () => void;
+  /** Content laid over the lower part of the EXPANDED video (e.g. the opener
+   * pills), on a dark scrim. Replaces the caption + white fade while present. */
+  overlay?: import('react').ReactNode;
 }
 
 /**
@@ -55,6 +58,7 @@ export function ChannelMorphVideo({
   paused = false,
   fullBleed = false,
   onFinish,
+  overlay,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
@@ -174,14 +178,21 @@ export function ChannelMorphVideo({
           aria-hidden="true"
         />
       )}
-      {!collapsed && (
+      {!collapsed && !overlay && (
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-white"
           aria-hidden="true"
         />
       )}
+      {/* Overlay content (e.g. the opener pills) over the lower part of the video,
+          on a dark scrim. Replaces the caption + white fade while shown. */}
+      {!collapsed && overlay && (
+        <div className="absolute inset-x-0 bottom-0 z-10 max-h-[64%] overflow-y-auto bg-gradient-to-t from-black/85 via-black/60 to-transparent px-3 pb-3 pt-10">
+          {overlay}
+        </div>
+      )}
       {/* Captions over the expanded stage (hidden once collapsed to a thumbnail). */}
-      {!collapsed && caption && (
+      {!collapsed && !overlay && caption && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-3">
           <span className="rounded-md bg-black/60 px-2 py-1 text-center text-[12.5px] font-medium leading-relaxed text-white">
             {caption}
@@ -214,7 +225,11 @@ export function ChannelMorphVideo({
         className={
           collapsed
             ? 'absolute inset-0'
-            : 'absolute bottom-2.5 right-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60'
+            : `absolute z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60 ${
+                // With the pills overlaid on the bottom, move the mute control up to
+                // the top-right (just below the header) so it doesn't sit on a pill.
+                overlay ? 'right-2.5 top-14' : 'bottom-2.5 right-2.5'
+              }`
         }
       >
         {!collapsed && (soundOn ? <VolumeOnIcon size={16} /> : <VolumeOffIcon size={16} />)}

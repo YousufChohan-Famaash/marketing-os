@@ -7,6 +7,7 @@ import { ChannelView } from "./ChannelView";
 import { ChannelMorphVideo } from "./ChannelMorphVideo";
 import { ChatDisclosure } from "./ChatDisclosure";
 import { ChatHeader } from "./ChatHeader";
+import { ChatOpenerChips } from "./ChatOpenerChips";
 import { CinematicHome } from "./CinematicHome";
 import { Composer, type ComposerHandle } from "./Composer";
 import { ConnectingState } from "./ConnectingState";
@@ -190,6 +191,9 @@ export function WidgetShell({
           stageH={CHAT_STAGE_H}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}
+          overlay={
+            stageActive && !caseTypePicked ? <ChatOpenerChips variant="overlay" /> : undefined
+          }
         />
       )}
       {/* Floats over the video while the stage is open (transparent), reverts to

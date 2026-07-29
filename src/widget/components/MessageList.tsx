@@ -194,7 +194,9 @@ export function MessageList({
         />
       )}
       {!hideIntro && <ConversationIntro />}
-      {!caseTypePicked && <ChatOpenerChips />}
+      {/* The grid shows once the video collapses; while it's expanded the pills
+          are overlaid on the video instead (hideIntro tracks the expanded stage). */}
+      {!caseTypePicked && !hideIntro && <ChatOpenerChips />}
       <div className="mt-2 flex flex-col gap-3">
         {timeline.map((item) => {
           if (item.kind === 'chip') {

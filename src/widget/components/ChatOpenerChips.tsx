@@ -15,7 +15,7 @@ const DEFAULT_PRACTICE_AREAS = [
  * lead picks a type — the pick drops a lead bubble and starts the agent flow
  * (same behavior the former opener screen had).
  */
-export function ChatOpenerChips() {
+export function ChatOpenerChips({ variant = 'grid' }: { variant?: 'grid' | 'overlay' } = {}) {
   const caseTypes = useWidgetStore((s) => s.caseTypes);
   const branding = useWidgetStore((s) => s.branding);
   const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
@@ -50,6 +50,35 @@ export function ChatOpenerChips() {
     setCaseTypePicked(true);
     useWidgetStore.getState().setConversationStarted(true);
   };
+
+  if (variant === 'overlay') {
+    // Compact glassy tiles laid over the lower part of the (edge-to-edge) video,
+    // so the pills are visible without stealing layout space. Scrolls internally
+    // if there are more than fit; the parent supplies the scrim + max height.
+    return (
+      <div className="flex max-h-full flex-col">
+        <p className="mb-2 shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] text-white/80">
+          What happened?
+        </p>
+        <div className="grid grid-cols-3 gap-1.5 overflow-y-auto pb-0.5">
+          {options.map((opt) => {
+            const icon = practiceIconFor(opt, 16);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => pick(opt)}
+                className="flex flex-col items-center justify-start gap-1 rounded-xl bg-white/15 px-1 py-2 text-center text-white ring-1 ring-white/25 backdrop-blur transition-colors hover:bg-white/25"
+              >
+                {icon && <span className="flex items-center text-white">{icon}</span>}
+                <span className="text-[11px] font-semibold leading-tight">{opt}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4">
