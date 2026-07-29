@@ -113,22 +113,17 @@ function OverlayChips({
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
+    const GAP = 8; // gap-2
     const measure = () => {
-      const kids = Array.from(el.children) as HTMLElement[];
-      const rowTops = [...new Set(kids.map((k) => k.offsetTop))].sort(
-        (a, b) => a - b,
-      );
-      if (rowTops.length > OVERLAY_MAX_ROWS) {
-        const lastVisibleTop = rowTops[OVERLAY_MAX_ROWS - 1];
-        const bottom = Math.max(
-          ...kids
-            .filter((k) => k.offsetTop === lastVisibleTop)
-            .map((k) => k.offsetTop + k.offsetHeight),
-        );
-        setCap(bottom);
-      } else {
-        setCap(undefined);
-      }
+      const first = el.children[0] as HTMLElement | undefined;
+      if (!first) return;
+      const pillH = first.offsetHeight;
+      if (!pillH) return;
+      // Height that shows exactly OVERLAY_MAX_ROWS rows of pills.
+      const capH = OVERLAY_MAX_ROWS * pillH + (OVERLAY_MAX_ROWS - 1) * GAP;
+      // scrollHeight is the full content height even when clipped, so this stays
+      // accurate after the cap is applied (no dependence on offsetTop grouping).
+      setCap(el.scrollHeight > capH + 4 ? capH : undefined);
     };
     measure();
     const ro = new ResizeObserver(measure);
