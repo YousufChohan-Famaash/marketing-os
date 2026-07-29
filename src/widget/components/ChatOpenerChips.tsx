@@ -12,7 +12,7 @@ const DEFAULT_PRACTICE_AREAS = [
 ];
 
 /** Max rows of pills shown in the on-video overlay before a "More" reveals the rest. */
-const OVERLAY_MAX_ROWS = 4;
+const OVERLAY_MAX_ROWS = 3;
 
 /**
  * The case-type options as tappable chips INSIDE the chat (the opener), replacing
@@ -65,7 +65,7 @@ export function ChatOpenerChips({
 
   return (
     <div className="mt-4">
-      <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted-soft">
+      <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-black">
         What happened?
       </p>
       {/* Three-up grid of stacked tiles (icon on top, centered label): the icon in
@@ -120,7 +120,9 @@ function OverlayChips({
     if (!el) return undefined;
     const measure = () => {
       const kids = Array.from(el.children) as HTMLElement[];
-      const rowTops = [...new Set(kids.map((k) => k.offsetTop))].sort((a, b) => a - b);
+      const rowTops = [...new Set(kids.map((k) => k.offsetTop))].sort(
+        (a, b) => a - b,
+      );
       if (rowTops.length > OVERLAY_MAX_ROWS) {
         const lastVisibleTop = rowTops[OVERLAY_MAX_ROWS - 1];
         const bottom = Math.max(
@@ -158,7 +160,11 @@ function OverlayChips({
               onClick={() => pick(opt)}
               className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-2.5 text-[12.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
             >
-              {icon && <span className="flex shrink-0 items-center text-white">{icon}</span>}
+              {icon && (
+                <span className="flex shrink-0 items-center text-white">
+                  {icon}
+                </span>
+              )}
               {opt}
             </button>
           );
