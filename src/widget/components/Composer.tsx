@@ -38,12 +38,16 @@ interface ComposerProps {
   /** Fired when the field is focused — a clear engagement signal (e.g. collapse
    *  the in-chat video into the header thumbnail without waiting for the timer). */
   onFocus?: () => void;
+  /** 'light' (default) sits on the white chat; 'glass' sits over the dark video
+   *  (translucent field, light text) so the composer reads as part of the video. */
+  tone?: 'light' | 'glass';
 }
 
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer(
-  { onFocus },
+  { onFocus, tone = 'light' },
   ref,
 ) {
+  const glass = tone === 'glass';
   const flags = useWidgetStore((s) => s.flags);
   const addMessage = useWidgetStore((s) => s.addMessage);
   const beginTyping = useWidgetStore((s) => s.beginTyping);
@@ -281,7 +285,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   }
 
   return (
-    <div className="shrink-0 bg-white px-3 py-2.5">
+    <div className={cn('shrink-0 px-3 py-2.5', glass ? 'bg-transparent' : 'bg-white')}>
       {stt.listening && (
         <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5">
           <span className="flex items-center gap-1.5 text-[12px] font-semibold text-famaash">
@@ -305,7 +309,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           e.preventDefault();
           submit();
         }}
-        className="flex items-center gap-1 rounded-3xl border border-hairline bg-[#F7F8FA] py-1 pl-1.5 pr-1.5"
+        className={cn(
+          'flex items-center gap-1 rounded-3xl border py-1 pl-1.5 pr-1.5',
+          glass ? 'border-white/25 bg-white/10 backdrop-blur' : 'border-hairline bg-[#F7F8FA]',
+        )}
       >
         {/* Attachment menu: voice note, talk-to-type, video — behind a plus button. */}
         {hasAttachments && (
@@ -318,7 +325,11 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
               aria-expanded={menuOpen}
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-full transition-colors",
-                menuOpen ? "bg-famaash text-white" : "text-muted hover:bg-white hover:text-famaash",
+                menuOpen
+                  ? "bg-famaash text-white"
+                  : glass
+                    ? "text-white/85 hover:bg-white/15 hover:text-white"
+                    : "text-muted hover:bg-white hover:text-famaash",
               )}
             >
               <PlusIcon size={18} className={cn("transition-transform duration-200", menuOpen && "rotate-45")} />
@@ -387,7 +398,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           // Match the widget's UI font (not the message serif) so the input
           // doesn't read as a foreign field. 16px on mobile so iOS Safari doesn't
           // auto-zoom (the field is centered); 15px from sm up.
-          className="min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-relaxed placeholder:text-muted-soft focus:outline-none sm:text-[15px]"
+          className={cn(
+            "min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-relaxed focus:outline-none sm:text-[15px]",
+            glass ? "text-white placeholder:text-white/55" : "placeholder:text-muted-soft",
+          )}
           style={{ maxHeight: MAX_HEIGHT_PX }}
           aria-label="Message"
         />

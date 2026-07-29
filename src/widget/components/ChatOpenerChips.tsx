@@ -54,29 +54,27 @@ export function ChatOpenerChips({
   };
 
   if (variant === "overlay") {
-    // Compact glassy tiles laid over the lower part of the (edge-to-edge) video.
-    // The parent supplies the scrim + max height; scrolls internally if needed.
+    // Glassy rounded pills over the lower part of the (edge-to-edge) video, in a
+    // wrap (Figma 4883:14688). The parent supplies the scrim + max height.
     return (
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-white/80">
+        <p className="mb-2.5 text-[12px] font-bold tracking-[-0.01em] text-white">
           What happened?
         </p>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {options.map((opt) => {
-            const icon = practiceIconFor(opt, 16);
+            const icon = practiceIconFor(opt, 17);
             return (
               <button
                 key={opt}
                 type="button"
                 onClick={() => pick(opt)}
-                className="flex flex-col items-center justify-start gap-1 rounded-xl bg-white/15 px-1 py-2 text-center text-white ring-1 ring-white/25 backdrop-blur transition-colors hover:bg-white/25"
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-2.5 text-[12.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
               >
                 {icon && (
-                  <span className="flex items-center text-white">{icon}</span>
+                  <span className="flex shrink-0 items-center text-white">{icon}</span>
                 )}
-                <span className="text-[11px] font-semibold leading-tight">
-                  {opt}
-                </span>
+                {opt}
               </button>
             );
           })}

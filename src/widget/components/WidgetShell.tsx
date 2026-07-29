@@ -14,7 +14,6 @@ import { ConnectingState } from "./ConnectingState";
 import { ConnectHome } from "./ConnectHome";
 import { MessageList } from "./MessageList";
 import { PoweredByFooter } from "./PoweredByFooter";
-import { SafetyButtons } from "./SafetyButtons";
 
 interface WidgetShellProps {
   onClose: () => void;
@@ -66,22 +65,24 @@ export function WidgetShell({
   const CHAT_STAGE_H = 344;
   const stageActive = hasChatMorph && stageOpen;
 
-  // While the video is expanded it fills all the way down to just above the
-  // bottom chrome (composer etc.), with the pills overlaid on it, so no space
-  // is wasted. Measure where the chrome starts (its offset from the panel top)
-  // and let the video fill to there. Re-measures on any resize (keyboard, etc.).
-  const chromeRef = useRef<HTMLDivElement>(null);
-  const [stageFillH, setStageFillH] = useState<number | undefined>(undefined);
+  // Expanded, the video fills the WHOLE panel (edge-to-edge, to the bottom) and
+  // the composer sits on it (glass), so there's no separate white section. We
+  // measure the panel height (to fill the video) and the composer height (to sit
+  // the pills overlay just above it). Re-measures on any resize (keyboard, etc.).
+  const panelRef = useRef<HTMLDivElement>(null);
+  const composerWrapRef = useRef<HTMLDivElement>(null);
+  const [panelH, setPanelH] = useState<number | undefined>(undefined);
+  const [composerH, setComposerH] = useState(0);
   useEffect(() => {
     if (!hasChatMorph) return undefined;
     const measure = () => {
-      const el = chromeRef.current;
-      if (el) setStageFillH(el.offsetTop);
+      if (panelRef.current) setPanelH(panelRef.current.offsetHeight);
+      if (composerWrapRef.current) setComposerH(composerWrapRef.current.offsetHeight);
     };
     measure();
     const ro = new ResizeObserver(measure);
-    if (chromeRef.current) ro.observe(chromeRef.current);
-    if (chromeRef.current?.parentElement) ro.observe(chromeRef.current.parentElement);
+    if (panelRef.current) ro.observe(panelRef.current);
+    if (composerWrapRef.current) ro.observe(composerWrapRef.current);
     window.addEventListener("resize", measure);
     return () => {
       ro.disconnect();
@@ -196,12 +197,14 @@ export function WidgetShell({
   // a case type is picked and the agent flow starts.
   return (
     <div
+      ref={panelRef}
       className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-bg"
       style={{ paddingTop: CHAT_HEADER_H }}
     >
-      {/* Edge-to-edge video (v12): full-width stage flush to the top that morphs
-          into the header slot on collapse; tap it (collapsed) to open the lightbox.
-          Rendered before the header so the header floats on top of it. */}
+      {/* Edge-to-edge video. Expanded it fills the WHOLE panel and the composer +
+          pills overlay sit on it (so there's no separate white section); on
+          collapse it morphs into the header thumbnail. Rendered before the header
+          so the header floats on top of it. */}
       {hasChatMorph && (
         <ChannelMorphVideo
           view="chat"
@@ -212,16 +215,16 @@ export function WidgetShell({
           avatarTop={6}
           avatar={40}
           stageH={CHAT_STAGE_H}
-          fillHeight={stageActive ? stageFillH : undefined}
+          fillHeight={stageActive ? panelH : undefined}
           overlay={stageActive && !caseTypePicked ? <ChatOpenerChips variant="overlay" /> : undefined}
+          overlayBottom={composerH}
+          onMore={collapseStage}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}
         />
       )}
       {/* Floats over the video while the stage is open (transparent), reverts to
-          the solid bar with the collapsed avatar once it tucks away. The avatar
-          slot is only reserved once the thumbnail is actually in the header, so
-          the title isn't indented past an empty gap while the video is full. */}
+          the solid bar with the collapsed avatar once it tucks away. */}
       <ChatHeader
         onClose={onClose}
         onMinimize={onMinimize}
@@ -246,13 +249,15 @@ export function WidgetShell({
         onInteract={collapseStage}
         hideIntro={stageActive}
       />
-      {/* Bottom chrome, measured so the expanded video can fill down to its top. */}
-      <div ref={chromeRef} className="shrink-0">
-        <ChatDisclosure />
-        <SafetyButtons />
-        <Composer ref={composerRef} onFocus={collapseStage} />
-        <PoweredByFooter />
+      {/* Disclosure + footer only in the normal (collapsed) chat; while the video
+          is expanded they'd sit on the dark video, so they're hidden there. */}
+      {!stageActive && <ChatDisclosure />}
+      {/* Composer sits over the dark video (glass) while expanded, on white once
+          collapsed. z-30 so it stays above the full-bleed video. */}
+      <div ref={composerWrapRef} className="relative z-30 shrink-0">
+        <Composer ref={composerRef} onFocus={collapseStage} tone={stageActive ? 'glass' : 'light'} />
       </div>
+      {!stageActive && <PoweredByFooter />}
     </div>
   );
 }
