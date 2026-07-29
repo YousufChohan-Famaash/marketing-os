@@ -38,7 +38,13 @@ export function emailError(value: string, required = false): string | null {
  */
 export function formatPhone(input: string): string {
   if (input.trim().startsWith('+')) return input;
-  const d = input.replace(/\D/g, '').slice(0, 10);
+  let digits = input.replace(/\D/g, '');
+  // A leading "1" on an 11+ digit entry is the US/NANP country code (no US area
+  // code starts with 1), so drop it before masking. Otherwise the mask keeps the
+  // first 10 of 11 digits and silently loses the last one — e.g. 13145019221
+  // became "(131) 450-1922" instead of "(314) 501-9221".
+  if (digits.length >= 11 && digits.startsWith('1')) digits = digits.slice(1);
+  const d = digits.slice(0, 10);
   if (!d) return '';
   if (d.length <= 3) return `(${d}`;
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
