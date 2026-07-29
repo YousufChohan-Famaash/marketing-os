@@ -8,11 +8,13 @@ import {
   CalendarIcon,
   ChatIcon,
   PhoneIcon,
+  PlayIcon,
   SmartphoneIcon,
   VolumeOffIcon,
   VolumeOnIcon,
 } from '../utils/icons';
 import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
+import { sanitizeCaptionText } from '../utils/useVideoCaptions';
 import { useVideoSound } from '../utils/useVideoSound';
 import { WidgetControls, languageName } from './WidgetControls';
 
@@ -63,7 +65,29 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   const emailEnabled = settings.channels.includes('email');
 
   const src = resolveCinematicVideo(settings.videoMode, branding?.introVideoUrl, settings.storyVideoUrl);
+  const poster = branding?.introVideoPoster;
   const name = branding?.name ?? 'our team';
+
+  // The clip plays ONCE (no loop). When it's not playing — it finished, or the
+  // browser paused it (e.g. iOS pausing a hidden panel on minimize) — we show a
+  // big center play button so it can always be resumed, and rest on the firm's
+  // poster after it ends instead of freezing on the last frame.
+  const [playing, setPlaying] = useState(true); // optimistic (it autoplays) → no mount flash
+  const [ended, setEnded] = useState(false);
+  const playFromTap = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.ended || ended) v.currentTime = 0;
+    void v.play();
+  };
+  // Cold-start safety: if autoplay never kicks in (blocked), reveal the play
+  // button so the clip is never stuck hidden with no way to start it.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const t = setTimeout(() => setPlaying(!v.paused && !v.ended), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   // Captions: the WebVTT track for the active language (English, then the only
   // track, as fallbacks). Shown burned-in over the video, on by default since
@@ -85,7 +109,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
     track.mode = 'hidden'; // render cues ourselves (positioned above the actions)
     const onCue = () => {
       const cue = track.activeCues && (track.activeCues[0] as VTTCue | undefined);
-      setCaption(cue ? cue.text.replace(/<[^>]+>/g, '') : '');
+      setCaption(cue ? sanitizeCaptionText(cue.text) : '');
     };
     track.addEventListener('cuechange', onCue);
     return () => track.removeEventListener('cuechange', onCue);
@@ -117,11 +141,20 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
       <video
         ref={videoRef}
         src={src}
+        poster={poster}
         playsInline
-        loop
         preload="auto"
         crossOrigin={crossOrigin}
         onError={onError}
+        onPlay={() => {
+          setPlaying(true);
+          setEnded(false);
+        }}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setEnded(true);
+        }}
         className="absolute inset-0 h-full w-full object-cover"
         aria-label="Attorney introduction video"
       >
@@ -129,8 +162,27 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
           <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
         )}
       </video>
+      {/* Once the clip has played through, rest on the firm's poster (a clean,
+          smiling frame) instead of freezing on the last video frame. */}
+      {ended && poster && (
+        <img src={poster} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" />
+      )}
       {/* Legibility gradient behind the bottom content. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/40 to-transparent" aria-hidden="true" />
+
+      {/* Center play button whenever the video isn't playing (finished, or paused
+          for any reason), so it can always be restarted / resumed. Sits high
+          enough to never overlap the action buttons below. */}
+      {!playing && (
+        <button
+          type="button"
+          onClick={playFromTap}
+          aria-label={ended ? 'Replay video' : 'Play video'}
+          className="absolute left-1/2 top-[40%] z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white ring-1 ring-white/50 backdrop-blur transition-transform hover:scale-105"
+        >
+          <PlayIcon size={26} className="ml-1" />
+        </button>
+      )}
 
       {/* Mute toggle with a text label (top-left). */}
       <button
@@ -170,7 +222,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
         </h2>
         <div className="mt-1.5 flex items-center gap-2 text-[12.5px] font-medium text-white/85">
           <span className="inline-block h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-          A real person is online &middot; 24/7
+          We answer. Day or night. 24/7
         </div>
 
         {/* Primary: Call me now (full width). */}
@@ -183,7 +235,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
           <span className="text-[15px] font-bold text-ink">{primary === 'call' ? 'Call me now' : CHANNEL_META[primary].label}</span>
           <span className="mx-0.5 h-4 w-px bg-hairline" aria-hidden="true" />
           <span className="truncate text-[12px] text-muted">
-            {primary === 'call' ? 'A real person in ~60 sec' : CHANNEL_META[primary].sublabel}
+            {primary === 'call' ? 'We call you within 60 sec' : CHANNEL_META[primary].sublabel}
           </span>
         </button>
 

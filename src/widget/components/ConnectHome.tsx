@@ -140,7 +140,7 @@ function StatusLine({ className }: { className?: string }) {
   return (
     <div className={cn('flex items-center gap-2 text-[12.5px] font-medium text-success', className)}>
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-      A real person in ~60 sec &middot; 24/7
+      We answer. Day or night. 24/7
     </div>
   );
 }

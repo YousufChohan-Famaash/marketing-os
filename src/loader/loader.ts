@@ -619,7 +619,7 @@ function makeDock(
       ${videoSurfaceHTML(true, opts.poster)}
       <div class="fa-body">
         ${headline}
-        <div class="fa-status"><i></i>A real person in ~60 sec &middot; 24/7</div>
+        <div class="fa-status"><i></i>We answer. Day or night. 24/7</div>
         <div class="fa-ways">${channelsHtml(opts.channels)}</div>
         <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>
       </div>`
