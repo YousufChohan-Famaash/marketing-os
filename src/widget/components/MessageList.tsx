@@ -193,10 +193,11 @@ export function MessageList({
           aria-hidden="true"
         />
       )}
+      {/* Greeting hides while the video is expanded (the clip is the greeting).
+          The pills sit right under the video in the space that would otherwise be
+          empty, shown whether the video is expanded or collapsed. */}
       {!hideIntro && <ConversationIntro />}
-      {/* The grid shows once the video collapses; while it's expanded the pills
-          are overlaid on the video instead (hideIntro tracks the expanded stage). */}
-      {!caseTypePicked && !hideIntro && <ChatOpenerChips />}
+      {!caseTypePicked && <ChatOpenerChips />}
       <div className="mt-2 flex flex-col gap-3">
         {timeline.map((item) => {
           if (item.kind === 'chip') {
