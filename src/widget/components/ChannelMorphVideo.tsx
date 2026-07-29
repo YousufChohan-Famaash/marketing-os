@@ -25,6 +25,10 @@ interface ChannelMorphVideoProps {
   /** Pause the clip entirely (e.g. while the lightbox plays it) so the two
    * don't run — and talk over each other — at once. */
   paused?: boolean;
+  /** Edge-to-edge (v12): the expanded stage starts at the very top and fills the
+   * header area too, so the header floats over the video transparently instead of
+   * a solid bar pushing the video down. A top gradient keeps the header legible. */
+  fullBleed?: boolean;
 }
 
 /**
@@ -45,6 +49,7 @@ export function ChannelMorphVideo({
   stageH = DEFAULTS.stageH,
   onThumbClick,
   paused = false,
+  fullBleed = false,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
@@ -81,7 +86,9 @@ export function ChannelMorphVideo({
 
   const style = collapsed
     ? { top: avatarTop, left: avatarLeft, width: avatar, height: avatar, borderRadius: 9999 }
-    : { top: headerH, left: 0, width: '100%', height: stageH, borderRadius: 0 };
+    : fullBleed
+      ? { top: 0, left: 0, width: '100%', height: headerH + stageH, borderRadius: 0 }
+      : { top: headerH, left: 0, width: '100%', height: stageH, borderRadius: 0 };
 
   // Toggle the shared sound preference (set muted synchronously so the unmute
   // counts as a user gesture for the browser's autoplay-with-sound policy).
@@ -100,7 +107,12 @@ export function ChannelMorphVideo({
   return (
     <>
     <div
-      className="absolute z-20 overflow-hidden bg-obsidian shadow-sm transition-all duration-500 ease-out"
+      className={`absolute overflow-hidden bg-obsidian shadow-sm transition-all duration-500 ease-out ${
+        // Expanded: sit UNDER the floating header (z-30) so its controls stay on
+        // top. Collapsed: sit ABOVE the (now solid) header so the little avatar
+        // shows in its slot instead of being covered by the header background.
+        collapsed ? 'z-40' : 'z-20'
+      }`}
       style={style}
     >
       <video
@@ -119,6 +131,14 @@ export function ChannelMorphVideo({
           <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
         )}
       </video>
+      {/* Top scrim so the transparent header (back / title / controls) stays
+          legible over the video in edge-to-edge mode. */}
+      {!collapsed && fullBleed && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent"
+          aria-hidden="true"
+        />
+      )}
       {!collapsed && (
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-white"

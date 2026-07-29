@@ -233,14 +233,40 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     }
   };
 
+  // Edge-to-edge video (v12): while the stage is open the clip fills the top of
+  // the panel and the header floats over it transparently; once it collapses the
+  // header returns to its solid bar with the small avatar. HEADER_H must match the
+  // header's rendered height so the scrolling form clears the floating header.
+  const HEADER_H = 52;
+  const STAGE_H = 300;
+  const stageActive = hasMorph && stageOpen;
+
   return (
     <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-white" role="dialog" aria-label={TITLES[channel]}>
-      <header className="flex shrink-0 items-center gap-2 border-b border-hairline-soft px-2 py-2">
+      {/* One video element: full-width stage on landing (edge-to-edge, under the
+          header), morphs into the header slot on collapse (never remounts, so
+          playback keeps its timestamp). Rendered before the header so the header
+          floats on top of it. */}
+      {hasMorph && headerVideoView && (
+        <ChannelMorphVideo view={headerVideoView} collapsed={!stageOpen} fullBleed headerH={HEADER_H} stageH={STAGE_H} />
+      )}
+
+      {/* Header floats over the video while the stage is open (transparent, light
+          controls), then becomes a solid bar once the video tucks into the slot. */}
+      <header
+        className={cn(
+          'absolute inset-x-0 top-0 z-30 flex items-center gap-2 px-2 py-2 transition-colors duration-300',
+          stageActive ? 'border-b border-transparent bg-transparent' : 'border-b border-hairline-soft bg-white',
+        )}
+      >
         <button
           type="button"
           onClick={back}
           aria-label="Back to all options"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+            stageActive ? 'text-white hover:bg-white/20' : 'text-muted hover:bg-subtle hover:text-ink',
+          )}
         >
           <ChevronLeftIcon size={18} />
         </button>
@@ -251,25 +277,30 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         ) : (
           <ChannelHeaderVideo view={headerVideoView} />
         )}
-        <h2 className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">{TITLES[channel]}</h2>
-        <WidgetControls tone="solid" onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
+        <h2
+          className={cn(
+            'min-w-0 flex-1 truncate text-[15px] font-semibold transition-colors',
+            stageActive ? 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]' : 'text-ink',
+          )}
+        >
+          {TITLES[channel]}
+        </h2>
+        <WidgetControls tone={stageActive ? 'overlay' : 'solid'} onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
       </header>
-
-      {/* One video element: full-width stage on landing, morphs into the header
-          slot on collapse (never remounts, so playback keeps its timestamp). */}
-      {hasMorph && headerVideoView && <ChannelMorphVideo view={headerVideoView} collapsed={!stageOpen} />}
 
       <div
         className="flex-1 overflow-y-auto"
+        style={{ paddingTop: HEADER_H }}
         onScroll={collapseStage}
         onFocusCapture={collapseStage}
       >
-        {/* Spacer that reserves the stage's height and collapses with it, so the
-            form sits below the video and slides up as it morphs away. */}
+        {/* Spacer that reserves the video stage's height (below the header) and
+            collapses with it, so the form sits below the video and slides up as it
+            morphs away. */}
         {hasMorph && (
           <div
             className="shrink-0 transition-[height] duration-500 ease-out"
-            style={{ height: stageOpen ? 300 : 0 }}
+            style={{ height: stageOpen ? STAGE_H : 0 }}
             aria-hidden="true"
           />
         )}
