@@ -52,25 +52,33 @@ export function ChatOpenerChips() {
   };
 
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      {options.map((opt) => {
-        const icon = practiceIconFor(opt, 16);
-        return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => pick(opt)}
-            className="inline-flex items-center gap-2 rounded-pill border border-famaash-stroke bg-white px-4 py-2.5 text-[14px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
-          >
-            {icon && (
-              <span className="flex shrink-0 items-center text-[color:var(--practice-accent)]">
-                {icon}
-              </span>
-            )}
-            {opt}
-          </button>
-        );
-      })}
+    <div className="mt-4">
+      <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted-soft">
+        What happened?
+      </p>
+      {/* A calm, uniform grid instead of a jagged wrap of pills: equal-width
+          tiles, each icon contained in a soft well, so it reads premium and
+          scannable rather than a busy pile of buttons. */}
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((opt) => {
+          const icon = practiceIconFor(opt, 18);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => pick(opt)}
+              className="group flex items-center gap-2.5 rounded-2xl border border-hairline bg-white px-3 py-3 text-left transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
+            >
+              {icon && (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-[color:var(--practice-accent)] transition-colors group-hover:bg-white">
+                  {icon}
+                </span>
+              )}
+              <span className="min-w-0 text-[14px] font-semibold leading-tight text-ink">{opt}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
