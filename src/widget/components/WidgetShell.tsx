@@ -192,6 +192,7 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
       <MessageList
         topSpacerHeight={hasChatMorph ? (stageOpen ? 300 : 0) : undefined}
         onInteract={collapseStage}
+        hideIntro={stageActive}
       />
       <SafetyButtons />
       <ChatDisclosure />

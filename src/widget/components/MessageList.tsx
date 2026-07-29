@@ -48,12 +48,17 @@ function normalizeOptions(raw: unknown): string[] {
 export function MessageList({
   topSpacerHeight,
   onInteract,
+  hideIntro,
 }: {
   /** Reserves the collapsing video stage's height at the top of the scroll so
    * the conversation sits below the video and slides up as it collapses. */
   topSpacerHeight?: number;
   /** Fires on scroll so the parent can collapse the video stage into the header. */
   onInteract?: () => void;
+  /** Hide the text greeting while the video stage is expanded — the playing clip
+   * IS the greeting then, and hiding the text frees room for more opener pills.
+   * The greeting appears once the video collapses into the thumbnail. */
+  hideIntro?: boolean;
 } = {}) {
   const messages = useWidgetStore((s) => s.messages);
   const chips = useWidgetStore((s) => s.chips);
@@ -188,7 +193,7 @@ export function MessageList({
           aria-hidden="true"
         />
       )}
-      <ConversationIntro />
+      {!hideIntro && <ConversationIntro />}
       {!caseTypePicked && <ChatOpenerChips />}
       <div className="mt-2 flex flex-col gap-3">
         {timeline.map((item) => {
