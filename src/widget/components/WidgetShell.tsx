@@ -52,6 +52,11 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   const [stageOpen, setStageOpen] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const collapseStage = useCallback(() => setStageOpen(false), []);
+  // The video is edge-to-edge (v12) while the stage is open: it fills the top of
+  // the panel and the header floats over it transparently. CHAT_HEADER_H must
+  // match the header height so the panel's top padding clears the floating header.
+  const CHAT_HEADER_H = 52;
+  const stageActive = hasChatMorph && stageOpen;
 
   // Expand the stage only on a FRESH chat (before a case type is picked).
   // Returning to an already-started conversation keeps it collapsed, so the big
@@ -148,22 +153,19 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   // The conversation chrome (capture, safety, disclosure, composer) appears once
   // a case type is picked and the agent flow starts.
   return (
-    <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-bg">
-      <ChatHeader
-        onClose={onClose}
-        onMinimize={onMinimize}
-        onExpand={onExpand}
-        isExpanded={isExpanded}
-        onBack={backToHome}
-        hasMorph={hasChatMorph}
-      />
-      {/* Full-width video that collapses into the header slot; tap it (collapsed)
-          to open the welcome in a lightbox. */}
+    <div
+      className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-bg"
+      style={{ paddingTop: CHAT_HEADER_H }}
+    >
+      {/* Edge-to-edge video (v12): full-width stage flush to the top that morphs
+          into the header slot on collapse; tap it (collapsed) to open the lightbox.
+          Rendered before the header so the header floats on top of it. */}
       {hasChatMorph && (
         <ChannelMorphVideo
           view="chat"
           collapsed={!stageOpen}
-          headerH={52}
+          fullBleed
+          headerH={CHAT_HEADER_H}
           avatarLeft={52}
           avatarTop={10}
           avatar={32}
@@ -172,6 +174,18 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
           paused={lightboxOpen}
         />
       )}
+      {/* Floats over the video while the stage is open (transparent), reverts to
+          the solid bar with the collapsed avatar once it tucks away. */}
+      <ChatHeader
+        onClose={onClose}
+        onMinimize={onMinimize}
+        onExpand={onExpand}
+        isExpanded={isExpanded}
+        onBack={backToHome}
+        hasMorph={hasChatMorph}
+        solid={!stageActive}
+        className="absolute inset-x-0 top-0 z-30"
+      />
       {caseTypePicked && (
         <div className="flex justify-center pb-1">
           <CaptureProgress />
