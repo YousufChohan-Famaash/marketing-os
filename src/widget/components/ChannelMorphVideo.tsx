@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
-import { ChevronDownIcon, PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
+import { PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
 import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
 import { useVideoCaptions } from '../utils/useVideoCaptions';
 
@@ -42,9 +42,6 @@ interface ChannelMorphVideoProps {
   /** Bottom offset (px) for the overlay, so it sits above the composer that's
    * rendered over the video rather than flush to the very bottom. */
   overlayBottom?: number;
-  /** Shown as a "More" button over the overlay when its content overflows (all
-   * options don't fit); tapping it reveals the rest (e.g. collapse to the grid). */
-  onMore?: () => void;
 }
 
 /**
@@ -71,7 +68,6 @@ export function ChannelMorphVideo({
   fillHeight,
   overlay,
   overlayBottom,
-  onMore,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
@@ -111,25 +107,6 @@ export function ChannelMorphVideo({
   // Play-once state: the clip doesn't loop, so track when it finishes to offer a
   // replay. Re-expanding the collapsed thumbnail replays an ended clip.
   const [ended, setEnded] = useState(false);
-
-  // When the overlay's options overflow (all don't fit), surface a "More" button
-  // so the visitor can reveal the rest. Measured against the overlay's scroll box.
-  const overlayScrollRef = useRef<HTMLDivElement>(null);
-  const hasOverlay = !collapsed && Boolean(overlay);
-  const [overflowing, setOverflowing] = useState(false);
-  useEffect(() => {
-    if (!hasOverlay) {
-      setOverflowing(false);
-      return undefined;
-    }
-    const el = overlayScrollRef.current;
-    if (!el) return undefined;
-    const check = () => setOverflowing(el.scrollHeight - el.clientHeight > 8);
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [hasOverlay, fillHeight, overlayBottom]);
   useEffect(() => {
     if (collapsed) return;
     const v = videoRef.current;
@@ -217,32 +194,17 @@ export function ChannelMorphVideo({
         />
       )}
       {/* Opener pills over the lower part of the video, on a dark scrim that also
-          runs behind the composer (so the glass composer stays legible). */}
+          runs behind the composer (so the glass composer stays legible). The
+          pills component caps itself to a few rows and shows its own "More". */}
       {!collapsed && overlay && (
         <>
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-[64%] bg-gradient-to-t from-black/90 via-black/68 to-transparent"
             aria-hidden="true"
           />
-          <div
-            ref={overlayScrollRef}
-            className="absolute inset-x-0 z-10 max-h-[46%] overflow-y-auto px-3.5 pt-2"
-            style={{ bottom: overlayBottom ?? 0 }}
-          >
+          <div className="absolute inset-x-0 z-10 px-3.5 pt-2" style={{ bottom: overlayBottom ?? 0 }}>
             {overlay}
           </div>
-          {/* "More" affordance when the options overflow — reveal the rest. */}
-          {overflowing && onMore && (
-            <button
-              type="button"
-              onClick={onMore}
-              className="absolute z-20 inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-[11.5px] font-semibold text-ink shadow-md backdrop-blur transition-colors hover:bg-white"
-              style={{ bottom: (overlayBottom ?? 0) + 8, right: 14 }}
-            >
-              More
-              <ChevronDownIcon size={13} />
-            </button>
-          )}
         </>
       )}
       {/* Captions over the expanded stage (hidden once collapsed to a thumbnail). */}

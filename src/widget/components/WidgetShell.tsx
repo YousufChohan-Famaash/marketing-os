@@ -216,9 +216,12 @@ export function WidgetShell({
           avatar={40}
           stageH={CHAT_STAGE_H}
           fillHeight={stageActive ? panelH : undefined}
-          overlay={stageActive && !caseTypePicked ? <ChatOpenerChips variant="overlay" /> : undefined}
+          overlay={
+            stageActive && !caseTypePicked ? (
+              <ChatOpenerChips variant="overlay" onMore={collapseStage} />
+            ) : undefined
+          }
           overlayBottom={composerH}
-          onMore={collapseStage}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}
         />
