@@ -315,16 +315,11 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-ink">
-          <CalendarIcon size={20} aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[18px] font-bold text-ink">{heading}</h3>
-          <p className="mt-1 text-[14px] leading-relaxed text-muted">
-            All times in Eastern Time (ET). We'll send a confirmation and a reminder.
-          </p>
-        </div>
+      <div className="min-w-0">
+        <h3 className="text-[19px] font-bold leading-snug text-ink">{heading}</h3>
+        <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
+          All times in Eastern Time (ET). We'll send a confirmation and a reminder.
+        </p>
       </div>
 
       {notice && (
