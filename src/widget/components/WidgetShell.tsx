@@ -179,7 +179,6 @@ export function WidgetShell({
         <ChannelMorphVideo
           view="chat"
           collapsed={!stageOpen}
-          fullBleed
           headerH={CHAT_HEADER_H}
           avatarLeft={52}
           avatarTop={6}
@@ -189,8 +188,8 @@ export function WidgetShell({
           onFinish={collapseStage}
         />
       )}
-      {/* Floats over the video while the stage is open (transparent), reverts to
-          the solid bar with the collapsed avatar once it tucks away. */}
+      {/* Solid header bar above the video (not floating over it) so the attorney's
+          head has clean space from the top instead of sitting under the controls. */}
       <ChatHeader
         onClose={onClose}
         onMinimize={onMinimize}
@@ -198,7 +197,6 @@ export function WidgetShell({
         isExpanded={isExpanded}
         onBack={backToHome}
         hasMorph={hasChatMorph}
-        solid={!stageActive}
         className="absolute inset-x-0 top-0 z-30"
       />
       {caseTypePicked && (
