@@ -14,7 +14,6 @@ import { ConnectHome } from './ConnectHome';
 import { MessageList } from './MessageList';
 import { PoweredByFooter } from './PoweredByFooter';
 import { SafetyButtons } from './SafetyButtons';
-import { VideoLightbox } from './VideoLightbox';
 
 interface WidgetShellProps {
   onClose: () => void;
@@ -50,7 +49,6 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   const hasChatMorph =
     connectView === 'chat' && Boolean(resolveViewVideo('chat', connect, branding));
   const [stageOpen, setStageOpen] = useState(true);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
   const collapseStage = useCallback(() => setStageOpen(false), []);
   // The video is edge-to-edge (v12) while the stage is open: it fills the top of
   // the panel and the header floats over it transparently. CHAT_HEADER_H must
@@ -64,12 +62,9 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
   useEffect(() => {
     if (connectView === 'chat' && !caseTypePicked) setStageOpen(true);
   }, [connectView, caseTypePicked]);
-  // Auto-collapse after a beat, and the moment the lead engages (picks a type).
-  useEffect(() => {
-    if (!hasChatMorph || !stageOpen) return;
-    const t = setTimeout(() => setStageOpen(false), 5000);
-    return () => clearTimeout(t);
-  }, [hasChatMorph, stageOpen]);
+  // The clip morphs into the thumbnail on ONE of two cues: it finishes playing
+  // (onFinish below), or the lead engages (picks a case type / scrolls / focuses
+  // the composer). No timer. Tapping the thumbnail re-expands + replays.
   useEffect(() => {
     if (caseTypePicked) setStageOpen(false);
   }, [caseTypePicked]);
@@ -170,8 +165,8 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
           avatarTop={10}
           avatar={32}
           stageH={300}
-          onThumbClick={() => setLightboxOpen(true)}
-          paused={lightboxOpen}
+          onThumbClick={() => setStageOpen(true)}
+          onFinish={collapseStage}
           showThumbSound
         />
       )}
@@ -203,17 +198,6 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
       <ChatDisclosure />
       <Composer ref={composerRef} onFocus={collapseStage} />
       <PoweredByFooter />
-      {lightboxOpen && (
-        <VideoLightbox
-          view="chat"
-          onClose={() => setLightboxOpen(false)}
-          onCall={() => {
-            setLightboxOpen(false);
-            setConnectView('call');
-          }}
-          onChat={() => setLightboxOpen(false)}
-        />
-      )}
     </div>
   );
 }

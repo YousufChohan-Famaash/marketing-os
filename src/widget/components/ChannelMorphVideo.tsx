@@ -33,6 +33,9 @@ interface ChannelMorphVideoProps {
    * header has room for it (the chat) — a titled header (contact screens) would
    * collide with the title, and there the shared mute + expanded control cover it. */
   showThumbSound?: boolean;
+  /** Fired when the clip finishes playing (it plays once) so the parent can
+   * morph it into the thumbnail. */
+  onFinish?: () => void;
 }
 
 /**
@@ -56,6 +59,7 @@ export function ChannelMorphVideo({
   paused = false,
   fullBleed = false,
   showThumbSound = false,
+  onFinish,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
@@ -155,7 +159,10 @@ export function ChannelMorphVideo({
         preload="auto"
         crossOrigin={crossOrigin}
         onError={onError}
-        onEnded={() => setEnded(true)}
+        onEnded={() => {
+          setEnded(true);
+          onFinish?.(); // morph back to the thumbnail now that it played once
+        }}
         onPlay={() => setEnded(false)}
         className="h-full w-full object-cover"
         aria-label="Attorney video"
