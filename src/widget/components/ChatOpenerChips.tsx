@@ -74,7 +74,7 @@ export function ChatOpenerChips() {
                   {icon}
                 </span>
               )}
-              <span className="text-[12px] font-semibold leading-tight text-ink">
+              <span className="text-[11px] font-semibold leading-tight text-ink">
                 {opt}
               </span>
             </button>
