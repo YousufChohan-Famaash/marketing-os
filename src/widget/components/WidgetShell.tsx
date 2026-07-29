@@ -167,7 +167,6 @@ export function WidgetShell({ onClose, onMinimize, onExpand, isExpanded }: Widge
           stageH={300}
           onThumbClick={() => setStageOpen(true)}
           onFinish={collapseStage}
-          showThumbSound
         />
       )}
       {/* Floats over the video while the stage is open (transparent), reverts to

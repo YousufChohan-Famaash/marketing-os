@@ -29,10 +29,6 @@ interface ChannelMorphVideoProps {
    * header area too, so the header floats over the video transparently instead of
    * a solid bar pushing the video down. A top gradient keeps the header legible. */
   fullBleed?: boolean;
-  /** Show the little mute toggle beside the collapsed thumbnail. Only where the
-   * header has room for it (the chat) — a titled header (contact screens) would
-   * collide with the title, and there the shared mute + expanded control cover it. */
-  showThumbSound?: boolean;
   /** Fired when the clip finishes playing (it plays once) so the parent can
    * morph it into the thumbnail. */
   onFinish?: () => void;
@@ -58,7 +54,6 @@ export function ChannelMorphVideo({
   onThumbClick,
   paused = false,
   fullBleed = false,
-  showThumbSound = false,
   onFinish,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
@@ -225,20 +220,6 @@ export function ChannelMorphVideo({
         {!collapsed && (soundOn ? <VolumeOnIcon size={16} /> : <VolumeOffIcon size={16} />)}
       </button>
     </div>
-    {/* Mute/unmute as a small badge on the thumbnail's corner (tapping the
-        thumbnail itself re-expands, so sound gets its own tap target). Sits above
-        the avatar with a white ring so it reads as part of it, not loose chrome. */}
-    {collapsed && showThumbSound && (
-      <button
-        type="button"
-        onClick={toggleSound}
-        aria-label={soundOn ? 'Mute video' : 'Unmute video'}
-        className="absolute z-50 flex items-center justify-center rounded-full bg-black/70 text-white ring-2 ring-white transition-colors hover:bg-black/85"
-        style={{ top: avatarTop + avatar - 20, left: avatarLeft + avatar - 20, width: 20, height: 20 }}
-      >
-        {soundOn ? <VolumeOnIcon size={11} /> : <VolumeOffIcon size={11} />}
-      </button>
-    )}
     </>
   );
 }
