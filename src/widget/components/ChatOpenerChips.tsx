@@ -63,32 +63,27 @@ export function ChatOpenerChips({
     return <OverlayChips options={options} pick={pick} onMore={onMore} />;
   }
 
+  // Same rounded-pill structure as the on-video overlay, but light: white pills
+  // with black text + icons. (No row cap here — the chat list scrolls.)
   return (
     <div className="mt-4">
-      <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.04em] text-black">
+      <p className="mb-2.5 text-[12px] font-bold tracking-[-0.01em] text-ink">
         What happened?
       </p>
-      {/* Three-up grid of stacked tiles (icon on top, centered label): the icon in
-          a soft well, the label with the full tile width to wrap cleanly. Calm and
-          scannable rather than a jagged wrap of pills. */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
-          const icon = practiceIconFor(opt, 18);
+          const icon = practiceIconFor(opt, 17);
           return (
             <button
               key={opt}
               type="button"
               onClick={() => pick(opt)}
-              className="group flex flex-col items-center justify-start gap-1.5 rounded-2xl border border-hairline bg-white px-1.5 py-3 text-center transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
+              className="inline-flex items-center gap-2 rounded-full border border-hairline bg-white px-3.5 py-2.5 text-[12.5px] font-medium text-ink transition-colors hover:border-famaash-stroke hover:bg-famaash-soft"
             >
               {icon && (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-famaash-soft text-black transition-colors group-hover:bg-white">
-                  {icon}
-                </span>
+                <span className="flex shrink-0 items-center text-ink">{icon}</span>
               )}
-              <span className="text-[11px] font-semibold leading-tight text-ink">
-                {opt}
-              </span>
+              {opt}
             </button>
           );
         })}
@@ -138,7 +133,16 @@ function OverlayChips({
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    // Re-measure once webfonts land (they change pill widths → how many wrap per
+    // row), and a couple of backstops for late layout. Without this the cap can
+    // be computed against the fallback font and end up a row off.
+    const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts;
+    fonts?.ready?.then(measure).catch(() => undefined);
+    const timers = [window.setTimeout(measure, 200), window.setTimeout(measure, 600)];
+    return () => {
+      ro.disconnect();
+      timers.forEach(clearTimeout);
+    };
   }, [options.join("|")]);
 
   return (
