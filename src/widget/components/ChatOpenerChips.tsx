@@ -151,13 +151,13 @@ function OverlayChips({
         style={{ maxHeight: cap }}
       >
         {options.map((opt) => {
-          const icon = practiceIconFor(opt, 17);
+          const icon = practiceIconFor(opt, 18);
           return (
             <button
               key={opt}
               type="button"
               onClick={() => pick(opt)}
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3.5 py-2.5 text-[12.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
+              className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-4 py-3 text-[13.5px] font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
             >
               {icon && (
                 <span className="flex shrink-0 items-center text-white">

@@ -193,7 +193,7 @@ export function ChannelMorphVideo({
       {!collapsed && overlay && (
         <>
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-[64%] bg-gradient-to-t from-black/90 via-black/68 to-transparent"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-[70%] bg-gradient-to-t from-black/95 via-black/80 to-transparent"
             aria-hidden="true"
           />
           <div className="absolute inset-x-0 z-10 px-3.5 pt-2" style={{ bottom: overlayBottom ?? 0 }}>
