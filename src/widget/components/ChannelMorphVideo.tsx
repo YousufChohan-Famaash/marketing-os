@@ -187,12 +187,6 @@ export function ChannelMorphVideo({
           aria-hidden="true"
         />
       )}
-      {!collapsed && !overlay && (
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-white"
-          aria-hidden="true"
-        />
-      )}
       {/* Opener pills over the lower part of the video, on a dark scrim that also
           runs behind the composer (so the glass composer stays legible). The
           pills component caps itself to a few rows and shows its own "More". */}
