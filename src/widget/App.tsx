@@ -423,25 +423,23 @@ export function App() {
     conversationIdRef.current = freshId;
     setConversationId(freshId);
 
-    // Show the live chat immediately (typing dots) and connect: the agent greets
-    // with a fresh intake on a brand-new conversation_id (no case-type pick
-    // needed, same as the consultation hand-off). This is the reconnect half that
-    // was missing — without it the room dies and nothing replaces it.
+    // Show the FRESH case-type opener and reconnect on the pick — the proven
+    // first-chat flow. The agent opens the intake in response to the case-type
+    // pick (case_type_selected); a bare connect with no pick leaves the agent
+    // silent (verified on prod: the room joins the new conversation_id but no
+    // opener ever arrives), so we must NOT auto-connect and wait. The pick fires
+    // the new POST /token → new Call+Lead → the agent's fresh intake opener.
+    st.setCaseTypePicked(false);
+    st.setConversationStarted(false);
     st.setConnectView('chat');
-    st.setCaseTypePicked(true);
-    st.setConversationStarted(true);
-    st.beginTyping();
-    // Always-on marker (namespaced) so we can confirm this build actually runs
-    // the reconnect on "new chat" — a POST /token must follow this line.
     // eslint-disable-next-line no-console
-    console.info('[famaash] new chat → reconnecting on', freshId);
-    connectSocket();
-  }, [setConversationId, connectSocket]);
+    console.info('[famaash] new chat → fresh opener on', freshId, '(connects on pick)');
+  }, [setConversationId]);
 
   // "Start a new chat" (header button, or the leader acting on start_new_intake):
-  // mint a fresh id, tell peer tabs to follow to it, then reset + reconnect. The
-  // old conversation is preserved server-side; the fresh id creates a new
-  // Call+Lead the moment resetToConversation reconnects.
+  // mint a fresh id, tell peer tabs to follow to it, then drop back to the fresh
+  // case-type opener. The old conversation is preserved server-side; the fresh id
+  // creates a new Call+Lead on the next pick (which also opens the agent's intake).
   const startNewChat = useCallback(() => {
     const fresh = resetConversationId(firmId);
     // Notify peers on the OLD conversation BEFORE tearing its socket down.
