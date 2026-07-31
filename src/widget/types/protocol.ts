@@ -295,6 +295,12 @@ export interface ConversationSocket {
     handler: ServerEventHandler<T>,
   ): () => void;
   disconnect(): void;
+  /**
+   * Multi-tab only: tell peer tabs on this conversation that a fresh chat was
+   * started, so they follow to the new conversation id. No-op for single-tab
+   * transports (they have no peers).
+   */
+  notifyNewChat?(conversationId: string): void;
 }
 
 // ─────────────────────────────────────────────────────────────────────

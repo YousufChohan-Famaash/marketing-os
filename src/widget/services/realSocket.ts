@@ -34,6 +34,9 @@ type AnyHandler = (event: ServerEvent) => void;
 
 export class RealSocket implements ConversationSocket {
   private readonly handlers = new Map<ServerEvent['type'], Set<AnyHandler>>();
+  // Fires for EVERY inbound server event, regardless of type. The multi-tab
+  // SessionSocket leader taps this to relay events to follower tabs.
+  private readonly anyHandlers = new Set<AnyHandler>();
   private room: Room | null = null;
   private clientTopic = DEFAULT_CLIENT_TOPIC;
   private readonly encoder = new TextEncoder();
@@ -167,6 +170,17 @@ export class RealSocket implements ConversationSocket {
     };
   }
 
+  /** Subscribe to every inbound server event (used to relay to follower tabs). */
+  onAny(handler: (event: ServerEvent) => void): () => void {
+    this.anyHandlers.add(handler);
+    return () => {
+      this.anyHandlers.delete(handler);
+    };
+  }
+
+  /** No-op: a single LiveKit socket has no peer tabs to notify. */
+  notifyNewChat(): void {}
+
   disconnect(): void {
     this.agentReady = false;
     this.pending = [];
@@ -175,6 +189,7 @@ export class RealSocket implements ConversationSocket {
       this.readyTimer = null;
     }
     this.handlers.clear();
+    this.anyHandlers.clear();
     void this.room?.disconnect();
     this.room = null;
   }
@@ -195,6 +210,9 @@ export class RealSocket implements ConversationSocket {
     if (DEV) console.log('[famaash-widget] ◀ recv', ev.type, ev);
     // The agent is now listening — release any queued client events.
     if (ev.type === 'ready') this.markReady();
+    // The wildcard tap fires for every event (even ones with no typed handler),
+    // so the multi-tab leader can relay the full stream to follower tabs.
+    for (const handler of this.anyHandlers) handler(ev);
     const set = this.handlers.get(ev.type);
     if (!set) return;
     for (const handler of set) handler(ev);

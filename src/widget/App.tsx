@@ -14,6 +14,7 @@ import {
   createSocket,
   getOrCreateConversationId,
   loadBootConfig,
+  persistConversationId,
   rehydrateFromHistory,
   resetConversationId,
 } from './services/transport';
@@ -72,6 +73,13 @@ export function App() {
   const conversationIdRef = useRef<string | null>(null);
   const connectingRef = useRef(false);
   const disposedRef = useRef(false);
+  // Set later to the "adopt a peer tab's new chat" handler. Held in a ref so
+  // connectSocket (defined above it) can forward multi-tab new-chat broadcasts
+  // without a declaration-order dependency.
+  const adoptNewChatRef = useRef<(conversationId: string) => void>(() => {});
+  // Highest start_new_intake nonce we've already acted on, so a reset never
+  // re-fires for a stale request (e.g. after a role change re-runs the effect).
+  const handledIntakeNonce = useRef(0);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
 
@@ -87,7 +95,15 @@ export function App() {
     connectingRef.current = true;
     void (async () => {
       try {
-        const s = await createSocket();
+        const s = await createSocket({
+          // A peer tab started a fresh chat → follow it to the same new id.
+          onRemoteNewChat: (id) => adoptNewChatRef.current(id),
+          // Track whether THIS tab owns the live connection, so agent-driven
+          // "new chat" is handled once (by the leader), not by every tab.
+          onRoleChange: (isLeader) => useWidgetStore.getState().setSessionLeader(isLeader),
+          // Surface a leader connection failure the same way a direct one did.
+          onError: (msg) => { if (!disposedRef.current) setBootStatus('error', msg); },
+        });
         if (disposedRef.current) { s.disconnect(); return; }
         socketRef.current = s;
         unwireRef.current = wireSocketToStore(s);
@@ -340,11 +356,11 @@ export function App() {
     bridgeRef.current?.notifyEvent(event);
   };
 
-  // "Start a new chat": tear down the live connection, clear the conversation,
-  // mint a fresh conversation id (a new Call+Lead next connect) and drop back to
-  // the chat opener. The old conversation is preserved server-side. The socket
+  // Tear down the live connection, clear every conversation slice, then point at
+  // `freshId` and drop back to the chat opener. Shared by the "New chat" button,
+  // the agent's start_new_intake, and following a peer tab's new chat. The socket
   // reconnects on the next case-type pick (Option B), same as a first-time chat.
-  const startNewChat = useCallback(() => {
+  const resetToConversation = useCallback((freshId: string) => {
     unwireRef.current?.();
     unwireRef.current = null;
     socketRef.current?.disconnect();
@@ -363,19 +379,49 @@ export function App() {
     st.setConversationStarted(false);
     st.setPendingCaseType(null);
     st.setConnectCallStatus(null);
+    // Fresh conversation: this tab leads again until the next connect re-elects.
+    st.setSessionLeader(true);
+    // Never let a stale start_new_intake re-fire against the new conversation.
+    handledIntakeNonce.current = st.newIntakeNonce;
 
-    const fresh = resetConversationId(firmId);
-    conversationIdRef.current = fresh;
-    setConversationId(fresh);
+    conversationIdRef.current = freshId;
+    setConversationId(freshId);
     st.setConnectView('chat');
-  }, [firmId, setConversationId]);
+  }, [setConversationId]);
 
-  // The agent can ask to start a fresh intake (a typed "start a new chat"); the
-  // socket handler bumps this nonce and we run the same reset as the button.
-  const newIntakeNonce = useWidgetStore((s) => s.newIntakeNonce);
+  // "Start a new chat" (header button, or the leader acting on start_new_intake):
+  // mint a fresh id, tell peer tabs to follow to it, then reset. The old
+  // conversation is preserved server-side (a new Call+Lead is created next connect).
+  const startNewChat = useCallback(() => {
+    const fresh = resetConversationId(firmId);
+    // Notify peers on the OLD conversation BEFORE tearing its socket down.
+    socketRef.current?.notifyNewChat?.(fresh);
+    resetToConversation(fresh);
+  }, [firmId, resetToConversation]);
+
+  // A peer tab started a new chat → adopt the SAME fresh id so all tabs share the
+  // new conversation, and persist it so a reload resumes that one.
+  const adoptNewChat = useCallback((freshId: string) => {
+    if (freshId === conversationIdRef.current) return;
+    persistConversationId(firmId, freshId);
+    resetToConversation(freshId);
+  }, [firmId, resetToConversation]);
   useEffect(() => {
-    if (newIntakeNonce > 0) startNewChat();
-  }, [newIntakeNonce, startNewChat]);
+    adoptNewChatRef.current = adoptNewChat;
+  }, [adoptNewChat]);
+
+  // The agent can ask to start a fresh intake (a typed "start a new chat"). The
+  // relayed event bumps this nonce in EVERY tab, so gate on leadership: only the
+  // leader mints + broadcasts; follower tabs adopt via onRemoteNewChat instead of
+  // each minting their own id.
+  const newIntakeNonce = useWidgetStore((s) => s.newIntakeNonce);
+  const isSessionLeader = useWidgetStore((s) => s.isSessionLeader);
+  useEffect(() => {
+    if (newIntakeNonce > handledIntakeNonce.current && isSessionLeader) {
+      handledIntakeNonce.current = newIntakeNonce;
+      startNewChat();
+    }
+  }, [newIntakeNonce, isSessionLeader, startNewChat]);
 
   const handleClose = () => {
     closeWidget();

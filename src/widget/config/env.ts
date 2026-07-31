@@ -102,3 +102,26 @@ export function isPersistenceEnabled(): boolean {
   if (env === '0' || env === 'false') return false;
   return true;
 }
+
+/**
+ * Whether to coordinate multiple tabs of the SAME conversation so only one holds
+ * the LiveKit connection (leader) while the rest mirror it over a
+ * BroadcastChannel (followers). Without this, every open tab opens its own
+ * connection, LiveKit evicts the duplicate identity, and the backend re-persists
+ * inbound messages so a reload shows each one two or three times.
+ *
+ * Only meaningful when persistence is on (otherwise each tab already has a unique
+ * conversation id, so there's nothing to share). Requires BroadcastChannel + the
+ * Web Locks API; falls back to per-tab connections where either is unavailable.
+ * Force off for debugging with `?multitab=0`.
+ */
+export function isMultiTabSyncEnabled(): boolean {
+  if (!isPersistenceEnabled()) return false;
+  const q = queryParam('multitab');
+  if (q === '0' || q === 'false') return false;
+  if (typeof BroadcastChannel === 'undefined') return false;
+  if (typeof navigator === 'undefined') return false;
+  const locks = (navigator as Navigator & { locks?: { request?: unknown } }).locks;
+  if (!locks || typeof locks.request !== 'function') return false;
+  return true;
+}

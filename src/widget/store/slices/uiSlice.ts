@@ -78,9 +78,17 @@ export interface UiSlice {
   /** Bumped when the agent asks to start a fresh intake (start_new_intake). App
    * watches this and runs the same reset as the "New chat" button. */
   newIntakeNonce: number;
+  /**
+   * Multi-tab: true when THIS tab owns the single LiveKit connection (the
+   * leader) or when multi-tab sync is off (a lone tab is always its own leader).
+   * A follower tab sets this false so it defers agent-driven "new chat" to the
+   * leader (avoids every tab minting its own fresh conversation).
+   */
+  isSessionLeader: boolean;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
   requestNewIntake: () => void;
+  setSessionLeader: (isLeader: boolean) => void;
   setVideoSoundOn: (on: boolean) => void;
   setConnectView: (view: ConnectView) => void;
   setConversationStarted: (started: boolean) => void;
@@ -131,9 +139,11 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   connectCallStatus: null,
   videoSoundOn: false,
   newIntakeNonce: 0,
+  isSessionLeader: true,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
   requestNewIntake: () => set((s) => ({ newIntakeNonce: s.newIntakeNonce + 1 })),
+  setSessionLeader: (isLeader) => set({ isSessionLeader: isLeader }),
   setVideoSoundOn: (on) => set({ videoSoundOn: on }),
   setConnectView: (view) => set({ connectView: view }),
   setConversationStarted: (started) => set({ conversationStarted: started }),

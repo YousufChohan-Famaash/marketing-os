@@ -9,7 +9,12 @@
 
 import type { WidgetBootConfig } from '../types/domain';
 import type { ConversationSocket } from '../types/protocol';
-import { getConsultationContext, isPersistenceEnabled } from '../config/env';
+import type { SessionSocketOptions } from './sessionSocket';
+import {
+  getConsultationContext,
+  isMultiTabSyncEnabled,
+  isPersistenceEnabled,
+} from '../config/env';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { fetchConversationHistory, fetchWidgetConfig } from './api';
@@ -24,14 +29,19 @@ export function loadBootConfig(
   return fetchWidgetConfig(firmId, signal);
 }
 
-/** Conversation socket over the LiveKit room data channel. Config is optional
- *  so this can be created in parallel with GET /config (the LiveKit URL comes
- *  from POST /token). */
+/**
+ * Conversation socket. Returns a `SessionSocket` — a multi-tab-safe wrapper that
+ * elects one leader tab to hold the single LiveKit connection and mirrors it to
+ * follower tabs (so two open tabs of the same conversation can't each connect and
+ * duplicate messages). When multi-tab sync is off/unsupported the wrapper is a
+ * thin pass-through to a single LiveKit `RealSocket` (the old behavior). The
+ * LiveKit code is loaded lazily inside the leader, so followers never fetch it.
+ */
 export async function createSocket(
-  config?: WidgetBootConfig,
+  opts: SessionSocketOptions = {},
 ): Promise<ConversationSocket> {
-  const { RealSocket } = await import('./realSocket');
-  return new RealSocket(config);
+  const { SessionSocket } = await import('./sessionSocket');
+  return new SessionSocket(opts, isMultiTabSyncEnabled());
 }
 
 /**
@@ -90,6 +100,19 @@ export function resetConversationId(firmId: string): string {
     /* storage blocked — the ephemeral id still works for this load */
   }
   return id;
+}
+
+/**
+ * Persist a SPECIFIC conversation id for the firm (unlike `resetConversationId`,
+ * which mints a new one). Used when another tab starts a new chat and this tab
+ * follows to the same fresh id, so a later reload resumes that new chat.
+ */
+export function persistConversationId(firmId: string, id: string): void {
+  try {
+    localStorage.setItem(`${CONV_STORAGE_PREFIX}${firmId}`, id);
+  } catch {
+    /* storage blocked — the id still works for this load */
+  }
 }
 
 /**
