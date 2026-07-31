@@ -431,6 +431,10 @@ export function App() {
     st.setCaseTypePicked(true);
     st.setConversationStarted(true);
     st.beginTyping();
+    // Always-on marker (namespaced) so we can confirm this build actually runs
+    // the reconnect on "new chat" — a POST /token must follow this line.
+    // eslint-disable-next-line no-console
+    console.info('[famaash] new chat → reconnecting on', freshId);
     connectSocket();
   }, [setConversationId, connectSocket]);
 
