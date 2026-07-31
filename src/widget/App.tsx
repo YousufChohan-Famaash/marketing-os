@@ -185,8 +185,18 @@ export function App() {
         // Apply the firm's font across the widget (graceful fallback if unset).
         applyFont(config.branding?.fontFamily);
         if (returning) {
-          await rehydrateFromHistory(conversationId, abort.signal);
+          const resumed = await rehydrateFromHistory(conversationId, abort.signal);
           if (cancelled) return;
+          // Reopened a real conversation → drop straight into the chat showing the
+          // transcript (not the home opener), and reconnect the live agent so it
+          // resumes at the next question. An ended conversation shows the
+          // transcript without reconnecting.
+          if (resumed.messageCount > 0) {
+            const st = useWidgetStore.getState();
+            st.setConnectView('chat');
+            st.setConversationStarted(true);
+            if (resumed.status !== 'ended') connectSocket();
+          }
         }
         // Don't override a connection failure that already set 'error'.
         if (useWidgetStore.getState().bootStatus !== 'error') {

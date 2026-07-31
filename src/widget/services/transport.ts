@@ -35,10 +35,12 @@ export async function createSocket(
 }
 
 /**
- * Conversation id. When persistence is ON, it's stored per-firm in
- * sessionStorage so a refresh resumes the same conversation (`/token` is
- * idempotent). When OFF (the default), every load is a fresh conversation —
- * handy for repeated end-to-end testing. `returning` drives history rehydrate.
+ * Conversation id. When persistence is ON (the default), it's stored per-firm in
+ * localStorage so closing the tab and reopening resumes the SAME conversation
+ * (`/token` is idempotent — a returning id reuses the Call+Lead+room and the
+ * agent resumes). localStorage (not sessionStorage) is what survives a tab close.
+ * `?persist=0` forces a fresh conversation for testing. `returning` drives the
+ * history rehydrate + live resume.
  */
 export function getOrCreateConversationId(firmId: string): {
   id: string;
@@ -55,7 +57,7 @@ export function getOrCreateConversationId(firmId: string): {
   if (!isPersistenceEnabled() && !handoff) {
     // Fresh each load; clear any stale id so turning persistence back on starts clean.
     try {
-      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
     } catch {
       /* ignore */
     }
@@ -63,15 +65,31 @@ export function getOrCreateConversationId(firmId: string): {
   }
 
   try {
-    const existing = sessionStorage.getItem(key);
+    const existing = localStorage.getItem(key);
     if (existing) return { id: existing, returning: true };
     const id = generateId('conv');
-    sessionStorage.setItem(key, id);
+    localStorage.setItem(key, id);
     return { id, returning: false };
   } catch {
-    // sessionStorage blocked (e.g. strict iframe) — fall back to ephemeral id.
+    // localStorage blocked (e.g. strict iframe) — fall back to ephemeral id.
     return { id: generateId('conv'), returning: false };
   }
+}
+
+/**
+ * Mint a fresh conversation id (a "start new chat") and persist it in place of
+ * the old one, so the next `/token` creates a new Call+Lead. The old
+ * conversation is preserved server-side; we just stop pointing at it.
+ */
+export function resetConversationId(firmId: string): string {
+  const key = `${CONV_STORAGE_PREFIX}${firmId}`;
+  const id = generateId('conv');
+  try {
+    localStorage.setItem(key, id);
+  } catch {
+    /* storage blocked — the ephemeral id still works for this load */
+  }
+  return id;
 }
 
 /**
@@ -85,7 +103,7 @@ export function getOrCreateConversationId(firmId: string): {
 export async function rehydrateFromHistory(
   conversationId: string,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<{ messageCount: number; status: 'active' | 'ended' | null }> {
   try {
     const history = await fetchConversationHistory(conversationId, signal);
     const store = useWidgetStore.getState();
@@ -93,9 +111,12 @@ export async function rehydrateFromHistory(
     for (const chip of history.chips ?? []) store.addChip(chip);
     for (const message of history.messages ?? []) store.upsertMessage(message);
     if (history.agentTakeover) store.setAgentTakeover(history.agentTakeover);
+    const messageCount = (history.messages ?? []).length;
     // The conversation already started → skip the opener, show the transcript.
-    if ((history.messages ?? []).length > 0) store.setCaseTypePicked(true);
+    if (messageCount > 0) store.setCaseTypePicked(true);
+    return { messageCount, status: history.status ?? null };
   } catch (err) {
     console.warn('[famaash-widget] history rehydrate skipped', err);
+    return { messageCount: 0, status: null };
   }
 }

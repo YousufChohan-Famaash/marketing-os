@@ -89,14 +89,16 @@ export function getAttribution(): Attribution | null {
 }
 
 /**
- * Whether to persist the conversation id + resume on reload. OFF by default so
- * every load starts a fresh conversation (handy for repeated end-to-end tests).
- * Turn on with `?persist=1` or `VITE_WIDGET_PERSIST=1`.
+ * Whether to persist the conversation id + resume on reopen. ON by default so a
+ * visitor who closes the tab and returns continues the same chat (session-
+ * persistence guide). Force a fresh conversation for testing with `?persist=0`
+ * or `VITE_WIDGET_PERSIST=0`.
  */
 export function isPersistenceEnabled(): boolean {
   const fromQuery = queryParam('persist');
-  if (fromQuery === '1' || fromQuery === 'true') return true;
   if (fromQuery === '0' || fromQuery === 'false') return false;
+  if (fromQuery === '1' || fromQuery === 'true') return true;
   const env = import.meta.env.VITE_WIDGET_PERSIST;
-  return env === '1' || env === 'true';
+  if (env === '0' || env === 'false') return false;
+  return true;
 }
