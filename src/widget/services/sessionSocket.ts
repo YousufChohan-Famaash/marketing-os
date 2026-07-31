@@ -19,12 +19,14 @@
  * flag, driven by `isMultiTabSyncEnabled()`).
  */
 
+import type { Message } from '../types/domain';
 import type {
   ClientEvent,
   ConversationSocket,
   ServerEvent,
   ServerEventHandler,
 } from '../types/protocol';
+import { useWidgetStore } from '../store/widgetStore';
 import type { RealSocket } from './realSocket';
 
 const DEV = import.meta.env.DEV;
@@ -37,12 +39,50 @@ type RelayMsg =
   | { kind: 'server'; event: ServerEvent }
   // follower → leader: an outgoing event for the leader to publish over LiveKit
   | { kind: 'client'; event: ClientEvent }
+  // any tab → peers: a user message THIS tab rendered optimistically, so peers
+  // render it too (the leader's server-event relay only carries AI messages)
+  | { kind: 'local'; message: Message }
   // a tab announcing / confirming it is the current leader
   | { kind: 'leader' }
   // a late-joining tab asking who the current leader is
   | { kind: 'ping' }
   // a tab started a fresh chat → peers should follow to this new conversation id
   | { kind: 'newchat'; conversationId: string };
+
+/**
+ * Reconstruct the user's own message from the outgoing event, so peer tabs can
+ * render it. The composer adds the lead's message to the LOCAL store and sends
+ * the event separately — that local add never reaches peers, so mirror it here
+ * from the same data the backend receives. Returns null for events that aren't a
+ * visible user message. Uses `clientMessageId` as the id so it dedupes (upsert
+ * by id) against the sender's optimistic copy and any same-id server echo.
+ */
+function userMessageFromEvent(event: ClientEvent): Message | null {
+  if (event.type === 'lead_message') {
+    return {
+      id: event.clientMessageId,
+      role: 'lead',
+      type: 'text',
+      content: event.content,
+      timestamp: Date.now(),
+      status: 'sent',
+    };
+  }
+  if (event.type === 'lead_media_message') {
+    return {
+      id: event.clientMessageId,
+      role: 'lead',
+      type: 'media',
+      content: '',
+      mediaKind: event.kind,
+      mediaUrl: event.url ?? undefined,
+      mediaDurationMs: event.durationMs,
+      timestamp: Date.now(),
+      status: 'sent',
+    };
+  }
+  return null;
+}
 
 export interface SessionSocketOptions {
   /** Another tab started a new chat; adopt this fresh conversation id. */
@@ -115,6 +155,14 @@ export class SessionSocket implements ConversationSocket {
   }
 
   send(event: ClientEvent): void {
+    // Mirror the user's own message to peer tabs (the composer rendered it only
+    // in this tab; the leader's relay only carries AI/server events). Peers
+    // upsert it by id, so it dedupes against their own copy or a server echo.
+    if (this.multiTab) {
+      const mine = userMessageFromEvent(event);
+      if (mine) this.post({ kind: 'local', message: mine });
+    }
+
     if (this.isLeader && this.leaderSocket) {
       this.leaderSocket.send(event);
       return;
@@ -232,6 +280,10 @@ export class SessionSocket implements ConversationSocket {
       case 'server':
         // Followers apply the relay; the leader already dispatched it via its tap.
         if (!this.isLeader && msg.event) this.dispatchLocal(msg.event);
+        break;
+      case 'local':
+        // A user message another tab sent — render it here too (upsert by id).
+        if (msg.message) useWidgetStore.getState().upsertMessage(msg.message);
         break;
       case 'client':
         // Only the leader publishes a follower's outgoing event.
