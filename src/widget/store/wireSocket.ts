@@ -136,6 +136,11 @@ export function wireSocketToStore(socket: ConversationSocket): () => void {
     socket.on('connect_call_status', (e) => {
       store.getState().setConnectCallStatus(e.status);
     }),
+
+    // Agent detected "start a new chat" → signal App to reset to a fresh intake.
+    socket.on('start_new_intake', () => {
+      store.getState().requestNewIntake();
+    }),
   ];
 
   return () => {

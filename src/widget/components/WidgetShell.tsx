@@ -20,6 +20,8 @@ interface WidgetShellProps {
   onMinimize: () => void;
   onExpand: () => void;
   isExpanded: boolean;
+  /** Start a fresh conversation (mints a new id, clears the transcript). */
+  onNewChat?: () => void;
 }
 
 export function WidgetShell({
@@ -27,6 +29,7 @@ export function WidgetShell({
   onMinimize,
   onExpand,
   isExpanded,
+  onNewChat,
 }: WidgetShellProps) {
   const composerRef = useRef<ComposerHandle>(null);
   const bootStatus = useWidgetStore((s) => s.bootStatus);
@@ -234,6 +237,7 @@ export function WidgetShell({
         onExpand={onExpand}
         isExpanded={isExpanded}
         onBack={backToHome}
+        onNewChat={caseTypePicked ? onNewChat : undefined}
         hasMorph={hasChatMorph}
         thumbInHeader={hasChatMorph && !stageOpen}
         solid={!stageActive}

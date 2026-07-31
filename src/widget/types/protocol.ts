@@ -126,6 +126,12 @@ export interface ConnectCallStatusEvent {
   call_id?: string;
 }
 
+/** The agent detected an explicit "start a new chat / new matter" → the widget
+ *  should mint a fresh conversation (same as the "New chat" button). */
+export interface StartNewIntakeEvent {
+  type: 'start_new_intake';
+}
+
 export type ServerEvent =
   | ReadyEvent
   | ConsentModalEvent
@@ -142,7 +148,8 @@ export type ServerEvent =
   | VideoMessageEvent
   | LinkCardEvent
   | FileUploadAckEvent
-  | ConnectCallStatusEvent;
+  | ConnectCallStatusEvent
+  | StartNewIntakeEvent;
 
 // ─────────────────────────────────────────────────────────────────────
 // Client → server events

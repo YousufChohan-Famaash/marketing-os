@@ -15,6 +15,7 @@ import {
   getOrCreateConversationId,
   loadBootConfig,
   rehydrateFromHistory,
+  resetConversationId,
 } from './services/transport';
 import { useWidgetStore } from './store/widgetStore';
 import { wireSocketToStore } from './store/wireSocket';
@@ -339,6 +340,43 @@ export function App() {
     bridgeRef.current?.notifyEvent(event);
   };
 
+  // "Start a new chat": tear down the live connection, clear the conversation,
+  // mint a fresh conversation id (a new Call+Lead next connect) and drop back to
+  // the chat opener. The old conversation is preserved server-side. The socket
+  // reconnects on the next case-type pick (Option B), same as a first-time chat.
+  const startNewChat = useCallback(() => {
+    unwireRef.current?.();
+    unwireRef.current = null;
+    socketRef.current?.disconnect();
+    socketRef.current = null;
+    connectingRef.current = false;
+    setSocket(null);
+
+    const st = useWidgetStore.getState();
+    st.resetConversation();
+    st.resetCapture();
+    st.resetChips();
+    st.endStreaming();
+    st.setAgentTakeover(null);
+    st.clearUnread();
+    st.setCaseTypePicked(false);
+    st.setConversationStarted(false);
+    st.setPendingCaseType(null);
+    st.setConnectCallStatus(null);
+
+    const fresh = resetConversationId(firmId);
+    conversationIdRef.current = fresh;
+    setConversationId(fresh);
+    st.setConnectView('chat');
+  }, [firmId, setConversationId]);
+
+  // The agent can ask to start a fresh intake (a typed "start a new chat"); the
+  // socket handler bumps this nonce and we run the same reset as the button.
+  const newIntakeNonce = useWidgetStore((s) => s.newIntakeNonce);
+  useEffect(() => {
+    if (newIntakeNonce > 0) startNewChat();
+  }, [newIntakeNonce, startNewChat]);
+
   const handleClose = () => {
     closeWidget();
     notifyHostEvent({ type: 'widget_closed', data: {} });
@@ -375,7 +413,7 @@ export function App() {
     >
       <SocketContext.Provider value={socket}>
         <div className="relative flex h-full w-full flex-col" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-          <WidgetShell onClose={handleClose} onMinimize={handleMinimize} onExpand={handleExpand} isExpanded={isExpanded} />
+          <WidgetShell onClose={handleClose} onMinimize={handleMinimize} onExpand={handleExpand} isExpanded={isExpanded} onNewChat={startNewChat} />
           <ModalHost />
           <ConsentModal />
           {activeSigning && <SigningSheet signing={activeSigning} />}

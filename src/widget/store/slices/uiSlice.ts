@@ -75,8 +75,12 @@ export interface UiSlice {
    * subsequent videos start unmuted (and vice-versa). One toggle, one memory.
    */
   videoSoundOn: boolean;
+  /** Bumped when the agent asks to start a fresh intake (start_new_intake). App
+   * watches this and runs the same reset as the "New chat" button. */
+  newIntakeNonce: number;
 
   setBootStatus: (status: BootStatus, error?: string | null) => void;
+  requestNewIntake: () => void;
   setVideoSoundOn: (on: boolean) => void;
   setConnectView: (view: ConnectView) => void;
   setConversationStarted: (started: boolean) => void;
@@ -126,8 +130,10 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   undoableMessageId: null,
   connectCallStatus: null,
   videoSoundOn: false,
+  newIntakeNonce: 0,
 
   setBootStatus: (status, error = null) => set({ bootStatus: status, bootError: error }),
+  requestNewIntake: () => set((s) => ({ newIntakeNonce: s.newIntakeNonce + 1 })),
   setVideoSoundOn: (on) => set({ videoSoundOn: on }),
   setConnectView: (view) => set({ connectView: view }),
   setConversationStarted: (started) => set({ conversationStarted: started }),

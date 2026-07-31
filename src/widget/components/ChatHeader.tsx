@@ -1,6 +1,6 @@
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar } from '../config/demoMedia';
-import { ChevronLeftIcon } from '../utils/icons';
+import { ChevronLeftIcon, EditIcon } from '../utils/icons';
 import { Avatar } from './Avatar';
 import { WidgetControls } from './WidgetControls';
 import { cn } from '../utils/cn';
@@ -12,6 +12,8 @@ interface ChatHeaderProps {
   isExpanded: boolean;
   /** Return to the Connect home menu (conversation is preserved). */
   onBack?: () => void;
+  /** Start a fresh conversation. When set, shows a "New chat" button. */
+  onNewChat?: () => void;
   /** Solid white bar (default) vs. transparent overlay on the intro video. */
   solid?: boolean;
   /** The firm has a morphing chat video (drives the Avatar-vs-slot choice). */
@@ -29,6 +31,7 @@ export function ChatHeader({
   onExpand,
   isExpanded,
   onBack,
+  onNewChat,
   solid = true,
   hasMorph = false,
   thumbInHeader = false,
@@ -143,13 +146,31 @@ export function ChatHeader({
         )}
       </div>
 
-      <WidgetControls
-        tone={solid ? 'solid' : 'overlay'}
-        onClose={onClose}
-        onMinimize={onMinimize}
-        onExpand={onExpand}
-        isExpanded={isExpanded}
-      />
+      <div className="flex shrink-0 items-center gap-1.5">
+        {onNewChat && (
+          <button
+            type="button"
+            onClick={onNewChat}
+            aria-label="Start a new chat"
+            title="New chat"
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
+              solid
+                ? 'text-muted hover:bg-subtle hover:text-ink'
+                : 'bg-white/70 text-ink-soft backdrop-blur hover:bg-white/90',
+            )}
+          >
+            <EditIcon size={16} />
+          </button>
+        )}
+        <WidgetControls
+          tone={solid ? 'solid' : 'overlay'}
+          onClose={onClose}
+          onMinimize={onMinimize}
+          onExpand={onExpand}
+          isExpanded={isExpanded}
+        />
+      </div>
     </header>
   );
 }
