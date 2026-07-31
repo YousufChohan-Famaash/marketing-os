@@ -432,11 +432,16 @@ export function fetchWidgetConfig(
   );
 }
 
-/** POST /token — create/resume conversation, get a LiveKit room token. */
+/** POST /token — create/resume conversation, get a LiveKit room token.
+ *  Pass `conversation_id` to resume/create-by-id; pass `new_chat: true` (no id)
+ *  to have the SERVER mint a fresh conversation_id + new Call+Lead and set the
+ *  agent to open a fresh intake. The response always carries `conversation_id`. */
 export function createConversationToken(
   body: {
     firm_id: string;
-    conversation_id: string;
+    conversation_id?: string;
+    /** Server mints a brand-new conversation (new Call+Lead, fresh intake). */
+    new_chat?: boolean;
     language?: string;
     practice_area?: string;
     case_type_id?: string;

@@ -27,6 +27,7 @@ import type {
   ServerEventHandler,
 } from '../types/protocol';
 import { useWidgetStore } from '../store/widgetStore';
+import type { ConversationTokenResponse } from './api';
 import type { RealSocket } from './realSocket';
 
 const DEV = import.meta.env.DEV;
@@ -91,6 +92,9 @@ export interface SessionSocketOptions {
   onRoleChange?: (isLeader: boolean) => void;
   /** The leader's underlying LiveKit connection failed. */
   onError?: (message: string) => void;
+  /** A pre-minted session (from a "start new chat" POST /token {new_chat:true}).
+   * The first leader joins THIS room instead of POSTing /token again. */
+  presetSession?: ConversationTokenResponse;
 }
 
 export class SessionSocket implements ConversationSocket {
@@ -244,8 +248,12 @@ export class SessionSocket implements ConversationSocket {
 
     const queued = this.preRolePending;
     this.preRolePending = [];
+    // Use a pre-minted session ONCE (the new-chat initiator); a later failover
+    // leader re-POSTs /token to resume by id.
+    const preset = this.opts.presetSession;
+    this.opts.presetSession = undefined;
     try {
-      await real.connect(this.firmId, this.conversationId);
+      await real.connect(this.firmId, this.conversationId, preset);
     } catch (err) {
       if (DEV) console.warn('[famaash-widget] leader connect failed', err);
       this.opts.onError?.(err instanceof Error ? err.message : 'Connection failed');

@@ -11,13 +11,19 @@ import type { WidgetBootConfig } from '../types/domain';
 import type { ConversationSocket } from '../types/protocol';
 import type { SessionSocketOptions } from './sessionSocket';
 import {
+  getAttribution,
   getConsultationContext,
   isMultiTabSyncEnabled,
   isPersistenceEnabled,
 } from '../config/env';
 import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
-import { fetchConversationHistory, fetchWidgetConfig } from './api';
+import {
+  createConversationToken,
+  fetchConversationHistory,
+  fetchWidgetConfig,
+  type ConversationTokenResponse,
+} from './api';
 
 const CONV_STORAGE_PREFIX = 'famaash_conv_';
 
@@ -89,25 +95,34 @@ export function getOrCreateConversationId(firmId: string): {
 }
 
 /**
- * Mint a fresh conversation id (a "start new chat") and persist it in place of
- * the old one, so the next `/token` creates a new Call+Lead. The old
- * conversation is preserved server-side; we just stop pointing at it.
+ * "Start a new chat": ask the SERVER to mint a fresh conversation (new Call+Lead)
+ * and set the agent to open a fresh intake — do NOT generate the id client-side
+ * (per chat-widget-session-persistence-frontend-guide §4, 2026-08-01). Returns the
+ * full session (conversation_id + LiveKit token) so we can connect straight into
+ * the minted room without a second /token round-trip (which would drop the
+ * agent's opener into an empty room before we join). The old conversation is
+ * preserved server-side; the caller persists the returned id.
  */
-export function resetConversationId(firmId: string): string {
-  const key = `${CONV_STORAGE_PREFIX}${firmId}`;
-  const id = generateId('conv');
-  try {
-    localStorage.setItem(key, id);
-  } catch {
-    /* storage blocked — the ephemeral id still works for this load */
-  }
-  return id;
+export function createFreshChatSession(
+  firmId: string,
+  signal?: AbortSignal,
+): Promise<ConversationTokenResponse> {
+  return createConversationToken(
+    {
+      firm_id: firmId,
+      new_chat: true,
+      language: useWidgetStore.getState().language,
+      // Attribute the new lead to the same source (best-effort; may be null).
+      ...(getAttribution() ?? {}),
+    },
+    signal,
+  );
 }
 
 /**
- * Persist a SPECIFIC conversation id for the firm (unlike `resetConversationId`,
- * which mints a new one). Used when another tab starts a new chat and this tab
- * follows to the same fresh id, so a later reload resumes that new chat.
+ * Persist a SPECIFIC conversation id for the firm (e.g. the server-minted id from
+ * a "start new chat"). Used so a later reload resumes that conversation, and so a
+ * peer tab following a new chat points at the same id.
  */
 export function persistConversationId(firmId: string, id: string): void {
   try {

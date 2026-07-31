@@ -6,7 +6,7 @@ import type {
   ServerEvent,
   ServerEventHandler,
 } from '../types/protocol';
-import { createConversationToken } from './api';
+import { createConversationToken, type ConversationTokenResponse } from './api';
 import { useWidgetStore } from '../store/widgetStore';
 import { getConsultationContext, getAttribution } from '../config/env';
 
@@ -52,18 +52,27 @@ export class RealSocket implements ConversationSocket {
   // GET /config — the LiveKit URL comes from /token; config is only a fallback.
   constructor(private readonly config?: WidgetBootConfig) {}
 
-  async connect(firmId: string, conversationId: string): Promise<void> {
-    const session = await createConversationToken({
-      firm_id: firmId,
-      conversation_id: conversationId,
-      language: useWidgetStore.getState().language,
-      // Seed with the Free Consultation answers when the chat was opened from
-      // that wizard (null → nothing added, normal cold chat).
-      ...(getConsultationContext() ?? {}),
-      // Marketing attribution the loader forwarded from the host page → lets the
-      // backend attribute this chat lead to its source/campaign.
-      ...(getAttribution() ?? {}),
-    });
+  async connect(
+    firmId: string,
+    conversationId: string,
+    presetSession?: ConversationTokenResponse,
+  ): Promise<void> {
+    // A "start new chat" already POSTed /token {new_chat:true} and holds the
+    // minted session — reuse it so we join THAT room (no second /token, and no
+    // risk of the agent's opener landing in an empty room before we join).
+    const session =
+      presetSession ??
+      (await createConversationToken({
+        firm_id: firmId,
+        conversation_id: conversationId,
+        language: useWidgetStore.getState().language,
+        // Seed with the Free Consultation answers when the chat was opened from
+        // that wizard (null → nothing added, normal cold chat).
+        ...(getConsultationContext() ?? {}),
+        // Marketing attribution the loader forwarded from the host page → lets the
+        // backend attribute this chat lead to its source/campaign.
+        ...(getAttribution() ?? {}),
+      }));
     if (DEV) console.log('[famaash-widget] /token', session);
 
     this.clientTopic = session.client_topic || DEFAULT_CLIENT_TOPIC;

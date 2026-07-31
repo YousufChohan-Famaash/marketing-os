@@ -10,13 +10,14 @@ import { getConsultationContext } from './config/env';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
+import type { ConversationTokenResponse } from './services/api';
 import {
+  createFreshChatSession,
   createSocket,
   getOrCreateConversationId,
   loadBootConfig,
   persistConversationId,
   rehydrateFromHistory,
-  resetConversationId,
 } from './services/transport';
 import { useWidgetStore } from './store/widgetStore';
 import { wireSocketToStore } from './store/wireSocket';
@@ -92,7 +93,7 @@ export function App() {
   // guarded so a fast double-tap or a re-render can't open two rooms. The pick
   // itself is sent by the flush effect once `socket` is set (RealSocket queues
   // it until the agent's `ready` event).
-  const connectSocket = useCallback(() => {
+  const connectSocket = useCallback((presetSession?: ConversationTokenResponse) => {
     if (socketRef.current || connectingRef.current) return;
     const cid = conversationIdRef.current;
     if (!cid) return;
@@ -107,6 +108,8 @@ export function App() {
           onRoleChange: (isLeader) => useWidgetStore.getState().setSessionLeader(isLeader),
           // Surface a leader connection failure the same way a direct one did.
           onError: (msg) => { if (!disposedRef.current) setBootStatus('error', msg); },
+          // A "start new chat" pre-minted the room; the leader joins it directly.
+          presetSession,
         });
         if (disposedRef.current) { s.disconnect(); return; }
         socketRef.current = s;
@@ -214,13 +217,18 @@ export function App() {
         if (returning) {
           const resumed = await rehydrateFromHistory(conversationId, abort.signal);
           if (cancelled) return;
-          // Reopened a real conversation → drop straight into the chat showing the
-          // transcript (not the home opener), and reconnect the live agent so it
-          // resumes at the next question. An ended conversation shows the
-          // transcript without reconnecting.
-          if (resumed.messageCount > 0) {
+          // Reopened a real conversation → drop straight into the chat (not the
+          // home opener) and reconnect the live agent so it resumes at the next
+          // question. Connect whenever the conversation is real — it has messages
+          // OR the backend still calls it active (covers a just-started "new chat"
+          // whose opener hasn't persisted yet). An ended conversation shows the
+          // transcript without reconnecting. This "always connect on open" is what
+          // keeps resume working (session-persistence guide Rule 1).
+          const resumable = resumed.messageCount > 0 || resumed.status === 'active';
+          if (resumable) {
             const st = useWidgetStore.getState();
             st.setConnectView('chat');
+            st.setCaseTypePicked(true);
             st.setConversationStarted(true);
             if (resumed.status !== 'ended') connectSocket();
           }
@@ -391,64 +399,74 @@ export function App() {
     bridgeRef.current?.notifyEvent(event);
   };
 
-  // Start a fresh intake on `freshId`: tear down the old room, clear every
-  // conversation slice, then RECONNECT so the agent opens a new intake. Shared by
-  // the "New chat" button, the agent's start_new_intake, and following a peer
-  // tab's new chat. "New chat" = mint a new id AND reconnect — disconnecting
-  // without reconnecting is the bug in chat-widget-new-chat-disconnect-fix. Unlike
-  // a first open (deferred connect to avoid a Lead per bounce), an explicit new
-  // chat connects now: the fresh id creates a new Call+Lead and a fresh opener.
-  const resetToConversation = useCallback((freshId: string) => {
-    unwireRef.current?.();
-    unwireRef.current = null;
-    socketRef.current?.disconnect();
-    socketRef.current = null;
-    connectingRef.current = false;
-    setSocket(null);
+  // Reset to a fresh conversation `freshId` and RECONNECT immediately so the
+  // agent opens the intake. `presetSession` is the just-minted session from a
+  // "start new chat" (POST /token {new_chat:true}); the leader joins THAT room so
+  // the agent's fresh-intake opener isn't lost. A follower adopting a peer's new
+  // chat passes no preset (it resumes by id / relays). Reconnecting is the half
+  // that was missing — disconnect-without-reconnect is the new-chat bug.
+  const resetToConversation = useCallback(
+    (freshId: string, presetSession?: ConversationTokenResponse) => {
+      unwireRef.current?.();
+      unwireRef.current = null;
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      connectingRef.current = false;
+      setSocket(null);
 
-    const st = useWidgetStore.getState();
-    st.resetConversation();
-    st.resetCapture();
-    st.resetChips();
-    st.endStreaming();
-    st.setAgentTakeover(null);
-    st.clearUnread();
-    st.setPendingCaseType(null);
-    st.setConnectCallStatus(null);
-    // Fresh conversation: this tab leads again until the next connect re-elects.
-    st.setSessionLeader(true);
-    // Never let a stale start_new_intake re-fire against the new conversation.
-    handledIntakeNonce.current = st.newIntakeNonce;
+      const st = useWidgetStore.getState();
+      st.resetConversation();
+      st.resetCapture();
+      st.resetChips();
+      st.endStreaming();
+      st.setAgentTakeover(null);
+      st.clearUnread();
+      st.setPendingCaseType(null);
+      st.setConnectCallStatus(null);
+      // Fresh conversation: this tab leads again until the next connect re-elects.
+      st.setSessionLeader(true);
+      // Never let a stale start_new_intake re-fire against the new conversation.
+      handledIntakeNonce.current = st.newIntakeNonce;
 
-    conversationIdRef.current = freshId;
-    setConversationId(freshId);
+      conversationIdRef.current = freshId;
+      setConversationId(freshId);
 
-    // Show the FRESH case-type opener and reconnect on the pick — the proven
-    // first-chat flow. The agent opens the intake in response to the case-type
-    // pick (case_type_selected); a bare connect with no pick leaves the agent
-    // silent (verified on prod: the room joins the new conversation_id but no
-    // opener ever arrives), so we must NOT auto-connect and wait. The pick fires
-    // the new POST /token → new Call+Lead → the agent's fresh intake opener.
-    st.setCaseTypePicked(false);
-    st.setConversationStarted(false);
-    st.setConnectView('chat');
-    // eslint-disable-next-line no-console
-    console.info('[famaash] new chat → fresh opener on', freshId, '(connects on pick)');
-  }, [setConversationId]);
+      // Show the live chat (typing dots) and connect now. With new_chat:true the
+      // server set the agent to open a fresh intake, so the opener arrives on
+      // connect — no case-type pick needed.
+      st.setConnectView('chat');
+      st.setCaseTypePicked(true);
+      st.setConversationStarted(true);
+      st.beginTyping();
+      // eslint-disable-next-line no-console
+      console.info('[famaash] new chat → reconnecting on', freshId);
+      connectSocket(presetSession);
+    },
+    [setConversationId, connectSocket],
+  );
 
   // "Start a new chat" (header button, or the leader acting on start_new_intake):
-  // mint a fresh id, tell peer tabs to follow to it, then drop back to the fresh
-  // case-type opener. The old conversation is preserved server-side; the fresh id
-  // creates a new Call+Lead on the next pick (which also opens the agent's intake).
-  const startNewChat = useCallback(() => {
-    const fresh = resetConversationId(firmId);
+  // the SERVER mints the fresh conversation + agent (new_chat:true); we join the
+  // minted room and tell peers to follow. The old conversation is preserved.
+  const startNewChat = useCallback(async () => {
+    let session: ConversationTokenResponse;
+    try {
+      session = await createFreshChatSession(firmId);
+    } catch (err) {
+      if (!disposedRef.current) {
+        setBootStatus('error', err instanceof Error ? err.message : 'Could not start a new chat');
+      }
+      return;
+    }
     // Notify peers on the OLD conversation BEFORE tearing its socket down.
-    socketRef.current?.notifyNewChat?.(fresh);
-    resetToConversation(fresh);
-  }, [firmId, resetToConversation]);
+    socketRef.current?.notifyNewChat?.(session.conversation_id);
+    persistConversationId(firmId, session.conversation_id);
+    resetToConversation(session.conversation_id, session);
+  }, [firmId, resetToConversation, setBootStatus]);
 
   // A peer tab started a new chat → adopt the SAME fresh id so all tabs share the
-  // new conversation, and persist it so a reload resumes that one.
+  // new conversation, and persist it so a reload resumes that one. No preset: the
+  // initiator already minted it, so this tab resumes by id (or follows the leader).
   const adoptNewChat = useCallback((freshId: string) => {
     if (freshId === conversationIdRef.current) return;
     persistConversationId(firmId, freshId);
@@ -467,7 +485,7 @@ export function App() {
   useEffect(() => {
     if (newIntakeNonce > handledIntakeNonce.current && isSessionLeader) {
       handledIntakeNonce.current = newIntakeNonce;
-      startNewChat();
+      void startNewChat();
     }
   }, [newIntakeNonce, isSessionLeader, startNewChat]);
 
