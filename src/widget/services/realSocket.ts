@@ -47,6 +47,11 @@ export class RealSocket implements ConversationSocket {
   private agentReady = false;
   private pending: ClientEvent[] = [];
   private readyTimer: ReturnType<typeof setTimeout> | null = null;
+  // Distinguish a deliberate teardown from an unexpected drop, so we only fire
+  // `disconnectCb` (→ app reconnect) for the latter, and only once.
+  private closing = false;
+  private disconnectFired = false;
+  private disconnectCb: (() => void) | null = null;
 
   // Config is optional so the socket can be created/connected in parallel with
   // GET /config — the LiveKit URL comes from /token; config is only a fallback.
@@ -91,15 +96,22 @@ export class RealSocket implements ConversationSocket {
       this.dispatch(payload);
     });
 
+    // Surface an UNEXPECTED drop (agent left / idle / network) so the app can
+    // reconnect. A deliberate teardown sets `closing`, so it doesn't fire then.
+    room.on(RoomEvent.Disconnected, (r) => {
+      if (DEV) console.log('[famaash-widget] disconnected', r);
+      if (!this.closing && !this.disconnectFired) {
+        this.disconnectFired = true;
+        this.disconnectCb?.();
+      }
+    });
+
     if (DEV) {
       room.on(RoomEvent.ParticipantConnected, (p) =>
         console.log('[famaash-widget] participant joined', p.identity),
       );
       room.on(RoomEvent.ConnectionStateChanged, (s) =>
         console.log('[famaash-widget] connection state', s),
-      );
-      room.on(RoomEvent.Disconnected, (r) =>
-        console.log('[famaash-widget] disconnected', r),
       );
     }
 
@@ -187,10 +199,16 @@ export class RealSocket implements ConversationSocket {
     };
   }
 
+  /** Fired once if the LiveKit room drops unexpectedly (not via disconnect()). */
+  onDisconnect(handler: () => void): void {
+    this.disconnectCb = handler;
+  }
+
   /** No-op: a single LiveKit socket has no peer tabs to notify. */
   notifyNewChat(): void {}
 
   disconnect(): void {
+    this.closing = true;
     this.agentReady = false;
     this.pending = [];
     if (this.readyTimer) {

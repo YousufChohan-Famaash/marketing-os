@@ -85,6 +85,11 @@ export function App() {
   // The language the first (boot) config was fetched in, so the re-fetch effect
   // only fires on a SUBSEQUENT picker change, not on the initial derivation.
   const langBaselineRef = useRef<string | null>(null);
+  // Set later to the "reconnect + resume the current chat" handler, so
+  // connectSocket (defined above it) can hand it to the socket's onDisconnect.
+  const reconnectResumeRef = useRef<() => void>(() => {});
+  // Timestamp of the last auto-reconnect, to rate-limit drop→reconnect loops.
+  const reconnectGuardRef = useRef(0);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
 
@@ -108,6 +113,9 @@ export function App() {
           onRoleChange: (isLeader) => useWidgetStore.getState().setSessionLeader(isLeader),
           // Surface a leader connection failure the same way a direct one did.
           onError: (msg) => { if (!disposedRef.current) setBootStatus('error', msg); },
+          // The live connection dropped (agent left / idle / network) → reconnect
+          // and resume, so the chat doesn't go dead with no way back to the agent.
+          onDisconnect: () => reconnectResumeRef.current(),
           // A "start new chat" pre-minted the room; the leader joins it directly.
           presetSession,
         });
@@ -431,15 +439,16 @@ export function App() {
       conversationIdRef.current = freshId;
       setConversationId(freshId);
 
-      // Show the live chat (typing dots) and connect now. With new_chat:true the
-      // server set the agent to open a fresh intake, so the opener arrives on
-      // connect — no case-type pick needed.
+      // Connect NOW (new_chat:true already minted the room + new Call+Lead) so the
+      // agent is live, AND show the fresh case-type opener. The case-type pick is
+      // what reliably starts the agent's intake — same as a first chat — so this
+      // works whether or not the agent also auto-opens on the fresh connect. (When
+      // the backend does auto-open, that message just shows above the opener.)
       st.setConnectView('chat');
-      st.setCaseTypePicked(true);
-      st.setConversationStarted(true);
-      st.beginTyping();
+      st.setCaseTypePicked(false);
+      st.setConversationStarted(false);
       // eslint-disable-next-line no-console
-      console.info('[famaash] new chat → reconnecting on', freshId);
+      console.info('[famaash] new chat → fresh opener + connect on', freshId);
       connectSocket(presetSession);
     },
     [setConversationId, connectSocket],
@@ -475,6 +484,58 @@ export function App() {
   useEffect(() => {
     adoptNewChatRef.current = adoptNewChat;
   }, [adoptNewChat]);
+
+  // Reconnect + resume the CURRENT conversation: tear down the dead socket, re-pull
+  // the transcript, and reconnect (POST /token with the same id → the agent
+  // resumes at the next question). Used when the live connection drops and when
+  // re-entering the chat view without a live socket, so the chat never sits dead
+  // with no agent. `force` bypasses the auto-drop rate-limit for user-driven entry.
+  const reconnectResume = useCallback(
+    (force = false) => {
+      if (disposedRef.current) return;
+      const cid = conversationIdRef.current;
+      if (!cid) return;
+      const now = Date.now();
+      if (!force && now - reconnectGuardRef.current < 4000) return; // avoid drop→reconnect loops
+      reconnectGuardRef.current = now;
+
+      unwireRef.current?.();
+      unwireRef.current = null;
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      connectingRef.current = false;
+      setSocket(null);
+
+      useWidgetStore.getState().beginTyping();
+      // eslint-disable-next-line no-console
+      console.info('[famaash] resuming chat on', cid);
+      void (async () => {
+        try {
+          await rehydrateFromHistory(cid);
+        } catch {
+          /* keep whatever is already in the store */
+        }
+        if (disposedRef.current) return;
+        connectSocket();
+      })();
+    },
+    [connectSocket],
+  );
+  useEffect(() => {
+    reconnectResumeRef.current = () => reconnectResume(false);
+  }, [reconnectResume]);
+
+  // Resume when re-entering the chat view without a live connection (e.g. after a
+  // trip to the home menu during which the connection dropped). Skips the fresh
+  // opener (no case type yet → the pick connects) and any case where a socket is
+  // already up, so it only fills a genuine gap.
+  useEffect(() => {
+    if (bootStatus !== 'ready' || connectView !== 'chat') return;
+    const st = useWidgetStore.getState();
+    if (!st.caseTypePicked) return;
+    if (socketRef.current || connectingRef.current) return;
+    reconnectResume(true);
+  }, [connectView, bootStatus, reconnectResume]);
 
   // The agent can ask to start a fresh intake (a typed "start a new chat"). The
   // relayed event bumps this nonce in EVERY tab, so gate on leadership: only the

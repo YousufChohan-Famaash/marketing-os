@@ -92,6 +92,9 @@ export interface SessionSocketOptions {
   onRoleChange?: (isLeader: boolean) => void;
   /** The leader's underlying LiveKit connection failed. */
   onError?: (message: string) => void;
+  /** The leader's LiveKit room dropped unexpectedly (agent left / idle / network)
+   * — the app should reconnect (resume). */
+  onDisconnect?: () => void;
   /** A pre-minted session (from a "start new chat" POST /token {new_chat:true}).
    * The first leader joins THIS room instead of POSTing /token again. */
   presetSession?: ConversationTokenResponse;
@@ -244,6 +247,10 @@ export class SessionSocket implements ConversationSocket {
     this.offAny = real.onAny((event) => {
       this.dispatchLocal(event);
       this.post({ kind: 'server', event });
+    });
+    // An unexpected LiveKit drop → tell the app to reconnect (resume).
+    real.onDisconnect(() => {
+      if (!this.disposed) this.opts.onDisconnect?.();
     });
 
     const queued = this.preRolePending;
