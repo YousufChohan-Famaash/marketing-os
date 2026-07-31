@@ -391,10 +391,13 @@ export function App() {
     bridgeRef.current?.notifyEvent(event);
   };
 
-  // Tear down the live connection, clear every conversation slice, then point at
-  // `freshId` and drop back to the chat opener. Shared by the "New chat" button,
-  // the agent's start_new_intake, and following a peer tab's new chat. The socket
-  // reconnects on the next case-type pick (Option B), same as a first-time chat.
+  // Start a fresh intake on `freshId`: tear down the old room, clear every
+  // conversation slice, then RECONNECT so the agent opens a new intake. Shared by
+  // the "New chat" button, the agent's start_new_intake, and following a peer
+  // tab's new chat. "New chat" = mint a new id AND reconnect — disconnecting
+  // without reconnecting is the bug in chat-widget-new-chat-disconnect-fix. Unlike
+  // a first open (deferred connect to avoid a Lead per bounce), an explicit new
+  // chat connects now: the fresh id creates a new Call+Lead and a fresh opener.
   const resetToConversation = useCallback((freshId: string) => {
     unwireRef.current?.();
     unwireRef.current = null;
@@ -410,8 +413,6 @@ export function App() {
     st.endStreaming();
     st.setAgentTakeover(null);
     st.clearUnread();
-    st.setCaseTypePicked(false);
-    st.setConversationStarted(false);
     st.setPendingCaseType(null);
     st.setConnectCallStatus(null);
     // Fresh conversation: this tab leads again until the next connect re-elects.
@@ -421,12 +422,22 @@ export function App() {
 
     conversationIdRef.current = freshId;
     setConversationId(freshId);
+
+    // Show the live chat immediately (typing dots) and connect: the agent greets
+    // with a fresh intake on a brand-new conversation_id (no case-type pick
+    // needed, same as the consultation hand-off). This is the reconnect half that
+    // was missing — without it the room dies and nothing replaces it.
     st.setConnectView('chat');
-  }, [setConversationId]);
+    st.setCaseTypePicked(true);
+    st.setConversationStarted(true);
+    st.beginTyping();
+    connectSocket();
+  }, [setConversationId, connectSocket]);
 
   // "Start a new chat" (header button, or the leader acting on start_new_intake):
-  // mint a fresh id, tell peer tabs to follow to it, then reset. The old
-  // conversation is preserved server-side (a new Call+Lead is created next connect).
+  // mint a fresh id, tell peer tabs to follow to it, then reset + reconnect. The
+  // old conversation is preserved server-side; the fresh id creates a new
+  // Call+Lead the moment resetToConversation reconnects.
   const startNewChat = useCallback(() => {
     const fresh = resetConversationId(firmId);
     // Notify peers on the OLD conversation BEFORE tearing its socket down.
