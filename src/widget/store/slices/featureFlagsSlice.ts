@@ -36,6 +36,11 @@ export interface FeatureFlagsSlice {
   languages: string[];
   setLanguage: (language: string) => void;
   setBootConfig: (config: WidgetBootConfig) => void;
+  /** Re-apply the config-derived, language-varying fields (branding videos +
+   * posters + captions, connect channel videos, compliance copy) WITHOUT
+   * touching the visitor's chosen `language`/`languages`. Used when the language
+   * picker changes and we re-fetch /config?language= to swap the video. */
+  applyLanguageConfig: (config: WidgetBootConfig) => void;
 }
 
 export const createFeatureFlagsSlice: StateCreator<
@@ -80,4 +85,11 @@ export const createFeatureFlagsSlice: StateCreator<
       language,
     });
   },
+  applyLanguageConfig: (config) =>
+    set({
+      branding: config.branding,
+      compliance: config.compliance,
+      connect: resolveConnectSettings(config),
+      // language / languages intentionally preserved — the picker owns them.
+    }),
 });

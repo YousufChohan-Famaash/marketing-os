@@ -63,6 +63,7 @@ export function App() {
   const connectView = useWidgetStore((s) => s.connectView);
   const conversationStarted = useWidgetStore((s) => s.conversationStarted);
   const language = useWidgetStore((s) => s.language);
+  const bootStatus = useWidgetStore((s) => s.bootStatus);
   const bridgeRef = useRef<HostBridgeClient | null>(null);
   const [bridgeReady, setBridgeReady] = useState(false);
   // Deferred LiveKit connection (Option B): the socket is created on the
@@ -80,6 +81,9 @@ export function App() {
   // Highest start_new_intake nonce we've already acted on, so a reset never
   // re-fires for a stale request (e.g. after a role change re-runs the effect).
   const handledIntakeNonce = useRef(0);
+  // The language the first (boot) config was fetched in, so the re-fetch effect
+  // only fires on a SUBSEQUENT picker change, not on the initial derivation.
+  const langBaselineRef = useRef<string | null>(null);
 
   const firmId = useMemo(readFirmIdFromQuery, []);
 
@@ -188,7 +192,13 @@ export function App() {
     // ── Config track — paints the opener ─────────────────────────────────
     void (async () => {
       try {
-        const config = await loadBootConfig(firmId, abort.signal);
+        // Best-guess the visitor's language before we know the firm's offered set
+        // (the backend falls back if it isn't offered), so the first video is
+        // already language-matched. The picker re-fetches on a later change.
+        const navLang = (typeof navigator !== 'undefined' ? navigator.language : 'en')
+          .slice(0, 2)
+          .toLowerCase();
+        const config = await loadBootConfig(firmId, navLang, abort.signal);
         if (cancelled) return;
         setBootConfig(config);
         // Theme precedence: an explicit admin 'custom' palette overrides the
@@ -296,6 +306,31 @@ export function App() {
       connectSocket();
     }
   }, [socket, pendingCaseType, setPendingCaseType, connectSocket]);
+
+  // Language swap: when the visitor picks a different language, re-fetch
+  // /config?language= so the intro / channel videos (+ posters + captions +
+  // compliance copy) become the language-matched clip. We DON'T re-run boot or
+  // touch the conversation — just swap the config-derived fields. The first
+  // post-boot language is the baseline, so this only fires on a picker change.
+  useEffect(() => {
+    if (bootStatus !== 'ready') return undefined;
+    if (langBaselineRef.current === null) {
+      langBaselineRef.current = language; // establish baseline; no fetch on boot
+      return undefined;
+    }
+    if (langBaselineRef.current === language) return undefined;
+    langBaselineRef.current = language;
+    const abort = new AbortController();
+    void (async () => {
+      try {
+        const fresh = await loadBootConfig(firmId, language, abort.signal);
+        if (!abort.signal.aborted) useWidgetStore.getState().applyLanguageConfig(fresh);
+      } catch {
+        /* keep the current video on failure — never blank the slot */
+      }
+    })();
+    return () => abort.abort();
+  }, [language, bootStatus, firmId]);
 
   // Open the widget locally when it boots — in production the host's launcher
   // would call `iframe.open()` over Penpal, but for local dev we self-open.

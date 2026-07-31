@@ -21,12 +21,14 @@ import { fetchConversationHistory, fetchWidgetConfig } from './api';
 
 const CONV_STORAGE_PREFIX = 'famaash_conv_';
 
-/** Boot config from the backend REST endpoint. */
+/** Boot config from the backend REST endpoint. Pass the visitor's language to
+ *  get the language-matched videos (posters/captions); omitted = firm default. */
 export function loadBootConfig(
   firmId: string,
+  language?: string,
   signal?: AbortSignal,
 ): Promise<WidgetBootConfig> {
-  return fetchWidgetConfig(firmId, signal);
+  return fetchWidgetConfig(firmId, language, signal);
 }
 
 /**

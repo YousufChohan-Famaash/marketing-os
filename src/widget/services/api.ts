@@ -412,13 +412,21 @@ export function errorDetail(err: unknown): string | null {
   }
 }
 
-/** GET /config?firm_id=... — boot config + transport hints. */
+/**
+ * GET /config?firm_id=...[&language=..] — boot config + transport hints.
+ * Passing the visitor's interface language returns the language-matched intro /
+ * channel videos (+ posters + captions); the response shape is unchanged. The
+ * backend falls back (visitor language → firm default → English → any active
+ * clip), so you always get a playable video. No language = firm default.
+ */
 export function fetchWidgetConfig(
   firmId: string,
+  language?: string,
   signal?: AbortSignal,
 ): Promise<WidgetBootConfig> {
+  const lang = language ? `&language=${encodeURIComponent(language)}` : '';
   return request<WidgetBootConfig>(
-    `/config?firm_id=${encodeURIComponent(firmId)}`,
+    `/config?firm_id=${encodeURIComponent(firmId)}${lang}`,
     undefined,
     signal,
   );
