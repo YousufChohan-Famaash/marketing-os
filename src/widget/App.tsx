@@ -12,11 +12,12 @@ import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
 import type { ConversationTokenResponse } from './services/api';
 import {
+  clearConversationId,
   createFreshChatSession,
   createSocket,
-  getOrCreateConversationId,
   loadBootConfig,
   persistConversationId,
+  readStoredConversationId,
   rehydrateFromHistory,
 } from './services/transport';
 import { useWidgetStore } from './store/widgetStore';
@@ -93,18 +94,33 @@ export function App() {
 
   const firmId = useMemo(readFirmIdFromQuery, []);
 
-  // Connect the LiveKit session on demand: the first case-type pick (or a
-  // Free Consultation hand-off, which already knows the case type). Idempotent —
-  // guarded so a fast double-tap or a re-render can't open two rooms. The pick
-  // itself is sent by the flush effect once `socket` is set (RealSocket queues
-  // it until the agent's `ready` event).
+  // Open (or resume) the LiveKit session. Idempotent — guarded so a fast
+  // double-tap or a re-render can't open two rooms.
+  //   resume : conversationIdRef is a stored (server-minted) id → RealSocket POSTs
+  //            /token{conversation_id} and the agent resumes.
+  //   cold   : no stored id AND no preset → mint SERVER-SIDE here (POST /token with
+  //            NO conversation_id), store the returned id, and join that room. We
+  //            never mint an id on the client (guide §1).
+  //   preset : a "start new chat" already minted the room → the leader joins it.
   const connectSocket = useCallback((presetSession?: ConversationTokenResponse) => {
     if (socketRef.current || connectingRef.current) return;
-    const cid = conversationIdRef.current;
-    if (!cid) return;
     connectingRef.current = true;
     void (async () => {
       try {
+        let preset = presetSession;
+        let cid = conversationIdRef.current;
+        if (!cid && !preset) {
+          // Cold first visit: the server mints the id (and the Call+Lead).
+          preset = await createFreshChatSession(firmId);
+          if (disposedRef.current) return;
+          cid = preset.conversation_id;
+          conversationIdRef.current = cid;
+          setConversationId(cid);
+          persistConversationId(firmId, cid);
+        } else if (preset && !cid) {
+          cid = preset.conversation_id;
+          conversationIdRef.current = cid;
+        }
         const s = await createSocket({
           // A peer tab started a fresh chat → follow it to the same new id.
           onRemoteNewChat: (id) => adoptNewChatRef.current(id),
@@ -116,14 +132,14 @@ export function App() {
           // The live connection dropped (agent left / idle / network) → reconnect
           // and resume, so the chat doesn't go dead with no way back to the agent.
           onDisconnect: () => reconnectResumeRef.current(),
-          // A "start new chat" pre-minted the room; the leader joins it directly.
-          presetSession,
+          // A pre-minted room (cold mint above, or a "start new chat") → join directly.
+          presetSession: preset,
         });
         if (disposedRef.current) { s.disconnect(); return; }
         socketRef.current = s;
         unwireRef.current = wireSocketToStore(s);
         setSocket(s); // expose before connect so a buffered pick can queue
-        await s.connect(firmId, cid);
+        await s.connect(firmId, cid as string);
         if (disposedRef.current) return;
         bridgeRef.current?.notifyEvent({ type: 'widget_opened', data: { firmId, conversationId: cid } });
       } catch (err) {
@@ -133,7 +149,7 @@ export function App() {
         connectingRef.current = false;
       }
     })();
-  }, [firmId, setBootStatus]);
+  }, [firmId, setBootStatus, setConversationId]);
 
   // Honor a ?view= deep-link (teaser channel tap, first iframe load) once.
   useEffect(() => {
@@ -174,12 +190,11 @@ export function App() {
     }
   }, [bridgeReady, connectView, conversationStarted]);
 
-  // Boot fetches ONLY /config — that alone paints the opener + case-type chips
-  // (they're /config data, not agent data; the agent never renders them). The
-  // LiveKit connection is deferred to the case-type pick (Option B in
-  // chat-widget-fast-open-frontend-guide.md): it isn't needed to show the chips,
-  // and deferring it avoids creating a Lead/Call on every open/bounce. A Free
-  // Consultation hand-off already knows the case type, so it connects right away.
+  // Boot fetches /config (paints the opener + case-type chips). The conversation
+  // id is READ-ONLY here — we never mint one on the client (guide §1); the server
+  // mints it on the first /token (cold visit connects when the chat view opens; a
+  // returning id resumes below). A Free Consultation hand-off connects right away
+  // (its answers seed the first /token so the agent acknowledges the accident).
   useEffect(() => {
     disposedRef.current = false;
     // Per-run cancellation flag. `disposedRef` is shared across effect runs and
@@ -193,9 +208,9 @@ export function App() {
     const t0 = DEV ? performance.now() : 0;
 
     setBootStatus('loading');
-    const { id: conversationId, returning } = getOrCreateConversationId(firmId);
-    conversationIdRef.current = conversationId;
-    setConversationId(conversationId);
+    const { id: storedId, returning } = readStoredConversationId(firmId);
+    conversationIdRef.current = storedId; // null on a cold first visit
+    setConversationId(storedId);
     // Consultation hand-off: the case type is already chosen, so connect now —
     // the agent streams its acknowledgment opener after `ready` (no pick event).
     if (getConsultationContext()) connectSocket();
@@ -222,23 +237,31 @@ export function App() {
         }
         // Apply the firm's font across the widget (graceful fallback if unset).
         applyFont(config.branding?.fontFamily);
-        if (returning) {
-          const resumed = await rehydrateFromHistory(conversationId, abort.signal);
+        if (returning && storedId) {
+          const resumed = await rehydrateFromHistory(storedId, abort.signal);
           if (cancelled) return;
-          // Reopened a real conversation → drop straight into the chat (not the
-          // home opener) and reconnect the live agent so it resumes at the next
-          // question. Connect whenever the conversation is real — it has messages
-          // OR the backend still calls it active (covers a just-started "new chat"
-          // whose opener hasn't persisted yet). An ended conversation shows the
-          // transcript without reconnecting. This "always connect on open" is what
-          // keeps resume working (session-persistence guide Rule 1).
-          const resumable = resumed.messageCount > 0 || resumed.status === 'active';
-          if (resumable) {
-            const st = useWidgetStore.getState();
-            st.setConnectView('chat');
-            st.setCaseTypePicked(true);
-            st.setConversationStarted(true);
-            if (resumed.status !== 'ended') connectSocket();
+          if (resumed.notFound) {
+            // The stored id has no server conversation (a stale client-minted id
+            // from before this change). Drop it and carry on as a cold visit —
+            // the server mints a fresh one when the chat view opens. Guide §2-§3.
+            clearConversationId(firmId);
+            conversationIdRef.current = null;
+            setConversationId(null);
+          } else {
+            // Reopened a real conversation → drop straight into the chat (not the
+            // home opener) and reconnect the live agent so it resumes at the next
+            // question. Connect whenever the conversation is real — it has messages
+            // OR the backend still calls it active. An ended conversation shows the
+            // transcript without reconnecting. This "always connect on open" is
+            // what keeps resume working (session-persistence guide Rule 1).
+            const resumable = resumed.messageCount > 0 || resumed.status === 'active';
+            if (resumable) {
+              const st = useWidgetStore.getState();
+              st.setConnectView('chat');
+              st.setCaseTypePicked(true);
+              st.setConversationStarted(true);
+              if (resumed.status !== 'ended') connectSocket();
+            }
           }
         }
         // Don't override a connection failure that already set 'error'.
@@ -460,7 +483,7 @@ export function App() {
   const startNewChat = useCallback(async () => {
     let session: ConversationTokenResponse;
     try {
-      session = await createFreshChatSession(firmId);
+      session = await createFreshChatSession(firmId, { newChat: true });
     } catch (err) {
       if (!disposedRef.current) {
         setBootStatus('error', err instanceof Error ? err.message : 'Could not start a new chat');
