@@ -14,6 +14,7 @@ import {
   VolumeOnIcon,
 } from '../utils/icons';
 import { useCaptionSafeVideo } from '../utils/useCaptionSafeVideo';
+import { useInViewport } from '../utils/useInViewport';
 import { sanitizeCaptionText } from '../utils/useVideoCaptions';
 import { useVideoSound } from '../utils/useVideoSound';
 import { WidgetControls, languageName } from './WidgetControls';
@@ -55,6 +56,11 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   const videoRef = useRef<HTMLVideoElement>(null);
   const { soundOn, toggleSound } = useVideoSound(videoRef);
   const setVideoSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
+  // Poster-facade: don't download the hero clip while the panel is prewarmed
+  // (display:none) — only once it's actually revealed on screen. The poster shows
+  // meanwhile, so widget-open costs a poster JPG, not the full video. Once true it
+  // stays true (never unloads). See useInViewport.
+  const inView = useInViewport(videoRef);
   const [hovered, setHovered] = useState<ConnectChannel | null>(null);
 
   // Language + email affordances shown in the bottom meta row.
@@ -88,6 +94,20 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
     const t = setTimeout(() => setPlaying(!v.paused && !v.ended), 600);
     return () => clearTimeout(t);
   }, []);
+
+  // The src was deferred until the panel is on screen (useInViewport), and
+  // useVideoSound only plays on mount / sound-toggle — so kick off playback once
+  // the clip actually mounts its source. Muted fallback if unmuted autoplay is
+  // blocked (same policy as useVideoSound).
+  useEffect(() => {
+    if (!inView) return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.play().catch(() => {
+      v.muted = true;
+      void v.play().catch(() => undefined);
+    });
+  }, [inView]);
 
   // Captions: the WebVTT track for the active language (English, then the only
   // track, as fallbacks). Shown burned-in over the video, on by default since
@@ -140,10 +160,10 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
     <div className="relative h-full w-full overflow-hidden bg-obsidian" role="dialog" aria-label={`Contact ${name}`}>
       <video
         ref={videoRef}
-        src={src}
+        src={inView ? src : undefined}
         poster={poster}
         playsInline
-        preload="auto"
+        preload={inView ? 'auto' : 'none'}
         crossOrigin={crossOrigin}
         onError={onError}
         onPlay={() => {
