@@ -15,6 +15,7 @@ import {
   getConsultationContext,
   isMultiTabSyncEnabled,
   isPersistenceEnabled,
+  type ConsultationContext,
 } from '../config/env';
 import { useWidgetStore } from '../store/widgetStore';
 import {
@@ -131,6 +132,38 @@ export function clearConversationId(firmId: string): void {
     localStorage.removeItem(`${CONV_STORAGE_PREFIX}${firmId}`);
   } catch {
     /* ignore */
+  }
+}
+
+const HANDOFF_STORAGE_PREFIX = 'famaash_conv_handoff_';
+
+/**
+ * Stable identity for a Free-Consultation hand-off — the wizard answers (case
+ * type + accident details). Two loads carrying the SAME answers (e.g. a page
+ * reload) produce the same key; picking a NEW case type in the wizard produces a
+ * different one. App.tsx keys on this to tell "reopened the same consultation"
+ * (resume) apart from "chose a new case type" (start a brand-new chat).
+ */
+export function consultationKey(ctx: ConsultationContext): string {
+  return JSON.stringify(ctx);
+}
+
+/** The hand-off key the currently-persisted chat was started for (or null). */
+export function readHandoffKey(firmId: string): string | null {
+  try {
+    return localStorage.getItem(`${HANDOFF_STORAGE_PREFIX}${firmId}`) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remember which hand-off a freshly-minted chat belongs to, so a later reload
+ *  carrying the same answers resumes it instead of minting yet another chat. */
+export function writeHandoffKey(firmId: string, key: string): void {
+  try {
+    localStorage.setItem(`${HANDOFF_STORAGE_PREFIX}${firmId}`, key);
+  } catch {
+    /* storage blocked — same-load behavior is still correct */
   }
 }
 

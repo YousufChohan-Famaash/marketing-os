@@ -13,12 +13,15 @@ import { SocketContext } from './services/socketContext';
 import type { ConversationTokenResponse } from './services/api';
 import {
   clearConversationId,
+  consultationKey,
   createFreshChatSession,
   createSocket,
   loadBootConfig,
   persistConversationId,
+  readHandoffKey,
   readStoredConversationId,
   rehydrateFromHistory,
+  writeHandoffKey,
 } from './services/transport';
 import { useWidgetStore } from './store/widgetStore';
 import { wireSocketToStore } from './store/wireSocket';
@@ -208,12 +211,29 @@ export function App() {
     const t0 = DEV ? performance.now() : 0;
 
     setBootStatus('loading');
-    const { id: storedId, returning } = readStoredConversationId(firmId);
-    conversationIdRef.current = storedId; // null on a cold first visit
+    const ctx = getConsultationContext();
+    const stored = readStoredConversationId(firmId);
+    let storedId = stored.id;
+    let returning = stored.returning;
+    // Free-Consultation hand-off: a case type was chosen in the wizard. Chats are
+    // stateful now, so injecting that case type into a persisted conversation is
+    // wrong — picking a NEW case type must open a BRAND-NEW chat seeded with it.
+    // We key on the wizard answers: a different case type ⇒ start fresh (drop the
+    // stored id so connectSocket cold-mints a new conv whose first /token carries
+    // the ctx). The SAME answers on a reload keep the stored id, so a refresh
+    // resumes the chat we already started for that consultation (no chat-per-reload).
+    if (ctx && consultationKey(ctx) !== readHandoffKey(firmId)) {
+      clearConversationId(firmId);
+      writeHandoffKey(firmId, consultationKey(ctx));
+      storedId = null;
+      returning = false;
+    }
+    conversationIdRef.current = storedId; // null on a cold first visit / new case type
     setConversationId(storedId);
-    // Consultation hand-off: the case type is already chosen, so connect now —
-    // the agent streams its acknowledgment opener after `ready` (no pick event).
-    if (getConsultationContext()) connectSocket();
+    // Consultation hand-off: the case type is already chosen, so connect now — a
+    // new case type cold-mints (its answers seed the first /token so the agent
+    // acknowledges them); a matching reload resumes the chat we already started.
+    if (ctx) connectSocket();
 
     // ── Config track — paints the opener ─────────────────────────────────
     void (async () => {
@@ -529,7 +549,12 @@ export function App() {
       connectingRef.current = false;
       setSocket(null);
 
-      useWidgetStore.getState().beginTyping();
+      // Resume does NOT mean the agent is about to speak — it usually just
+      // reconnects and waits for the lead's next message. Showing typing dots
+      // here left them bouncing with nothing behind them until the 30s safety
+      // timer expired (bad UX). Clear any stale typing state instead; a real
+      // message_chunk from the agent re-arms the indicator on its own.
+      useWidgetStore.getState().endStreaming();
       // eslint-disable-next-line no-console
       console.info('[famaash] resuming chat on', cid);
       void (async () => {

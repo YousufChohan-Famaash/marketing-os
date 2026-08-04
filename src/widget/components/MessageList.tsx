@@ -105,6 +105,33 @@ export function MessageList({
     el.scrollTop = el.scrollHeight;
   }, [messages.map((m) => m.content).join('|'), pinned]);
 
+  // On mount, jump straight to the latest message when a transcript already
+  // exists — i.e. a RESUMED chat. (A fresh chat mounts empty; we skip it so the
+  // greeting + video stage stay in view rather than scrolling past them.) A
+  // resumed transcript often contains async-loading media (images, video,
+  // cards) that grow the scroll height AFTER the first paint, so a single
+  // synchronous scroll landed above the true bottom — resume opened near the
+  // top. Re-assert the bottom across the next few frames + a short delay so the
+  // late layout is caught and we land on the newest message.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || timeline.length === 0) return undefined;
+    const jump = () => { el.scrollTop = el.scrollHeight; };
+    const rafs: number[] = [];
+    let cancelled = false;
+    const schedule = (n: number) => {
+      if (cancelled || n === 0) return;
+      rafs.push(requestAnimationFrame(() => { jump(); schedule(n - 1); }));
+    };
+    setPinned(true);
+    jump();
+    schedule(3);
+    const t = setTimeout(jump, 300);
+    return () => { cancelled = true; rafs.forEach(cancelAnimationFrame); clearTimeout(t); };
+    // Resume = a fresh mount of this component; run once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
