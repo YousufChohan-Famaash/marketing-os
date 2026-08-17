@@ -89,6 +89,18 @@ export function getAttribution(): Attribution | null {
 }
 
 /**
+ * Durable first-party visitor id, minted + persisted by the LOADER on the host
+ * page and passed into the iframe as `?vid=`. Sent on every POST /token so the
+ * server can create-or-resume the visitor's chat — this survives Safari/iOS
+ * third-party-iframe storage partitioning that breaks the iframe's own resume
+ * (whatsapp/phantom-chats guide §2). A plain scalar, so no JSON decode.
+ */
+export function getVisitorId(): string | null {
+  const v = queryParam('vid');
+  return v && v.trim() ? v : null;
+}
+
+/**
  * Whether to persist the conversation id + resume on reopen. ON by default so a
  * visitor who closes the tab and returns continues the same chat (session-
  * persistence guide). Force a fresh conversation for testing with `?persist=0`

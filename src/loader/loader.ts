@@ -364,6 +364,28 @@ function parseUtm(): Record<string, string> {
   return utm;
 }
 
+// Durable, FIRST-PARTY visitor id. It lives in the host page's localStorage (not
+// the iframe's), so it survives Safari/iOS third-party-iframe storage
+// partitioning — that partitioning is why a refresh used to mint phantom chats.
+// The widget forwards it on every POST /token so the server create-or-resumes
+// (whatsapp/phantom-chats guide §2). Falls back to a per-load id when the host
+// blocks storage (private mode): still dedupes the in-page refresh-retry race.
+const VISITOR_STORAGE_KEY = 'famaash_visitor_id';
+let perLoadVisitorId: string | null = null;
+function famaashVisitorId(): string {
+  const mint = () =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `v_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  try {
+    let id = localStorage.getItem(VISITOR_STORAGE_KEY);
+    if (!id) { id = mint(); localStorage.setItem(VISITOR_STORAGE_KEY, id); }
+    return id;
+  } catch {
+    return (perLoadVisitorId ??= mint());
+  }
+}
+
 interface DetectedTheme {
   primary?: string;
   ink?: string;
@@ -1220,7 +1242,10 @@ function readScriptConfig(): {
     // Host-page marketing attribution → the widget reads this at boot and sends
     // it on POST /token so the chat lead is attributed to its source/campaign.
     const attrParam = `&attr=${encodeURIComponent(JSON.stringify(attribution))}`;
-    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}`;
+    // Durable visitor id (first-party) → the widget sends it on POST /token so a
+    // refresh resumes instead of minting a phantom chat (phantom-chats guide §2).
+    const vidParam = `&vid=${encodeURIComponent(famaashVisitorId())}`;
+    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}${vidParam}`;
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;

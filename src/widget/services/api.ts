@@ -15,7 +15,7 @@ import type {
   UploadedFile,
   WidgetBootConfig,
 } from '../types/domain';
-import { getApiBase } from '../config/env';
+import { getApiBase, getVisitorId } from '../config/env';
 
 // ─────────────────────────────────────────────────────────────────────
 // Response DTOs (exactly what the backend returns)
@@ -442,6 +442,10 @@ export function createConversationToken(
     conversation_id?: string;
     /** Server mints a brand-new conversation (new Call+Lead, fresh intake). */
     new_chat?: boolean;
+    /** Durable first-party visitor id (minted by the loader). Lets the server
+     *  create-or-resume so a refresh doesn't spawn phantom chats when the
+     *  iframe's own storage is partitioned. Injected below, not by callers. */
+    visitor_id?: string;
     language?: string;
     practice_area?: string;
     case_type_id?: string;
@@ -462,7 +466,9 @@ export function createConversationToken(
 ): Promise<ConversationTokenResponse> {
   return request<ConversationTokenResponse>(
     '/token',
-    { method: 'POST', body: JSON.stringify({ language: 'en', ...body }) },
+    // visitor_id on EVERY /token (cold, new_chat, resume). `?? undefined` drops it
+    // from the JSON when absent, exactly like the attribution/ctx fields.
+    { method: 'POST', body: JSON.stringify({ language: 'en', visitor_id: getVisitorId() ?? undefined, ...body }) },
     signal,
   );
 }
