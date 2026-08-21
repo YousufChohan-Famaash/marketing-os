@@ -29,7 +29,11 @@ export type ActiveModal =
   | 'human-takeover'
   | 'emergency'
   | 'text-handoff'
+  | 'call-me'
   | null;
+
+/** Lifecycle of a mid-chat "Call me" request (chat-in-call-button guide §4). */
+export type ChatCallPhase = 'idle' | 'calling' | 'connected' | 'failed';
 
 export type BootStatus = 'idle' | 'loading' | 'ready' | 'error' | 'disabled';
 
@@ -69,6 +73,13 @@ export interface UiSlice {
   undoableMessageId: string | null;
   /** Live status of an in-progress "Call now" outbound call (null = none). */
   connectCallStatus: ConnectCallStatus | null;
+  /** Mid-chat "Call me" lifecycle. Drives the composer read-only state on
+   *  `connected` and the calling/failed banners. See chat-in-call-button guide. */
+  chatCallPhase: ChatCallPhase;
+  /** True once the visitor has asked for a human and is waiting on staff. While
+   *  set, we hide the "Call me" button — offering an AI callback then reads as
+   *  ignoring the request (guide §7). Cleared on reset / new intake. */
+  humanRequested: boolean;
   /**
    * Shared sound preference for every video in the widget. Videos autoplay
    * muted; the first time the visitor unmutes any video this flips true and all
@@ -97,6 +108,8 @@ export interface UiSlice {
   setUndoable: (id: string) => void;
   clearUndoable: () => void;
   setConnectCallStatus: (status: ConnectCallStatus | null) => void;
+  setChatCallPhase: (phase: ChatCallPhase) => void;
+  setHumanRequested: (requested: boolean) => void;
   setExpanded: (expanded: boolean) => void;
   setConversationId: (id: string | null) => void;
   setCaseTypePicked: (picked: boolean) => void;
@@ -137,6 +150,8 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   cinematicDismissed: false,
   undoableMessageId: null,
   connectCallStatus: null,
+  chatCallPhase: 'idle',
+  humanRequested: false,
   videoSoundOn: false,
   newIntakeNonce: 0,
   isSessionLeader: true,
@@ -165,6 +180,8 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
     set({ undoableMessageId: null });
   },
   setConnectCallStatus: (status) => set({ connectCallStatus: status }),
+  setChatCallPhase: (phase) => set({ chatCallPhase: phase }),
+  setHumanRequested: (requested) => set({ humanRequested: requested }),
   setExpanded: (expanded) => set({ isExpanded: expanded }),
   setConversationId: (id) => set({ conversationId: id }),
   setCaseTypePicked: (picked) => set({ caseTypePicked: picked }),

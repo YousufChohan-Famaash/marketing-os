@@ -9,6 +9,7 @@ import { Modal } from './Modal';
  */
 export function EmergencyModal() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const setHumanRequested = useWidgetStore((s) => s.setHumanRequested);
   const socket = useSocket();
 
   return (
@@ -19,6 +20,8 @@ export function EmergencyModal() {
         cta="Call me now"
         onSubmit={(phone) => {
           socket?.send({ type: 'request_human', method: 'emergency', phone });
+          // Waiting on a person now — hide the AI "Call me" button (§7).
+          setHumanRequested(true);
           setActiveModal(null);
         }}
       />

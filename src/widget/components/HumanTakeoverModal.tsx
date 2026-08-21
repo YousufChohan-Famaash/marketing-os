@@ -23,6 +23,7 @@ const DELAY_OPTIONS = [
 export function HumanTakeoverModal() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
+  const setHumanRequested = useWidgetStore((s) => s.setHumanRequested);
   const socket = useSocket();
 
   const [view, setView] = useState<View>('menu');
@@ -42,6 +43,8 @@ export function HumanTakeoverModal() {
     scheduledAt?: string;
   }) => {
     socket?.send({ type: 'request_human', ...payload });
+    // The visitor is now waiting on a person — hide the AI "Call me" button (§7).
+    setHumanRequested(true);
     close();
   };
 

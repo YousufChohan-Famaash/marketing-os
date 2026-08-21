@@ -54,5 +54,8 @@ export function resetWidgetStore(): void {
   s.setCaptureDrawerOpen(false);
   s.clearUnread();
   s.setAgentTakeover(null);
+  s.setConnectCallStatus(null);
+  s.setChatCallPhase('idle');
+  s.setHumanRequested(false);
   s.setBootStatus('idle', null);
 }

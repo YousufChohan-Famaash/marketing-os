@@ -8,18 +8,24 @@ import {
 } from "react";
 import { useSocket } from "../services/socketContext";
 import { useWidgetStore } from "../store/widgetStore";
-import { uploadMedia } from "../services/api";
+import { fetchCallStatus, uploadMedia } from "../services/api";
+import type { ConnectCallStatus } from "../types/protocol";
 import { generateId } from "../utils/id";
 import { canRecordMedia, useMediaNote, type MediaKind } from "../utils/useMediaNote";
 import { useSpeechToText } from "../utils/useSpeechToText";
 import {
   MicIcon,
+  PhoneIcon,
+  PhoneOffIcon,
   PlusIcon,
   SendArrowIcon,
   VideoIcon,
   WaveformIcon,
 } from "../utils/icons";
 import { cn } from "../utils/cn";
+
+// Terminal dial states that resolve the "Calling you now…" banner.
+const TERMINAL_CALL_STATUSES = ["connected", "completed", "no_answer", "busy", "failed"];
 
 const MAX_HEIGHT_PX = 120;
 
@@ -61,6 +67,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const conversationEnded = useWidgetStore((s) => s.conversationEnded);
   const allowVoiceNotes = useWidgetStore((s) => s.connect.allowVoiceNotes);
   const allowVideoNotes = useWidgetStore((s) => s.connect.allowVideoNotes);
+  // Mid-chat "Call me" (chat-in-call-button guide).
+  const activeConversationId = useWidgetStore((s) => s.conversationId);
+  const agentTakeover = useWidgetStore((s) => s.agentTakeover);
+  const humanRequested = useWidgetStore((s) => s.humanRequested);
+  const chatCallPhase = useWidgetStore((s) => s.chatCallPhase);
+  const setChatCallPhase = useWidgetStore((s) => s.setChatCallPhase);
+  const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
+  const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
   const socket = useSocket();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
@@ -84,6 +98,39 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
+
+  // Resolve a mid-chat call from the pushed status (best-effort data channel).
+  useEffect(() => {
+    if (chatCallPhase !== "calling" || !connectCallStatus) return;
+    if (connectCallStatus === "connected" || connectCallStatus === "completed") {
+      setChatCallPhase("connected");
+    } else if (
+      connectCallStatus === "no_answer" ||
+      connectCallStatus === "busy" ||
+      connectCallStatus === "failed"
+    ) {
+      setChatCallPhase("failed");
+    }
+  }, [chatCallPhase, connectCallStatus, setChatCallPhase]);
+
+  // Poll the persisted dial state as a backstop to the push. We deliberately do
+  // NOT time out into a failure — the push is best-effort, so an absent event
+  // just leaves the calling banner up rather than hard-failing the UI (guide §4).
+  useEffect(() => {
+    if (chatCallPhase !== "calling" || !activeConversationId) return undefined;
+    let cancelled = false;
+    const id = setInterval(async () => {
+      const status = await fetchCallStatus(activeConversationId);
+      if (cancelled) return;
+      if (TERMINAL_CALL_STATUSES.includes(status)) {
+        setConnectCallStatus(status as ConnectCallStatus);
+      }
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [chatCallPhase, activeConversationId, setConnectCallStatus]);
 
   // WhatsApp-style voice/video note: record → optimistic bubble → upload → send.
   const sendMedia = (blob: Blob, kind: MediaKind, durationMs: number) => {
@@ -219,6 +266,12 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
 
   const canSend = value.trim().length > 0;
 
+  // Offer the mid-chat call only when there's a live conversation to resume, no
+  // call is already in flight, and no human handoff is pending/active — offering
+  // an AI callback while they wait on a person reads as ignoring them (guide §7).
+  const callEligible =
+    chatCallPhase === "idle" && !!activeConversationId && !agentTakeover && !humanRequested;
+
   // What the attachment (+) menu can offer, given firm config + browser support.
   const voiceAvailable = (allowVoiceNotes && canRecordMedia()) || Boolean(flags?.voice);
   const videoAvailable = (allowVideoNotes && canRecordMedia()) || Boolean(flags?.video_record);
@@ -228,6 +281,20 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     return (
       <div className="shrink-0 bg-white px-3 py-3 text-center">
         <p className="text-[12px] text-muted">This conversation has ended.</p>
+      </div>
+    );
+  }
+
+  // On the phone → composer read-only so the voice agent and the chat can't both
+  // write the same intake and clobber each other (guide §6). The transcript above
+  // stays visible; if the call drops (phase → failed) the composer comes back.
+  if (chatCallPhase === "connected") {
+    return (
+      <div className="shrink-0 bg-white px-3 py-3">
+        <div className="flex items-center justify-center gap-2 rounded-pill bg-[#ECFDF5] px-3 py-2 text-[12.5px] font-semibold text-[#047857]">
+          <PhoneIcon size={14} aria-hidden="true" />
+          We're on the phone with you.
+        </div>
       </div>
     );
   }
@@ -286,6 +353,47 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
 
   return (
     <div className={cn('shrink-0 px-3 py-2.5', glass ? 'bg-transparent' : 'bg-white')}>
+      {/* Mid-chat call status / entry point (chat-in-call-button guide §4, §7). */}
+      {chatCallPhase === "calling" && (
+        <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-semibold text-famaash">
+          <PhoneIcon size={13} aria-hidden="true" />
+          Calling you now…
+        </div>
+      )}
+      {chatCallPhase === "failed" && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#FEF2F2] px-3 py-2 text-[12px] text-danger">
+          <PhoneOffIcon size={14} className="shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1">We couldn't reach you. Try again, or keep chatting here.</span>
+          <button
+            type="button"
+            onClick={() => setActiveModal("call-me")}
+            className="shrink-0 font-semibold underline hover:opacity-80"
+          >
+            Try again
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChatCallPhase("idle");
+              setConnectCallStatus(null);
+            }}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-full px-1 text-[14px] leading-none text-danger hover:opacity-70"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      {callEligible && (
+        <button
+          type="button"
+          onClick={() => setActiveModal("call-me")}
+          className="mb-2 inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash"
+        >
+          <PhoneIcon size={13} aria-hidden="true" />
+          Call me instead
+        </button>
+      )}
       {stt.listening && (
         <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5">
           <span className="flex items-center gap-1.5 text-[12px] font-semibold text-famaash">
