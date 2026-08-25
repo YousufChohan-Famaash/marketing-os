@@ -127,6 +127,17 @@ export function App() {
         const s = await createSocket({
           // A peer tab started a fresh chat → follow it to the same new id.
           onRemoteNewChat: (id) => adoptNewChatRef.current(id),
+          // The server handed back a DIFFERENT conversation id than we asked to
+          // resume (the stored chat was finished, so it minted a fresh one). Adopt
+          // it — persist it and drop the stale transcript we rehydrated for the
+          // old id — without a reconnect, since we're already joining the new room.
+          onConversationId: (id) => {
+            if (!id || id === conversationIdRef.current) return;
+            conversationIdRef.current = id;
+            setConversationId(id);
+            persistConversationId(firmId, id);
+            useWidgetStore.getState().resetConversation();
+          },
           // Track whether THIS tab owns the live connection, so agent-driven
           // "new chat" is handled once (by the leader), not by every tab.
           onRoleChange: (isLeader) => useWidgetStore.getState().setSessionLeader(isLeader),

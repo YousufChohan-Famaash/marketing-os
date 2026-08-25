@@ -88,6 +88,9 @@ function userMessageFromEvent(event: ClientEvent): Message | null {
 export interface SessionSocketOptions {
   /** Another tab started a new chat; adopt this fresh conversation id. */
   onRemoteNewChat?: (conversationId: string) => void;
+  /** The server returned a conversation id from /token that differs from the one
+   *  we asked to resume (a finished chat replaced with a fresh one) — adopt it. */
+  onConversationId?: (conversationId: string) => void;
   /** This tab settled into (or changed to) a leader/follower role. */
   onRoleChange?: (isLeader: boolean) => void;
   /** The leader's underlying LiveKit connection failed. */
@@ -251,6 +254,14 @@ export class SessionSocket implements ConversationSocket {
     // An unexpected LiveKit drop → tell the app to reconnect (resume).
     real.onDisconnect(() => {
       if (!this.disposed) this.opts.onDisconnect?.();
+    });
+    // The server may return a different conversation id (finished chat replaced).
+    // Keep our own id in sync (so a later failover re-joins the right room) and
+    // let the app adopt it.
+    real.onConversationId((id) => {
+      if (this.disposed || !id || id === this.conversationId) return;
+      this.conversationId = id;
+      this.opts.onConversationId?.(id);
     });
 
     const queued = this.preRolePending;

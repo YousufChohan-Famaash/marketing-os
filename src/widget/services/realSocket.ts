@@ -8,7 +8,7 @@ import type {
 } from '../types/protocol';
 import { createConversationToken, type ConversationTokenResponse } from './api';
 import { useWidgetStore } from '../store/widgetStore';
-import { getConsultationContext, getAttribution } from '../config/env';
+import { getAttribution } from '../config/env';
 
 /**
  * Real backend transport over a LiveKit room data channel.
@@ -52,6 +52,10 @@ export class RealSocket implements ConversationSocket {
   private closing = false;
   private disconnectFired = false;
   private disconnectCb: (() => void) | null = null;
+  // Reports the conversation id the SERVER returned from /token. On a resume it
+  // usually equals the one we sent, but a finished/replaced chat comes back with
+  // a fresh id — the app must adopt it (free-consultation handoff guide §5).
+  private conversationIdCb: ((id: string) => void) | null = null;
 
   // Config is optional so the socket can be created/connected in parallel with
   // GET /config — the LiveKit URL comes from /token; config is only a fallback.
@@ -71,14 +75,20 @@ export class RealSocket implements ConversationSocket {
         firm_id: firmId,
         conversation_id: conversationId,
         language: useWidgetStore.getState().language,
-        // Seed with the Free Consultation answers when the chat was opened from
-        // that wizard (null → nothing added, normal cold chat).
-        ...(getConsultationContext() ?? {}),
+        // NOTE: deliberately NO consultation context here. This call always
+        // carries a conversation_id (resume, or a failover leader re-joining),
+        // and the 2026-08-25 contract makes any request that carries wizard
+        // answers start a BRAND-NEW chat. Those answers ride the first fresh mint
+        // only (createFreshChatSession). See handoff guide §5.
         // Marketing attribution the loader forwarded from the host page → lets the
         // backend attribute this chat lead to its source/campaign.
         ...(getAttribution() ?? {}),
       }));
     if (DEV) console.log('[famaash-widget] /token', session);
+
+    // Tell the app which conversation the server actually gave us — it may differ
+    // from the id we asked to resume (a finished chat is replaced with a fresh one).
+    if (session.conversation_id) this.conversationIdCb?.(session.conversation_id);
 
     this.clientTopic = session.client_topic || DEFAULT_CLIENT_TOPIC;
 
@@ -202,6 +212,11 @@ export class RealSocket implements ConversationSocket {
   /** Fired once if the LiveKit room drops unexpectedly (not via disconnect()). */
   onDisconnect(handler: () => void): void {
     this.disconnectCb = handler;
+  }
+
+  /** Report the server-returned conversation id (may differ from the requested). */
+  onConversationId(handler: (id: string) => void): void {
+    this.conversationIdCb = handler;
   }
 
   /** No-op: a single LiveKit socket has no peer tabs to notify. */
