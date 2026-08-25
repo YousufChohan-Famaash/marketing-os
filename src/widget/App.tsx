@@ -128,15 +128,20 @@ export function App() {
           // A peer tab started a fresh chat → follow it to the same new id.
           onRemoteNewChat: (id) => adoptNewChatRef.current(id),
           // The server handed back a DIFFERENT conversation id than we asked to
-          // resume (the stored chat was finished, so it minted a fresh one). Adopt
-          // it — persist it and drop the stale transcript we rehydrated for the
-          // old id — without a reconnect, since we're already joining the new room.
+          // resume — either the stored chat was finished (it minted a fresh empty
+          // one) or the stored id was dead and a known visitor_id resolved to the
+          // visitor's live conversation. Adopt it (persist + ref/store), drop the
+          // transcript rehydrated for the old id, and pull the ADOPTED one's
+          // history: empty for a fresh replacement, the real thread for a resumed
+          // live one. rehydrate upserts on hist# ids, so it's safe racing the room
+          // join. No reconnect — we're already joining the correct room.
           onConversationId: (id) => {
             if (!id || id === conversationIdRef.current) return;
             conversationIdRef.current = id;
             setConversationId(id);
             persistConversationId(firmId, id);
             useWidgetStore.getState().resetConversation();
+            void rehydrateFromHistory(id);
           },
           // Track whether THIS tab owns the live connection, so agent-driven
           // "new chat" is handled once (by the leader), not by every tab.
