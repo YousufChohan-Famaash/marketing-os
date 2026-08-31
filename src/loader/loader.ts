@@ -1245,7 +1245,12 @@ function readScriptConfig(): {
     // Durable visitor id (first-party) → the widget sends it on POST /token so a
     // refresh resumes instead of minting a phantom chat (phantom-chats guide §2).
     const vidParam = `&vid=${encodeURIComponent(famaashVisitorId())}`;
-    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}${vidParam}`;
+    // Forward the embed's backend selection into the iframe. Without this the
+    // iframe (which does /token + messages + LiveKit) ignores `data-api-base` and
+    // falls back to the bundle's baked-in default, so a prod embed would still
+    // talk to the dev backend. The value already includes /api/v1/widget.
+    const apiBaseParam = `&api_base=${encodeURIComponent(apiBase)}`;
+    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}${vidParam}${apiBaseParam}`;
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;
