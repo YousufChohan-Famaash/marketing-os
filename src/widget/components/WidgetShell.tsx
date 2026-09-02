@@ -6,6 +6,7 @@ import { CaptureProgress } from "./CaptureProgress";
 import { ChannelView } from "./ChannelView";
 import { ChannelMorphVideo } from "./ChannelMorphVideo";
 import { ChatDisclosure } from "./ChatDisclosure";
+import { LanguageNotice } from "./LanguageNotice";
 import { ChatHeader } from "./ChatHeader";
 import { ChatOpenerChips } from "./ChatOpenerChips";
 import { CinematicHome } from "./CinematicHome";
@@ -258,6 +259,7 @@ export function WidgetShell({
       />
       {/* Disclosure + footer only in the normal (collapsed) chat; while the video
           is expanded they'd sit on the dark video, so they're hidden there. */}
+      {!stageActive && <LanguageNotice />}
       {!stageActive && <ChatDisclosure />}
       {/* Composer sits over the dark video (glass) while expanded, on white once
           collapsed. z-30 so it stays above the full-bleed video. */}

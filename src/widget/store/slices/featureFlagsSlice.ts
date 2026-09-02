@@ -34,6 +34,10 @@ export interface FeatureFlagsSlice {
   language: string;
   /** Ordered languages the firm offers (from /config; [] = no picker). */
   languages: string[];
+  /** Languages the AI agent can converse in (from /config). If the visitor's
+   *  interface language isn't here, the chat shows a "continuing in English"
+   *  notice. Empty = unknown (older backend); treated as "don't nag". */
+  conversationLanguages: string[];
   setLanguage: (language: string) => void;
   setBootConfig: (config: WidgetBootConfig) => void;
   /** Re-apply the config-derived, language-varying fields (branding videos +
@@ -62,6 +66,7 @@ export const createFeatureFlagsSlice: StateCreator<
   connect: resolveConnectSettings(null),
   language: 'en',
   languages: [],
+  conversationLanguages: [],
   setLanguage: (language) => set({ language }),
   setBootConfig: (config) => {
     // Auto-greet in the visitor's language when the firm offers it, else the
@@ -82,6 +87,7 @@ export const createFeatureFlagsSlice: StateCreator<
       allowedOrigins: config.allowedOrigins ?? [],
       connect: resolveConnectSettings(config),
       languages: config.languages ?? [],
+      conversationLanguages: config.conversationLanguages ?? [],
       language,
     });
   },

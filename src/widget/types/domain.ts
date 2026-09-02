@@ -360,6 +360,14 @@ export interface WidgetBootConfig {
    * Absent or single-entry means no language picker. Drives the language UI.
    */
   languages?: string[];
+  /**
+   * Languages the AI agent can actually converse in (clamped backend-side). When
+   * the visitor's interface language isn't in here, we show an in-language notice
+   * that the chat continues in English rather than letting them type Spanish at an
+   * English agent. Usually `["en"]` today; `es` is added once QA'd, and the notice
+   * then drops on its own. See spanish-free-consultation.md.
+   */
+  conversationLanguages?: string[];
   /** Connect launcher settings (size, channels, video). Resolved with defaults. */
   connect?: Partial<ConnectSettings>;
   flowId: string;
