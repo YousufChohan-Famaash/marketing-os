@@ -365,11 +365,18 @@ export interface ScheduleCallbackResponse {
   status: string; // 'scheduled'
   chip?: { kind: string; label: string };
   slotStart?: string;
+  /** IANA tz to render slotStart in; bookings are forced to Eastern, so fall
+   *  back to that when absent (callback-confirmation-caller-id.md). */
+  timezone?: string;
   booking_id?: string;
-  /** The number the firm's AI will call from, so we can tell the lead to save it
-   *  ("we'll call from ..."). Optional: only shown when the backend provides it,
-   *  never hardcoded per firm. */
-  callFromNumber?: string;
+  /** The number the call comes FROM (E.164) — "save this number". `callerId` is
+   *  the canonical field; `callFromNumber` is the legacy name, read as a
+   *  fallback. `null`/absent → drop the "save this number" line, never show a
+   *  wrong number. */
+  callerId?: string | null;
+  callFromNumber?: string | null;
+  /** The number we'll call, normalised E.164. Falls back to the phone entered. */
+  callbackPhone?: string | null;
 }
 
 export function scheduleCallback(args: {

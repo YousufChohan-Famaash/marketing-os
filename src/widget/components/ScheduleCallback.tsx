@@ -45,6 +45,27 @@ function calendarHref(start: string, end: string, title: string, details: string
   return `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
 }
 
+// (555) 123-4567 from an E.164 number; leaves a non-US-10-digit value as-is.
+function formatPhone(n?: string | null): string | null {
+  if (!n) return null;
+  const digits = n.replace(/\D/g, '');
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  return ten.length === 10 ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}` : n;
+}
+
+// "Tomorrow, September 2 at 7:15 PM EDT" — rendered in the returned tz (Eastern).
+function formatWhen(iso: string, tz: string): string {
+  const d = new Date(iso);
+  const key = dayKey(d, tz);
+  const today = dayKey(new Date(), tz);
+  const tomorrow = dayKey(new Date(Date.now() + 86_400_000), tz);
+  const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'long', day: 'numeric' }).format(d);
+  const time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
+  const lead = key === today ? 'Today' : key === tomorrow ? 'Tomorrow' : weekday;
+  return `${lead}, ${monthDay} at ${time}`;
+}
+
 /** Today's date in the visitor's local zone, as a YYYY-MM-DD key. */
 function dayKey(d: Date, tz: string): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -81,12 +102,14 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   const [serverTz, setServerTz] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
-  const [confirmLabel, setConfirmLabel] = useState<string>('');
   const [notice, setNotice] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [bookedInfo, setBookedInfo] = useState<{ start: string; end: string; callFrom?: string } | null>(null);
+  const [bookedInfo, setBookedInfo] = useState<{
+    slotStart: string; end: string; timezone: string;
+    callerId?: string | null; callbackPhone?: string | null; name?: string;
+  } | null>(null);
 
   // Render in the response's timezone (always Eastern), never the browser's.
   const displayTz = serverTz ?? ET;
@@ -195,8 +218,17 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         copyVersion: consentVersion,
       });
       const slot = slots.find((s) => s.start === selectedStart);
-      setBookedInfo({ start: selectedStart, end: slot?.end ?? selectedStart, callFrom: res.callFromNumber });
-      setConfirmLabel(res.chip?.label ?? "Callback booked. We'll call you then");
+      setBookedInfo({
+        // Render from the RETURNED instant + tz, never the tz we posted — the
+        // booking is forced to Eastern (callback-confirmation-caller-id.md).
+        slotStart: res.slotStart ?? selectedStart,
+        end: slot?.end ?? selectedStart,
+        timezone: res.timezone ?? ET,
+        // callerId is canonical; callFromNumber is the legacy name.
+        callerId: res.callerId ?? res.callFromNumber ?? null,
+        callbackPhone: res.callbackPhone ?? phone,
+        name: name?.trim() || undefined,
+      });
       setPhase('booked');
     } catch (err) {
       const detail = errorDetail(err);
@@ -223,6 +255,17 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     } finally {
       setBusy(false);
     }
+  };
+
+  // "Need a different time?" — back to the picker with a fresh availability pull.
+  const reschedule = () => {
+    setBookedInfo(null);
+    setSelectedStart(null);
+    setSelectedDay(null);
+    setNotice(null);
+    setFormError(null);
+    setPhase('loading');
+    void loadAvailability();
   };
 
   if (phase === 'loading') {
@@ -257,38 +300,52 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   }
 
   if (phase === 'booked') {
-    const cal = bookedInfo
-      ? calendarHref(
-          bookedInfo.start,
-          bookedInfo.end,
-          `Call with ${firmName}`,
-          `${firmName} will call you about your inquiry.`,
-        )
+    const info = bookedInfo;
+    const cal = info
+      ? calendarHref(info.slotStart, info.end, `Call with ${firmName}`, `${firmName} will call you about your inquiry.`)
       : null;
+    const when = info ? formatWhen(info.slotStart, info.timezone) : null;
+    const callTo = formatPhone(info?.callbackPhone);
+    const callFrom = formatPhone(info?.callerId);
     return (
       <div className="flex flex-col items-center py-8 text-center">
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
           <CheckIcon size={26} aria-hidden="true" />
         </span>
-        <h3 className="mt-4 text-[18px] font-bold text-ink">{confirmLabel}</h3>
-        <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
-          Check your email for the confirmation and calendar invite. We'll call you at the time you picked.
-        </p>
-        {bookedInfo?.callFrom && (
-          <p className="mt-3 rounded-lg bg-famaash-soft px-3 py-2 text-[12.5px] leading-relaxed text-ink">
-            We'll call from <span className="font-semibold">{bookedInfo.callFrom}</span>. Save it so you don't miss us.
-          </p>
-        )}
-        {cal && (
-          <a
-            href={cal}
-            download="callback.ics"
-            className="mt-5 inline-flex items-center gap-2 rounded-pill border border-famaash-stroke px-5 py-2.5 text-[13px] font-semibold text-famaash hover:bg-famaash-soft"
+        <h3 className="mt-4 text-[18px] font-bold text-ink">
+          {info?.name ? `You're booked, ${info.name}.` : "You're booked."}
+        </h3>
+        {when && <p className="mt-1.5 text-[15px] font-semibold text-ink">{when}</p>}
+        <div className="mt-2 max-w-[36ch] space-y-1 text-[13.5px] leading-relaxed text-muted">
+          {callTo && (
+            <p>We'll call you at <span className="font-semibold text-ink">{callTo}</span></p>
+          )}
+          {/* Only when the backend gave a real caller ID — a wrong number gets the
+              real call screened as spam. */}
+          {callFrom && (
+            <p>The call comes from <span className="font-semibold text-ink">{callFrom}</span> — save this number so you know it's us.</p>
+          )}
+          <p>A confirmation and reminder are on their way to your phone and email.</p>
+        </div>
+        <div className="mt-5 flex flex-col items-center gap-3">
+          {cal && (
+            <a
+              href={cal}
+              download="callback.ics"
+              className="inline-flex items-center gap-2 rounded-pill border border-famaash-stroke px-5 py-2.5 text-[13px] font-semibold text-famaash hover:bg-famaash-soft"
+            >
+              <CalendarIcon size={15} aria-hidden="true" />
+              Add to calendar
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={reschedule}
+            className="text-[13px] font-medium text-muted underline underline-offset-2 hover:text-ink"
           >
-            <CalendarIcon size={15} aria-hidden="true" />
-            Add to calendar
-          </a>
-        )}
+            Need a different time?
+          </button>
+        </div>
       </div>
     );
   }
