@@ -56,6 +56,27 @@ export function getConsultationContext(): ConsultationContext | null {
 }
 
 /**
+ * The UI language the Free Consultation wizard was in when it handed off to chat
+ * (carried in the same `ctx` blob as `language`). Applied to the widget before
+ * the hand-off POST /token so the agent replies in that language, matching the
+ * site the visitor was already reading.
+ *
+ * Kept separate from ConsultationContext on purpose: language must NOT feed
+ * consultationKey(), or switching language would fork a new chat.
+ */
+export function getHandoffLanguage(): string | null {
+  const raw = queryParam('ctx');
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(decodeURIComponent(raw)) as Record<string, unknown>;
+    const lang = typeof p.language === 'string' ? p.language.slice(0, 2).toLowerCase() : '';
+    return /^[a-z]{2}$/.test(lang) ? lang : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Marketing attribution forwarded by the loader from the HOST page (the iframe's
  * own URL can't see the host's UTM/referrer). The loader packs it into an `attr`
  * query param; we read it here and send it on POST /token so the backend can

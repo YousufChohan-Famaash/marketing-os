@@ -6,7 +6,7 @@ import { SigningSheet } from './components/SigningSheet';
 import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
 import { applyFont, applyTheme } from './config/theme';
-import { getConsultationContext } from './config/env';
+import { getConsultationContext, getHandoffLanguage } from './config/env';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
@@ -228,6 +228,11 @@ export function App() {
 
     setBootStatus('loading');
     const ctx = getConsultationContext();
+    // Language the Free Consultation wizard handed off in (matches the site's
+    // language). Applied below before the hand-off /token so the agent replies
+    // in it, and re-asserted after boot config so setBootConfig's navigator-based
+    // pick doesn't clobber it.
+    const handoffLang = getHandoffLanguage();
     const stored = readStoredConversationId(firmId);
     let storedId = stored.id;
     let returning = stored.returning;
@@ -249,6 +254,9 @@ export function App() {
     // Consultation hand-off: the case type is already chosen, so connect now — a
     // new case type cold-mints (its answers seed the first /token so the agent
     // acknowledges them); a matching reload resumes the chat we already started.
+    // Set the hand-off language first so this /token carries it (the backend
+    // falls back if the firm doesn't offer it).
+    if (handoffLang) useWidgetStore.getState().setLanguage(handoffLang);
     if (ctx) connectSocket();
 
     // ── Config track — paints the opener ─────────────────────────────────
@@ -260,9 +268,16 @@ export function App() {
         const navLang = (typeof navigator !== 'undefined' ? navigator.language : 'en')
           .slice(0, 2)
           .toLowerCase();
-        const config = await loadBootConfig(firmId, navLang, abort.signal);
+        // A consultation hand-off already told us the visitor's language; prefer
+        // it over the browser guess so the first video + copy load matched.
+        const config = await loadBootConfig(firmId, handoffLang ?? navLang, abort.signal);
         if (cancelled) return;
         setBootConfig(config);
+        // setBootConfig re-picks language from navigator ∩ offered; if the firm
+        // offers the hand-off language, keep that so the UI stays in it too.
+        if (handoffLang && (config.languages ?? []).includes(handoffLang)) {
+          useWidgetStore.getState().setLanguage(handoffLang);
+        }
         // Theme precedence: an explicit admin 'custom' palette overrides the
         // host-site colors already applied at boot. 'inherit' (default) keeps them.
         if (config.branding?.themeSource === 'custom' && config.branding.primaryColor) {
