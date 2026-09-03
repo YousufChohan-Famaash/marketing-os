@@ -4,6 +4,7 @@ import { cn } from '../utils/cn';
 import { nameError, phoneError, emailError as validateEmail, formatPhone } from '../utils/validation';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
+import { translate } from '../i18n';
 
 interface CallbackFormProps {
   heading: string;
@@ -60,6 +61,8 @@ export function CallbackForm({
   // An explicit initial* prop from the caller still wins.
   const known = useKnownContact();
   const rememberContact = useWidgetStore((s) => s.rememberContact);
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
+  const t = (s: string) => translate(uiLocale, s);
   const [name, setName] = useState(initialName ?? known.name ?? '');
   const [phone, setPhone] = useState(formatPhone(initialPhone ?? known.phone ?? ''));
   const [email, setEmail] = useState(initialEmail ?? known.email ?? '');
@@ -86,9 +89,11 @@ export function CallbackForm({
   const prefilledPhone = (initialPhone ?? known.phone ?? '').trim();
   const hasKnownPhone = prefilledPhone.replace(/\D/g, '').length >= 7;
   const verbWord = brand ? 'text' : 'call';
-  const shownHeading = hasKnownPhone ? 'Is this the best number to reach you?' : heading;
+  const shownHeading = hasKnownPhone ? t('Is this the best number to reach you?') : heading;
   const shownBody = hasKnownPhone
-    ? `You gave us ${prefilledPhone}. Confirm and we'll ${verbWord} you at this number, or edit it below to use a different one.`
+    ? uiLocale === 'es'
+      ? `Nos dio ${prefilledPhone}. Confirme y le ${brand ? 'escribiremos' : 'llamaremos'} a este número, o edítelo abajo para usar otro.`
+      : `You gave us ${prefilledPhone}. Confirm and we'll ${verbWord} you at this number, or edit it below to use a different one.`
     : body;
 
   return (
@@ -107,7 +112,7 @@ export function CallbackForm({
             htmlFor="callback-name"
             className="mb-1.5 block text-[13px] font-medium text-ink-soft"
           >
-            Your name
+            {t('Your name')}
           </label>
           <input
             id="callback-name"
@@ -116,14 +121,14 @@ export function CallbackForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => touch('name')}
-            placeholder="First and last name"
+            placeholder={t('First and last name')}
             aria-invalid={show('name') && !!nameErr}
             className={cn(
               'w-full rounded-lg border bg-white px-3 py-2.5 text-[16px] text-ink placeholder:text-muted-soft focus:outline-none sm:text-[14px]',
               show('name') && nameErr ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
             )}
           />
-          {show('name') && nameErr && <p className="mt-1 text-[11.5px] text-danger">{nameErr}</p>}
+          {show('name') && nameErr && <p className="mt-1 text-[11.5px] text-danger">{t(nameErr)}</p>}
         </div>
       )}
 
@@ -132,7 +137,7 @@ export function CallbackForm({
           htmlFor="callback-phone"
           className="mb-1.5 block text-[13px] font-medium text-ink-soft"
         >
-          Phone Number
+          {t('Phone Number')}
         </label>
         <input
           id="callback-phone"
@@ -149,7 +154,7 @@ export function CallbackForm({
             show('phone') && phoneErr ? 'border-danger focus:border-danger' : 'border-hairline focus:border-famaash',
           )}
         />
-        {show('phone') && phoneErr && <p className="mt-1 text-[11.5px] text-danger">{phoneErr}</p>}
+        {show('phone') && phoneErr && <p className="mt-1 text-[11.5px] text-danger">{t(phoneErr)}</p>}
       </div>
 
       {collectEmail && (
@@ -158,7 +163,7 @@ export function CallbackForm({
             htmlFor="callback-email"
             className="mb-1.5 block text-[13px] font-medium text-ink-soft"
           >
-            Email <span className="text-muted-soft">(for your confirmation)</span>
+            {t('Email')} <span className="text-muted-soft">{t('(for your confirmation)')}</span>
           </label>
           <input
             id="callback-email"
@@ -178,7 +183,7 @@ export function CallbackForm({
             )}
           />
           {((show('email') && emailErr) || emailError) && (
-            <p className="mt-1 text-[11.5px] text-danger">{(show('email') && emailErr) || emailError}</p>
+            <p className="mt-1 text-[11.5px] text-danger">{show('email') && emailErr ? t(emailErr) : emailError}</p>
           )}
         </div>
       )}
@@ -200,7 +205,7 @@ export function CallbackForm({
             <span className="text-[12.5px] leading-relaxed text-muted">{consentLabel}</span>
           </label>
           {submitAttempted && consentErr && (
-            <p className="mt-1 text-[11.5px] text-danger">Please agree before we continue.</p>
+            <p className="mt-1 text-[11.5px] text-danger">{t('Please agree before we continue.')}</p>
           )}
         </div>
       )}

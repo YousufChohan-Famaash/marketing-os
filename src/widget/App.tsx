@@ -6,7 +6,7 @@ import { SigningSheet } from './components/SigningSheet';
 import { WidgetErrorFallback } from './components/WidgetErrorFallback';
 import { WidgetShell } from './components/WidgetShell';
 import { applyFont, applyTheme } from './config/theme';
-import { getConsultationContext, getHandoffLanguage } from './config/env';
+import { getConsultationContext, getHandoffLanguage, resolveUiLocale } from './config/env';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
 import { SocketContext } from './services/socketContext';
@@ -172,6 +172,9 @@ export function App() {
 
   // Honor a ?view= deep-link (teaser channel tap, first iframe load) once.
   useEffect(() => {
+    // UI (chrome) locale for a Spanish visitor — set before the connect UI
+    // paints. Separate from the agent's language (still English).
+    useWidgetStore.getState().setUiLocale(resolveUiLocale());
     const v = readInitialView();
     if (v && v !== 'home') useWidgetStore.getState().setConnectView(v);
     // Free Consultation hand-off: we already have the case type from the wizard,

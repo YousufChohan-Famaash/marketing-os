@@ -9,6 +9,7 @@ import {
 } from '../services/api';
 import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
 import { CallbackForm } from './CallbackForm';
+import { translate, type UiLocale } from '../i18n';
 
 // The backend returns availability in Eastern (TCPA calling-hours), and the
 // confirmation email + stored booking are Eastern too. Render the whole grid in
@@ -53,17 +54,21 @@ function formatPhone(n?: string | null): string | null {
   return ten.length === 10 ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}` : n;
 }
 
-// "Tomorrow, September 2 at 7:15 PM EDT" — rendered in the returned tz (Eastern).
-function formatWhen(iso: string, tz: string): string {
+// "Tomorrow, September 2 at 7:15 PM EDT" — rendered in the returned tz (Eastern)
+// and the visitor's UI locale.
+function formatWhen(iso: string, tz: string, loc: UiLocale): string {
   const d = new Date(iso);
+  const bcp = loc === 'es' ? 'es' : 'en-US';
   const key = dayKey(d, tz);
   const today = dayKey(new Date(), tz);
   const tomorrow = dayKey(new Date(Date.now() + 86_400_000), tz);
-  const monthDay = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'long', day: 'numeric' }).format(d);
-  const time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
-  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long' }).format(d);
-  const lead = key === today ? 'Today' : key === tomorrow ? 'Tomorrow' : weekday;
-  return `${lead}, ${monthDay} at ${time}`;
+  const monthDay = new Intl.DateTimeFormat(bcp, { timeZone: tz, month: 'long', day: 'numeric' }).format(d);
+  const time = new Intl.DateTimeFormat(bcp, { timeZone: tz, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d);
+  const weekday = new Intl.DateTimeFormat(bcp, { timeZone: tz, weekday: 'long' }).format(d);
+  const raw = key === today ? translate(loc, 'Today') : key === tomorrow ? translate(loc, 'Tomorrow') : weekday;
+  const lead = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const at = loc === 'es' ? 'a las' : 'at';
+  return `${lead}, ${monthDay} ${at} ${time}`;
 }
 
 /** Today's date in the visitor's local zone, as a YYYY-MM-DD key. */
@@ -96,6 +101,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   const firmId = useWidgetStore((s) => s.firmId);
   const conversationId = useWidgetStore((s) => s.conversationId);
   const firmName = useWidgetStore((s) => s.branding)?.name ?? 'the firm';
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
+  const t = (s: string) => translate(uiLocale, s);
+  const bcp = uiLocale === 'es' ? 'es' : 'en-US';
 
   const [phase, setPhase] = useState<'loading' | 'pick' | 'unavailable' | 'booked'>('loading');
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -158,17 +166,17 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       if (!map.has(key)) {
         const top =
           key === todayKey
-            ? 'Today'
+            ? t('Today')
             : key === tomorrowKey
-              ? 'Tomorrow'
-              : new Intl.DateTimeFormat('en-US', { timeZone: displayTz, weekday: 'short' }).format(d);
-        const sub = new Intl.DateTimeFormat('en-US', { timeZone: displayTz, month: 'short', day: 'numeric' }).format(d);
+              ? t('Tomorrow')
+              : new Intl.DateTimeFormat(bcp, { timeZone: displayTz, weekday: 'short' }).format(d);
+        const sub = new Intl.DateTimeFormat(bcp, { timeZone: displayTz, month: 'short', day: 'numeric' }).format(d);
         map.set(key, { key, top, sub, slots: [] });
       }
       map.get(key)!.slots.push(s);
     }
     return [...map.values()];
-  }, [slots, displayTz]);
+  }, [slots, displayTz, uiLocale]);
 
   // Incremental disclosure: start with no day chosen (the day chips lead). Only
   // clear a stale selection if a re-fetch dropped the day the visitor had picked.
@@ -180,7 +188,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   }, [phase, days, selectedDay]);
 
   const fmtTime = (iso: string) =>
-    new Intl.DateTimeFormat('en-US', { timeZone: displayTz, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+    new Intl.DateTimeFormat(bcp, { timeZone: displayTz, hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 
   // Bucket a slot into Morning / Afternoon / Evening (display tz) so a long day
   // of times reads as a few short groups instead of 20+ loose chips.
@@ -197,11 +205,11 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     setEmailError(null);
     setFormError(null);
     if (!selectedStart) {
-      setFormError('Pick a time above first.');
+      setFormError(t('Pick a time above first.'));
       return;
     }
     if (!conversationId) {
-      setFormError('Your session expired. Please restart the chat.');
+      setFormError(t('Your session expired. Please restart the chat.'));
       return;
     }
     setBusy(true);
@@ -238,19 +246,19 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       const tooSoon = status === 400 && /soon|60/i.test(detail ?? '');
       if (status === 502 || tooSoon) {
         setSelectedStart(null);
-        setNotice('That time is no longer available. Please pick another.');
+        setNotice(t('That time is no longer available. Please pick another.'));
         setPhase('loading');
         void loadAvailability();
       } else if (status === 503) {
         setPhase('unavailable');
       } else if (status === 404) {
-        setFormError('Your session expired. Please reopen the chat and try again.');
+        setFormError(t('Your session expired. Please reopen the chat and try again.'));
       } else if (status === 400 && detail?.toLowerCase().includes('email')) {
         setEmailError(detail);
       } else if (status === 400 && detail) {
         setFormError(detail);
       } else {
-        setFormError("We couldn't book that time. Please try again.");
+        setFormError(t("We couldn't book that time. Please try again."));
       }
     } finally {
       setBusy(false);
@@ -272,7 +280,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     return (
       <div className="flex flex-col items-center py-10 text-center">
         <span className="h-7 w-7 animate-spin rounded-full border-2 border-hairline border-t-famaash" />
-        <p className="mt-3 text-[14px] text-muted">Checking available times…</p>
+        <p className="mt-3 text-[14px] text-muted">{t('Checking available times…')}</p>
       </div>
     );
   }
@@ -283,9 +291,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-famaash-soft text-ink">
           <PhoneIcon size={26} aria-hidden="true" />
         </span>
-        <h3 className="mt-4 text-[18px] font-bold text-ink">No times to show right now</h3>
+        <h3 className="mt-4 text-[18px] font-bold text-ink">{t('No times to show right now')}</h3>
         <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
-          Online scheduling isn't available at the moment. Leave your number and we'll call you instead.
+          {t("Online scheduling isn't available at the moment. Leave your number and we'll call you instead.")}
         </p>
         <button
           type="button"
@@ -293,7 +301,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           className="mt-6 flex items-center gap-2 rounded-pill bg-famaash px-5 py-2.5 text-[13px] font-semibold text-white hover:opacity-95"
         >
           <PhoneIcon size={15} aria-hidden="true" />
-          Request a call instead
+          {t('Request a call instead')}
         </button>
       </div>
     );
@@ -304,7 +312,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
     const cal = info
       ? calendarHref(info.slotStart, info.end, `Call with ${firmName}`, `${firmName} will call you about your inquiry.`)
       : null;
-    const when = info ? formatWhen(info.slotStart, info.timezone) : null;
+    const when = info ? formatWhen(info.slotStart, info.timezone, uiLocale) : null;
     const callTo = formatPhone(info?.callbackPhone);
     const callFrom = formatPhone(info?.callerId);
     return (
@@ -313,19 +321,19 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           <CheckIcon size={26} aria-hidden="true" />
         </span>
         <h3 className="mt-4 text-[18px] font-bold text-ink">
-          {info?.name ? `You're booked, ${info.name}.` : "You're booked."}
+          {info?.name ? `${t("You're booked")}, ${info.name}.` : `${t("You're booked")}.`}
         </h3>
         {when && <p className="mt-1.5 text-[15px] font-semibold text-ink">{when}</p>}
         <div className="mt-2 max-w-[36ch] space-y-1 text-[13.5px] leading-relaxed text-muted">
           {callTo && (
-            <p>We'll call you at <span className="font-semibold text-ink">{callTo}</span></p>
+            <p>{t("We'll call you at")} <span className="font-semibold text-ink">{callTo}</span></p>
           )}
           {/* Only when the backend gave a real caller ID — a wrong number gets the
               real call screened as spam. */}
           {callFrom && (
-            <p>The call comes from <span className="font-semibold text-ink">{callFrom}</span> — save this number so you know it's us.</p>
+            <p>{t('The call comes from')} <span className="font-semibold text-ink">{callFrom}</span> — {t("save this number so you know it's us")}.</p>
           )}
-          <p>A confirmation and reminder are on their way to your phone and email.</p>
+          <p>{t('A confirmation and reminder are on their way to your phone and email.')}</p>
         </div>
         <div className="mt-5 flex flex-col items-center gap-3">
           {cal && (
@@ -335,7 +343,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
               className="inline-flex items-center gap-2 rounded-pill border border-famaash-stroke px-5 py-2.5 text-[13px] font-semibold text-famaash hover:bg-famaash-soft"
             >
               <CalendarIcon size={15} aria-hidden="true" />
-              Add to calendar
+              {t('Add to calendar')}
             </a>
           )}
           <button
@@ -343,7 +351,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
             onClick={reschedule}
             className="text-[13px] font-medium text-muted underline underline-offset-2 hover:text-ink"
           >
-            Need a different time?
+            {t('Need a different time?')}
           </button>
         </div>
       </div>
@@ -364,7 +372,8 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   // front of them (no long scroll). "Change" steps back one level.
   const haveDay = Boolean(selectedDay);
   const haveTime = Boolean(selectedStart);
-  const heading = !haveDay ? 'Pick a day' : !haveTime ? 'Pick a time' : 'Confirm your callback';
+  const heading = !haveDay ? t('Pick a day') : !haveTime ? t('Pick a time') : t('Confirm your callback');
+  const atSep = uiLocale === 'es' ? 'a las' : 'at';
   const changeSelection = () => {
     if (selectedStart) setSelectedStart(null);
     else setSelectedDay(null);
@@ -375,7 +384,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       <div className="min-w-0">
         <h3 className="text-[19px] font-bold leading-snug text-ink">{heading}</h3>
         <p className="mt-1.5 text-[14px] leading-relaxed text-muted">
-          All times in Eastern Time (ET). We'll send a confirmation and a reminder.
+          {t("All times in Eastern Time (ET). We'll send a confirmation and a reminder.")}
         </p>
       </div>
 
@@ -391,10 +400,10 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[14px] font-bold text-ink">
-              {haveTime ? `${activeDay.top} at ${fmtTime(selectedStart!)}` : `${activeDay.top}, ${activeDay.sub}`}
+              {haveTime ? `${activeDay.top} ${atSep} ${fmtTime(selectedStart!)}` : `${activeDay.top}, ${activeDay.sub}`}
             </span>
             <span className="block text-[12px] text-muted">
-              {haveTime ? "We'll call you then, Eastern time" : 'Choose a time below'}
+              {haveTime ? t("We'll call you then, Eastern time") : t('Choose a time below')}
             </span>
           </span>
           <button
@@ -402,7 +411,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
             onClick={changeSelection}
             className="shrink-0 rounded-pill px-2.5 py-1 text-[12px] font-semibold text-famaash hover:bg-white"
           >
-            {haveTime ? 'Change' : 'Change day'}
+            {haveTime ? t('Change') : t('Change day')}
           </button>
         </div>
       )}
@@ -424,17 +433,17 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[12px] font-semibold uppercase tracking-wide text-muted-soft">
-                  Next available
+                  {t('Next available')}
                 </span>
                 <span className="block text-[14px] font-bold text-ink">
-                  {nextDay.top} at {fmtTime(nextSlot.start)}
+                  {nextDay.top} {atSep} {fmtTime(nextSlot.start)}
                 </span>
               </span>
             </button>
           )}
 
           <div>
-            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-soft">Or choose a day</p>
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-soft">{t('Or choose a day')}</p>
             <div className="flex flex-wrap gap-2">
               {days.map((d) => (
                 <button
@@ -459,7 +468,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       {haveDay && !haveTime &&
         timeGroups.map((group) => (
           <div key={group.label}>
-            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-soft">{group.label}</p>
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-muted-soft">{t(group.label)}</p>
             <div className="grid grid-cols-3 gap-2">
               {group.slots.map((s) => (
                 <button
@@ -483,9 +492,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           )}
           <CallbackForm
             variant="alert"
-            heading="Where should we call you?"
-            body="Add your details and we'll call at the time above."
-            cta={busy ? 'Booking your callback…' : 'Confirm booking'}
+            heading={t('Where should we call you?')}
+            body={t("Add your details and we'll call at the time above.")}
+            cta={busy ? t('Booking your callback…') : t('Confirm booking')}
             collectName
             collectEmail
             initialName={prefill.name}

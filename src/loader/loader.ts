@@ -808,6 +808,10 @@ function readScriptConfig(): {
   cine: boolean;
   media: boolean;
   apiBase: string;
+  /** Visitor UI language for the widget chrome (empty = English). From the
+   *  embed's data-lang, else the host page's <html lang>. The iframe can't read
+   *  the host <html>, so we forward it as ?ui_lang=. */
+  uiLang: string;
 } {
   const script = (document.currentScript ?? document.querySelector('script[data-firm-id]')) as
     | HTMLScriptElement
@@ -830,11 +834,15 @@ function readScriptConfig(): {
   const mediaAttr = script.getAttribute('data-media');
   const media = mediaAttr === '1' || mediaAttr === 'true';
   const apiBase = (script.getAttribute('data-api-base') ?? 'https://api.catafleet.com/api/v1/widget').replace(/\/+$/, '');
-  return { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase };
+  // Same signal the Free Consultation wizard uses: data-lang wins, else the
+  // page's <html lang>. Forwarded into the iframe so the widget chrome can be
+  // Spanish for a Spanish visitor.
+  const uiLang = (script.getAttribute('data-lang') || document.documentElement.getAttribute('lang') || '').trim();
+  return { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, uiLang };
 }
 
 (function boot() {
-  const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase } = readScriptConfig();
+  const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, uiLang } = readScriptConfig();
   injectStyles();
 
   // Marketing attribution from the HOST page (the sandboxed iframe can't read the
@@ -1250,7 +1258,9 @@ function readScriptConfig(): {
     // falls back to the bundle's baked-in default, so a prod embed would still
     // talk to the dev backend. The value already includes /api/v1/widget.
     const apiBaseParam = `&api_base=${encodeURIComponent(apiBase)}`;
-    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}${vidParam}${apiBaseParam}`;
+    // Visitor UI language for the widget chrome (Spanish for a Spanish page).
+    const uiLangParam = uiLang ? `&ui_lang=${encodeURIComponent(uiLang)}` : '';
+    el.src = `${widgetOrigin}/embed.html?firm_id=${encodeURIComponent(firmId)}${themeParam}${viewParam}${cineParam}${mediaParam}${ctxParam}${attrParam}${vidParam}${apiBaseParam}${uiLangParam}`;
     positionEl(el);
     document.body.appendChild(el);
     iframe = el;

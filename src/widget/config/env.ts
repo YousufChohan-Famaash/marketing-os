@@ -77,6 +77,17 @@ export function getHandoffLanguage(): string | null {
 }
 
 /**
+ * The widget's UI (chrome) locale — same signal the Free Consultation wizard
+ * uses, adapted for the iframe: a hand-off carries it in `ctx.language`; for a
+ * direct visitor the loader reads the host page's `data-lang` / `<html lang>`
+ * and forwards it as `?ui_lang=`. Defaults to English. NOT the agent's language.
+ */
+export function resolveUiLocale(): 'en' | 'es' {
+  const raw = getHandoffLanguage() ?? queryParam('ui_lang') ?? '';
+  return /^es/i.test(raw.trim()) ? 'es' : 'en';
+}
+
+/**
  * Marketing attribution forwarded by the loader from the HOST page (the iframe's
  * own URL can't see the host's UTM/referrer). The loader packs it into an `attr`
  * query param; we read it here and send it on POST /token so the backend can

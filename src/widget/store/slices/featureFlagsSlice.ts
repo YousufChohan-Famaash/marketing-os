@@ -32,6 +32,12 @@ export interface FeatureFlagsSlice {
    * language intersected with `languages`; the picker updates it.
    */
   language: string;
+  /** The widget's UI (chrome) language — 'en' | 'es'. Separate from `language`
+   *  (the agent's conversation language, gated by the firm's offered set): the
+   *  chrome can be Spanish while the agent is still English. Set once at boot
+   *  from the visitor's language and not clamped to `languages`. */
+  uiLocale: 'en' | 'es';
+  setUiLocale: (loc: 'en' | 'es') => void;
   /** Ordered languages the firm offers (from /config; [] = no picker). */
   languages: string[];
   /** Languages the AI agent can converse in (from /config). If the visitor's
@@ -65,6 +71,8 @@ export const createFeatureFlagsSlice: StateCreator<
   allowedOrigins: [],
   connect: resolveConnectSettings(null),
   language: 'en',
+  uiLocale: 'en',
+  setUiLocale: (uiLocale) => set({ uiLocale }),
   languages: [],
   conversationLanguages: [],
   setLanguage: (language) => set({ language }),
