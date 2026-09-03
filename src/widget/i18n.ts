@@ -69,6 +69,43 @@ const ES: Record<string, string> = {
   'That number has too many digits.': 'Ese número tiene demasiados dígitos.',
   'Please enter your email.': 'Por favor escriba su correo electrónico.',
   'Enter a valid email address.': 'Escriba una dirección de correo válida.',
+  // ── Connect home menu ──
+  'Hurt? Talk to us': '¿Lesionado? Hable con nosotros',
+  'your way.': 'como prefiera.',
+  'We answer. Day or night. 24/7': 'Respondemos. De día o de noche. 24/7',
+  'Call me now': 'Llámenme ahora',
+  "We'll ring you in under 60 seconds": 'Le llamamos en menos de 60 segundos',
+  'Chat with us': 'Chatee con nosotros',
+  'Message us now, we reply in seconds': 'Escríbanos ahora, respondemos en segundos',
+  'Text me': 'Envíenme un mensaje',
+  'SMS or WhatsApp, on your phone': 'SMS o WhatsApp, en su teléfono',
+  'Book a call': 'Agende una llamada',
+  'Pick a time that works for you': 'Elija la hora que le convenga',
+  'Send your details': 'Envíe sus datos',
+  "Fill out a quick form and we'll reach back within the hour.":
+    'Complete un formulario rápido y le contactaremos en menos de una hora.',
+  // ── Composer ──
+  'Type a message…': 'Escriba un mensaje…',
+  'Listening…': 'Escuchando…',
+  'This conversation has ended.': 'Esta conversación ha terminado.',
+  "We're on the phone with you.": 'Estamos al teléfono con usted.',
+  'Recording video. Tap send when done.': 'Grabando video. Toque enviar cuando termine.',
+  'Recording voice note…': 'Grabando nota de voz…',
+  'Cancel': 'Cancelar',
+  'Calling you now…': 'Llamándole ahora…',
+  "We couldn't reach you. Try again, or keep chatting here.":
+    'No pudimos localizarle. Inténtelo de nuevo o siga chateando aquí.',
+  'Try again': 'Intentar de nuevo',
+  'Call me instead': 'Mejor llámenme',
+  'Listening': 'Escuchando',
+  'Speak now. Your words will appear in the box.': 'Hable ahora. Sus palabras aparecerán en el cuadro.',
+  'Done': 'Listo',
+  'Voice note': 'Nota de voz',
+  'Record and send audio': 'Grabe y envíe audio',
+  'Speech to text': 'Voz a texto',
+  "Talk and we'll type it": 'Hable y lo escribimos',
+  'Video': 'Video',
+  'Record and send video': 'Grabe y envíe video',
 };
 
 export function translate(loc: UiLocale, en: string): string {

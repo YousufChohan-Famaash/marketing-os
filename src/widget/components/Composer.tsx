@@ -23,6 +23,7 @@ import {
   WaveformIcon,
 } from "../utils/icons";
 import { cn } from "../utils/cn";
+import { useT } from "../i18n";
 
 // Terminal dial states that resolve the "Calling you now…" banner.
 const TERMINAL_CALL_STATUSES = ["connected", "completed", "no_answer", "busy", "failed"];
@@ -76,6 +77,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
   const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
   const socket = useSocket();
+  const t = useT();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -280,7 +282,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   if (conversationEnded) {
     return (
       <div className="shrink-0 bg-white px-3 py-3 text-center">
-        <p className="text-[12px] text-muted">This conversation has ended.</p>
+        <p className="text-[12px] text-muted">{t('This conversation has ended.')}</p>
       </div>
     );
   }
@@ -293,7 +295,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
       <div className="shrink-0 bg-white px-3 py-3">
         <div className="flex items-center justify-center gap-2 rounded-pill bg-[#ECFDF5] px-3 py-2 text-[12.5px] font-semibold text-[#047857]">
           <PhoneIcon size={14} aria-hidden="true" />
-          We're on the phone with you.
+          {t("We're on the phone with you.")}
         </div>
       </div>
     );
@@ -329,14 +331,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
             </span>
           )}
           <span className="flex-1 truncate text-[12px] text-muted">
-            {isVideo ? "Recording video. Tap send when done." : "Recording voice note…"}
+            {isVideo ? t("Recording video. Tap send when done.") : t("Recording voice note…")}
           </span>
           <button
             type="button"
             onClick={note.cancel}
             className="rounded-full px-3 py-1 text-[12px] font-semibold text-muted hover:bg-white/70"
           >
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             type="button"
@@ -357,19 +359,19 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
       {chatCallPhase === "calling" && (
         <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5 text-[12px] font-semibold text-famaash">
           <PhoneIcon size={13} aria-hidden="true" />
-          Calling you now…
+          {t('Calling you now…')}
         </div>
       )}
       {chatCallPhase === "failed" && (
         <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#FEF2F2] px-3 py-2 text-[12px] text-danger">
           <PhoneOffIcon size={14} className="shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1">We couldn't reach you. Try again, or keep chatting here.</span>
+          <span className="min-w-0 flex-1">{t("We couldn't reach you. Try again, or keep chatting here.")}</span>
           <button
             type="button"
             onClick={() => setActiveModal("call-me")}
             className="shrink-0 font-semibold underline hover:opacity-80"
           >
-            Try again
+            {t('Try again')}
           </button>
           <button
             type="button"
@@ -391,24 +393,24 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           className="mb-2 inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash"
         >
           <PhoneIcon size={13} aria-hidden="true" />
-          Call me instead
+          {t('Call me instead')}
         </button>
       )}
       {stt.listening && (
         <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5">
           <span className="flex items-center gap-1.5 text-[12px] font-semibold text-famaash">
             <span className="h-2 w-2 animate-pulse rounded-full bg-danger" aria-hidden="true" />
-            Listening
+            {t('Listening')}
           </span>
           <span className="min-w-0 flex-1 truncate text-[12px] italic text-muted">
-            {stt.interim || "Speak now. Your words will appear in the box."}
+            {stt.interim || t('Speak now. Your words will appear in the box.')}
           </span>
           <button
             type="button"
             onClick={stt.stop}
             className="rounded-full px-2.5 py-0.5 text-[12px] font-semibold text-muted hover:bg-white/70"
           >
-            Done
+            {t('Done')}
           </button>
         </div>
       )}
@@ -451,8 +453,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                 {voiceAvailable && (
                   <AttachmentItem
                     icon={<MicIcon size={17} />}
-                    label="Voice note"
-                    hint="Record and send audio"
+                    label={t('Voice note')}
+                    hint={t('Record and send audio')}
                     onClick={() => {
                       setMenuOpen(false);
                       if (allowVoiceNotes && canRecordMedia()) startVoiceNote();
@@ -463,8 +465,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                 {stt.supported && (
                   <AttachmentItem
                     icon={<WaveformIcon size={17} />}
-                    label="Speech to text"
-                    hint="Talk and we'll type it"
+                    label={t('Speech to text')}
+                    hint={t("Talk and we'll type it")}
                     onClick={() => {
                       setMenuOpen(false);
                       stt.toggle();
@@ -474,8 +476,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                 {videoAvailable && (
                   <AttachmentItem
                     icon={<VideoIcon size={17} />}
-                    label="Video"
-                    hint="Record and send video"
+                    label={t('Video')}
+                    hint={t('Record and send video')}
                     onClick={() => {
                       setMenuOpen(false);
                       if (allowVideoNotes && canRecordMedia()) startVideoNote();
@@ -501,7 +503,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           }}
           onKeyDown={onKeyDown}
           onFocus={onFocus}
-          placeholder={stt.listening ? "Listening…" : "Type a message…"}
+          placeholder={stt.listening ? t("Listening…") : t("Type a message…")}
           rows={1}
           // Match the widget's UI font (not the message serif) so the input
           // doesn't read as a foreign field. 16px on mobile so iOS Safari doesn't

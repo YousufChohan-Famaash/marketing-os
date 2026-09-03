@@ -6,6 +6,7 @@ import { cn } from '../utils/cn';
 import { ConnectVideo } from './ConnectVideo';
 import { PoweredByFooter } from './PoweredByFooter';
 import { WidgetControls } from './WidgetControls';
+import { useT } from '../i18n';
 
 interface ConnectHomeProps {
   onClose: () => void;
@@ -36,6 +37,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
+  const t = useT();
 
   const firmName = branding?.name ?? 'our team';
   const ranked = rankChannels(settings).slice(0, 4);
@@ -48,7 +50,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
 
   const headline = (
     <h2 className="text-[18px] font-bold leading-tight tracking-[-0.02em] text-ink">
-      {HEADLINE_LEAD} <span className="text-famaash">{HEADLINE_ACCENT}</span>
+      {t(HEADLINE_LEAD)} <span className="text-famaash">{t(HEADLINE_ACCENT)}</span>
     </h2>
   );
 
@@ -98,6 +100,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
 function RowChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => void }) {
   const meta = CHANNEL_META[id];
   const Icon = CHANNEL_ICON[id];
+  const t = useT();
   return (
     <button
       type="button"
@@ -108,8 +111,8 @@ function RowChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => vo
         <Icon size={19} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[14.5px] font-semibold leading-tight text-ink">{meta.label}</span>
-        <span className="mt-0.5 block text-[12.5px] text-muted">{meta.sublabel}</span>
+        <span className="block text-[14.5px] font-semibold leading-tight text-ink">{t(meta.label)}</span>
+        <span className="mt-0.5 block text-[12.5px] text-muted">{t(meta.sublabel)}</span>
       </span>
       <ChevronRightIcon size={17} className="shrink-0 text-muted-soft" aria-hidden="true" />
     </button>
@@ -119,6 +122,7 @@ function RowChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => vo
 function GridChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => void }) {
   const meta = CHANNEL_META[id];
   const Icon = CHANNEL_ICON[id];
+  const t = useT();
   return (
     <button
       type="button"
@@ -129,18 +133,19 @@ function GridChannelCard({ id, onClick }: { id: ConnectChannel; onClick: () => v
         <Icon size={16} aria-hidden="true" />
       </span>
       <span className="min-w-0">
-        <span className="block text-[12.5px] font-semibold leading-tight text-ink">{meta.label}</span>
-        <span className="mt-0.5 line-clamp-2 block text-[11px] leading-snug text-muted">{meta.sublabel}</span>
+        <span className="block text-[12.5px] font-semibold leading-tight text-ink">{t(meta.label)}</span>
+        <span className="mt-0.5 line-clamp-2 block text-[11px] leading-snug text-muted">{t(meta.sublabel)}</span>
       </span>
     </button>
   );
 }
 
 function StatusLine({ className }: { className?: string }) {
+  const t = useT();
   return (
     <div className={cn('flex items-center gap-2 text-[12.5px] font-medium text-success', className)}>
       <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-      We answer. Day or night. 24/7
+      {t('We answer. Day or night. 24/7')}
     </div>
   );
 }

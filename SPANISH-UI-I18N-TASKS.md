@@ -25,14 +25,14 @@ English agent.
 ## Components to translate
 - [x] ScheduleCallback (day/time picker, summary, booked screen)
 - [x] CallbackForm (name/phone/email, consent, CTAs, errors)
-- [ ] ConnectHome (the connect menu: Call / Schedule / Chat / Send details)
+- [x] ConnectHome (the connect menu: Call / Schedule / Chat / Send details) + CHANNEL_META labels
+- [x] Composer (input placeholder, call banners, recording/listening, attachment menu)
 - [ ] SendDetails (the leave-your-details form)
-- [ ] Composer (input placeholder, send, mic states)
 - [ ] ChatHeader ("Book a call" etc., controls)
-- [ ] ConnectingState / ConnectHome states
+- [ ] ConnectingState
 - [ ] ConversationIntro / ChatOpenerChips / QuickReplyChips (hardcoded labels only)
-- [ ] PracticeOptions, SafetyButtons, ConsentModal, TextHandoffModal, SendDetails, CaptureDrawer
-- [ ] PoweredByFooter / misc chrome
+- [ ] PracticeOptions, SafetyButtons, ConsentModal, TextHandoffModal, CaptureDrawer, CallMeModal, EmergencyModal, HumanTakeoverModal
+- [ ] PoweredByFooter / misc chrome + aria-labels
 
 ## Out of scope (later backend run)
 - The agent's chat messages (English until `es` is added to `CONVERSATION_LANGS`)
