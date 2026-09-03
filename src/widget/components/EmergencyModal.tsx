@@ -2,6 +2,7 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { CallbackForm } from './CallbackForm';
 import { Modal } from './Modal';
+import { useT } from '../i18n';
 
 /**
  * "I need help now" → urgent callback request. Collects a phone number so the
@@ -11,13 +12,14 @@ export function EmergencyModal() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const setHumanRequested = useWidgetStore((s) => s.setHumanRequested);
   const socket = useSocket();
+  const t = useT();
 
   return (
-    <Modal title="Talk to a human" onClose={() => setActiveModal(null)}>
+    <Modal title={t('Talk to a human')} onClose={() => setActiveModal(null)}>
       <CallbackForm
-        heading="We're here to help"
-        body="Please provide your phone number so we can call you immediately."
-        cta="Call me now"
+        heading={t("We're here to help")}
+        body={t('Please provide your phone number so we can call you immediately.')}
+        cta={t('Call me now')}
         onSubmit={(phone) => {
           socket?.send({ type: 'request_human', method: 'emergency', phone });
           // Waiting on a person now — hide the AI "Call me" button (§7).

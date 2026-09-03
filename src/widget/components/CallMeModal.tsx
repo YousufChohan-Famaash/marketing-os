@@ -4,6 +4,7 @@ import { ApiError, errorDetail, placeCallNow } from '../services/api';
 import { resolveTcpa } from '../utils/compliance';
 import { Modal } from './Modal';
 import { CallbackForm } from './CallbackForm';
+import { useT } from '../i18n';
 
 /**
  * Mid-chat "Call me" — reuses the launcher's Call-Me-Now REST flow, but from
@@ -19,8 +20,9 @@ export function CallMeModal() {
   const conversationId = useWidgetStore((s) => s.conversationId);
   const firmId = useWidgetStore((s) => s.firmId);
   const compliance = useWidgetStore((s) => s.compliance);
-  const language = useWidgetStore((s) => s.language);
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
   const branding = useWidgetStore((s) => s.branding);
+  const t = useT();
 
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function CallMeModal() {
   // placeholder value falls back to a proper default. The version is recorded
   // with the consent so the exact wording is provable in the audit log.
   const firmName = branding?.name ?? 'the firm';
-  const resolvedTcpa = resolveTcpa(compliance, language, 'call');
+  const resolvedTcpa = resolveTcpa(compliance, uiLocale, 'call');
   const authoredConsent = resolvedTcpa.text.trim().length >= 30 ? resolvedTcpa.text : null;
   const consentLabel =
     authoredConsent ??
@@ -43,7 +45,7 @@ export function CallMeModal() {
     if (placing) return;
     setError(null);
     if (!conversationId) {
-      setError("We couldn't start the call. Please try again.");
+      setError(t("We couldn't start the call. Please try again."));
       return;
     }
     setPlacing(true);
@@ -68,7 +70,7 @@ export function CallMeModal() {
       setError(
         err instanceof ApiError && err.status === 400 && detail
           ? detail
-          : "We couldn't start the call. Please try again.",
+          : t("We couldn't start the call. Please try again."),
       );
     } finally {
       setPlacing(false);
@@ -76,16 +78,16 @@ export function CallMeModal() {
   };
 
   return (
-    <Modal title="Call me instead" onClose={close}>
+    <Modal title={t('Call me instead')} onClose={close}>
       {error && (
         <div className="mb-3 rounded-lg border border-[#F3C6C6] bg-[#FEF2F2] px-3 py-2 text-[12.5px] leading-relaxed text-danger">
           {error}
         </div>
       )}
       <CallbackForm
-        heading="Talk instead of type?"
-        body="We'll call you now and pick up right where we left off — everything you've already shared is carried into the call."
-        cta="Call me now"
+        heading={t('Talk instead of type?')}
+        body={t("We'll call you now and pick up right where we left off — everything you've already shared is carried into the call.")}
+        cta={t('Call me now')}
         collectName
         consentLabel={consentLabel}
         busy={placing}

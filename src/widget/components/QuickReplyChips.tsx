@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { cn } from '../utils/cn';
+import { useT } from '../i18n';
 
 interface QuickReplyChipsProps {
   options: string[];
@@ -31,6 +32,7 @@ export function QuickReplyChips({
 }: QuickReplyChipsProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const [picked, setPicked] = useState<string[]>([]);
+  const t = useT();
   const locked = Boolean(selected) || Boolean(disabled);
 
   const focusAt = (idx: number) => {
@@ -116,7 +118,7 @@ export function QuickReplyChips({
           onClick={() => onSelect(picked.join(', '))}
           className="mt-2 rounded-pill bg-famaash px-5 py-2 text-[13px] font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {picked.length > 0 ? `Confirm (${picked.length})` : 'Confirm'}
+          {picked.length > 0 ? `${t('Confirm')} (${picked.length})` : t('Confirm')}
         </button>
       )}
     </div>

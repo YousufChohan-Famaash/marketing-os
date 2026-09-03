@@ -4,6 +4,7 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { cn } from '../utils/cn';
 import { CloseIcon, MessageSquareIcon } from '../utils/icons';
+import { useT } from '../i18n';
 
 /**
  * Blocking TCPA consent prompt sent by the agent after the phone is captured
@@ -16,6 +17,7 @@ export function ConsentModal() {
   const consent = useWidgetStore((s) => s.consent);
   const setConsent = useWidgetStore((s) => s.setConsent);
   const socket = useSocket();
+  const t = useT();
   const [choice, setChoice] = useState<boolean | null>(null);
 
   // Treat dismiss / Escape as a decline so the flow isn't left hanging.
@@ -71,7 +73,7 @@ export function ConsentModal() {
           <button
             type="button"
             onClick={dismiss}
-            aria-label="Close"
+            aria-label={t('Close')}
             className="rounded-md p-1 text-muted hover:bg-hairline-soft hover:text-ink"
           >
             <CloseIcon size={18} />
@@ -81,7 +83,7 @@ export function ConsentModal() {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <p className="text-[13px] font-semibold text-ink">
-            Review the following before continuing:
+            {t('Review the following before continuing:')}
           </p>
           {consent.phone && (
             <div className="mt-2 rounded-xl bg-subtle px-4 py-3 text-[15px] font-semibold tracking-wide text-ink">
@@ -132,7 +134,7 @@ export function ConsentModal() {
               choice === null && 'cursor-not-allowed opacity-40',
             )}
           >
-            Continue
+            {t('Continue')}
           </button>
         </div>
       </div>

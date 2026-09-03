@@ -180,6 +180,34 @@ const ES: Record<string, string> = {
   "You're all set": 'Todo listo',
   'Back to options': 'Volver a las opciones',
   'Back': 'Atrás',
+  // ── Modals ──
+  'Talk instead of type?': '¿Prefiere hablar en vez de escribir?',
+  "We'll call you now and pick up right where we left off — everything you've already shared is carried into the call.":
+    'Le llamamos ahora y seguimos justo donde lo dejamos; todo lo que ya compartió pasa a la llamada.',
+  'Talk to a human': 'Hablar con una persona',
+  "We're here to help": 'Estamos aquí para ayudar',
+  'Please provide your phone number so we can call you immediately.': 'Proporcione su número de teléfono para llamarle de inmediato.',
+  'Call me immediately': 'Llámenme de inmediato',
+  'A team member will call you within 60 seconds.': 'Un miembro del equipo le llamará en menos de 60 segundos.',
+  'Call me in 15 minutes': 'Llámenme en 15 minutos',
+  'Select 15, 30, 45 min or 1 hour.': 'Elija 15, 30, 45 min o 1 hora.',
+  'Pick a specific date and time.': 'Elija una fecha y hora específica.',
+  'When should we call you back?': '¿Cuándo le devolvemos la llamada?',
+  '1 hour': '1 hora',
+  'Continue over text': 'Continuar por mensaje',
+  'Enter your number and we’ll text you so you can continue this conversation from your phone.':
+    'Escriba su número y le enviaremos un mensaje para continuar esta conversación desde su teléfono.',
+  // ── Intro / opener / consent / chips ──
+  "Let's talk about it": 'Hablemos de su caso',
+  'Chat with us! You can also continue this on your phone or schedule a call with one of our experts.':
+    '¡Chatee con nosotros! También puede continuar en su teléfono o agendar una llamada con uno de nuestros expertos.',
+  'Review the following before continuing:': 'Revise lo siguiente antes de continuar:',
+  'Continue': 'Continuar',
+  'Close': 'Cerrar',
+  'What happened?': '¿Qué ocurrió?',
+  'More': 'Más',
+  'Confirm': 'Confirmar',
+  'What kind of matter brings you here?': '¿Qué tipo de asunto le trae aquí?',
 };
 
 export function translate(loc: UiLocale, en: string): string {

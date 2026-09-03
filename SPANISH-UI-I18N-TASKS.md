@@ -32,9 +32,14 @@ English agent.
 - [x] ChatHeader (Live chat / specialist identity, controls)
 - [x] ConnectingState
 - [x] PoweredByFooter (Privacy / Terms)
-- [ ] ConversationIntro / ChatOpenerChips / QuickReplyChips (hardcoded labels only)
-- [ ] PracticeOptions, SafetyButtons, ConsentModal, TextHandoffModal, CaptureDrawer, CallMeModal, EmergencyModal, HumanTakeoverModal
-- [ ] misc aria-labels
+- [x] ConversationIntro / ChatOpenerChips / QuickReplyChips (hardcoded labels; backend chips pass through)
+- [x] PracticeOptions, SafetyButtons, ConsentModal, TextHandoffModal, CallMeModal, EmergencyModal, HumanTakeoverModal
+- [~] CaptureDrawer — only aria-labels (screen-reader), content is backend field names; left English for now
+- [~] a few remaining aria-labels elsewhere (screen-reader only)
+
+All visible visitor-facing chrome is translated. Anything still in English is
+either backend-owned (agent messages, quick replies), a screen-reader aria-label,
+or falls back to English by design via the source-keyed table.
 
 ## Out of scope (later backend run)
 - The agent's chat messages (English until `es` is added to `CONVERSATION_LANGS`)

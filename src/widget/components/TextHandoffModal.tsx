@@ -3,6 +3,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import { generateId } from '../utils/id';
 import { CallbackForm } from './CallbackForm';
 import { Modal } from './Modal';
+import { useT } from '../i18n';
 
 /**
  * "Text me" → collect a phone number and shift the conversation to SMS. We send
@@ -12,6 +13,7 @@ import { Modal } from './Modal';
 export function TextHandoffModal() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const socket = useSocket();
+  const t = useT();
 
   const submit = (phone: string) => {
     const content = `Please continue this conversation by text at ${phone}.`;
@@ -28,12 +30,12 @@ export function TextHandoffModal() {
   };
 
   return (
-    <Modal title="Continue over text" onClose={() => setActiveModal(null)}>
+    <Modal title={t('Continue over text')} onClose={() => setActiveModal(null)}>
       <CallbackForm
         variant="brand"
-        heading="Pick up this chat by text"
-        body="Enter your number and we’ll text you so you can continue this conversation from your phone."
-        cta="Text me"
+        heading={t('Pick up this chat by text')}
+        body={t('Enter your number and we’ll text you so you can continue this conversation from your phone.')}
+        cta={t('Text me')}
         onSubmit={submit}
       />
     </Modal>

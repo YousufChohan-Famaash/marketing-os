@@ -3,6 +3,7 @@ import { useWidgetStore } from "../store/widgetStore";
 import { generateId } from "../utils/id";
 import { ChevronDownIcon } from "../utils/icons";
 import { practiceIconFor } from "./BrandAssets";
+import { useT } from "../i18n";
 
 const DEFAULT_PRACTICE_AREAS = [
   "Car / motor vehicle accident",
@@ -28,6 +29,7 @@ export function ChatOpenerChips({
   const branding = useWidgetStore((s) => s.branding);
   const setCaseTypePicked = useWidgetStore((s) => s.setCaseTypePicked);
   const setPendingCaseType = useWidgetStore((s) => s.setPendingCaseType);
+  const t = useT();
 
   const options = caseTypes.length
     ? caseTypes.map((c) => c.label)
@@ -68,7 +70,7 @@ export function ChatOpenerChips({
   return (
     <div className="mt-4">
       <p className="mb-2.5 text-[12px] font-bold tracking-[-0.01em] text-ink">
-        What happened?
+        {t('What happened?')}
       </p>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
@@ -83,7 +85,7 @@ export function ChatOpenerChips({
               {icon && (
                 <span className="flex shrink-0 items-center text-ink">{icon}</span>
               )}
-              {opt}
+              {t(opt)}
             </button>
           );
         })}
@@ -108,6 +110,7 @@ function OverlayChips({
   onMore?: () => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const t = useT();
   // maxHeight (px) that shows exactly OVERLAY_MAX_ROWS rows; undefined = all fit.
   const [cap, setCap] = useState<number | undefined>(undefined);
   useEffect(() => {
@@ -143,7 +146,7 @@ function OverlayChips({
   return (
     <div>
       <p className="mb-2.5 text-[12px] font-bold tracking-[-0.01em] text-white">
-        What happened?
+        {t('What happened?')}
       </p>
       <div
         ref={wrapRef}
@@ -164,7 +167,7 @@ function OverlayChips({
                   {icon}
                 </span>
               )}
-              {opt}
+              {t(opt)}
             </button>
           );
         })}
@@ -175,7 +178,7 @@ function OverlayChips({
           onClick={onMore}
           className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-3.5 py-2 text-[12px] font-semibold text-ink shadow-sm backdrop-blur transition-colors hover:bg-white"
         >
-          More
+          {t('More')}
           <ChevronDownIcon size={14} />
         </button>
       )}

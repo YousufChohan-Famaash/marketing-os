@@ -1,9 +1,11 @@
 import { useWidgetStore } from "../store/widgetStore";
 import { MessageSquareIcon, PhoneIcon } from "../utils/icons";
+import { useT } from "../i18n";
 
 export function SafetyButtons() {
   const flags = useWidgetStore((s) => s.flags);
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const t = useT();
 
   if (!flags) return null;
 
@@ -20,7 +22,7 @@ export function SafetyButtons() {
           className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-3 py-1.5 text-[11.5px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
         >
           <PhoneIcon size={13} aria-hidden="true" />
-          Talk to a human
+          {t('Talk to a human')}
         </button>
       )}
       <button
@@ -29,7 +31,7 @@ export function SafetyButtons() {
         className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-[#EAEEF3] bg-[#F8F8F8] px-3 py-1.5 text-[11.5px] font-medium text-[#1A1A1A] transition-colors hover:bg-[#F5F8FB]"
       >
         <MessageSquareIcon size={13} aria-hidden="true" />
-        Text me
+        {t('Text me')}
       </button>
     </div>
   );

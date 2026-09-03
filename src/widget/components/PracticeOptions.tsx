@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { practiceIconFor } from './BrandAssets';
+import { useT } from '../i18n';
 
 interface PracticeOptionsProps {
   options: string[];
@@ -16,6 +17,7 @@ interface PracticeOptionsProps {
  */
 export function PracticeOptions({ options, onSelect, disabled, stack }: PracticeOptionsProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  const t = useT();
 
   const handleKey = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
     const len = options.length;
@@ -31,7 +33,7 @@ export function PracticeOptions({ options, onSelect, disabled, stack }: Practice
   return (
     <div
       role="group"
-      aria-label="What kind of matter brings you here?"
+      aria-label={t('What kind of matter brings you here?')}
       className={`grid gap-2 ${stack ? 'grid-cols-1' : 'grid-cols-2'}`}
     >
       {options.map((option, i) => {
@@ -54,7 +56,7 @@ export function PracticeOptions({ options, onSelect, disabled, stack }: Practice
               </span>
             )}
             <span className="line-clamp-2 flex-1 text-[13px] font-semibold text-[#1A1A1A] transition-colors group-hover:text-[color:var(--practice-accent)]">
-              {option}
+              {t(option)}
             </span>
           </button>
         );
