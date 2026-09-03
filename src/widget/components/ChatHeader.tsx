@@ -4,6 +4,7 @@ import { ChevronLeftIcon, EditIcon } from '../utils/icons';
 import { Avatar } from './Avatar';
 import { WidgetControls } from './WidgetControls';
 import { cn } from '../utils/cn';
+import { useT } from '../i18n';
 
 interface ChatHeaderProps {
   onClose: () => void;
@@ -39,6 +40,7 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
   const branding = useWidgetStore((s) => s.branding);
+  const t = useT();
   // "Live chat with {firm}" identity beside the avatar. Multi-tenant: the firm's
   // own name (then the assistant name), with a graceful fallback so it never
   // renders a blank title.
@@ -58,7 +60,7 @@ export function ChatHeader({
           <button
             type="button"
             onClick={onBack}
-            aria-label="Back to all options"
+            aria-label={t('Back to all options')}
             className={cn(
               'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
               solid
@@ -77,13 +79,13 @@ export function ChatHeader({
             )}
           >
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
-              <span className="text-[13px] font-semibold">{(agentTakeover.agentName || 'Specialist').charAt(0)}</span>
+              <span className="text-[13px] font-semibold">{(agentTakeover.agentName || t('Specialist')).charAt(0)}</span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-ink">{agentTakeover.agentName || 'Specialist'}</p>
+              <p className="truncate text-[13px] font-semibold text-ink">{agentTakeover.agentName || t('Specialist')}</p>
               <p className="flex items-center gap-1 truncate text-[11px] text-muted">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-                {agentTakeover.agentTitle ?? 'Live agent'}
+                {agentTakeover.agentTitle ?? t('Live agent')}
               </p>
             </div>
           </div>
@@ -128,7 +130,7 @@ export function ChatHeader({
                   )}
                 >
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-                  Live chat
+                  {t('Live chat')}
                 </p>
               </div>
             ) : (
@@ -139,7 +141,7 @@ export function ChatHeader({
                 )}
               >
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-                Live chat
+                {t('Live chat')}
               </p>
             )}
           </>
@@ -151,8 +153,8 @@ export function ChatHeader({
           <button
             type="button"
             onClick={onNewChat}
-            aria-label="Start a new chat"
-            title="New chat"
+            aria-label={t('Start a new chat')}
+            title={t('New chat')}
             className={cn(
               'flex h-8 w-8 items-center justify-center rounded-full transition-colors',
               solid

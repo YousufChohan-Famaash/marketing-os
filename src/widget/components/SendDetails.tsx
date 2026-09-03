@@ -12,6 +12,7 @@ import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileIcon } from '../utils
 import { cn } from '../utils/cn';
 import { nameError, phoneError, emailError as validateEmail, formatPhone } from '../utils/validation';
 import { PresenceVideo } from './PresenceVideo';
+import { translate, useT } from '../i18n';
 
 interface SendDetailsProps {
   consentLabel: string;
@@ -71,6 +72,8 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
   const branding = useWidgetStore((s) => s.branding);
   const firmId = useWidgetStore((s) => s.firmId);
   const rememberContact = useWidgetStore((s) => s.rememberContact);
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
+  const t = (s: string) => translate(uiLocale, s);
 
   const [phase, setPhase] = useState<'loading' | 'form' | 'unavailable'>('loading');
   const [config, setConfig] = useState<WebFormConfig | null>(null);
@@ -146,7 +149,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
     if (!canSubmit) return;
     setError(null);
     if (!firmId) {
-      setError("We couldn't submit your details. Please try again.");
+      setError(t("We couldn't submit your details. Please try again."));
       return;
     }
     setSubmitting(true);
@@ -172,13 +175,13 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
       const status = err instanceof ApiError ? err.status : 0;
       const detail = errorDetail(err);
       if (status === 403) {
-        setError("This form isn't available right now. Please try another option.");
+        setError(t("This form isn't available right now. Please try another option."));
       } else if (status === 429) {
-        setError('Too many submissions. Please try again in a bit.');
+        setError(t('Too many submissions. Please try again in a bit.'));
       } else if (status === 400 && detail) {
         setError(detail);
       } else {
-        setError("We couldn't submit your details. Please try again.");
+        setError(t("We couldn't submit your details. Please try again."));
       }
     } finally {
       setSubmitting(false);
@@ -189,7 +192,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
     return (
       <div className="flex flex-col items-center py-10 text-center">
         <span className="h-7 w-7 animate-spin rounded-full border-2 border-hairline border-t-famaash" />
-        <p className="mt-3 text-[13px] text-muted">Loading…</p>
+        <p className="mt-3 text-[13px] text-muted">{t('Loading…')}</p>
       </div>
     );
   }
@@ -200,9 +203,9 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-famaash-soft text-ink">
           <FileIcon size={26} aria-hidden="true" />
         </span>
-        <h3 className="mt-4 text-[18px] font-bold text-ink">Not available right now</h3>
+        <h3 className="mt-4 text-[18px] font-bold text-ink">{t('Not available right now')}</h3>
         <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
-          This form isn't enabled for this firm. Please use one of the other options to reach us.
+          {t("This form isn't enabled for this firm. Please use one of the other options to reach us.")}
         </p>
       </div>
     );
@@ -215,10 +218,11 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
         <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
           <CheckIcon size={26} aria-hidden="true" />
         </span>
-        <h3 className="mt-4 text-[18px] font-bold text-ink">Thanks{first ? `, ${first}` : ''}. We've got your details</h3>
+        <h3 className="mt-4 text-[18px] font-bold text-ink">{`${t('Thanks')}${first ? `, ${first}` : ''}. ${t("We've got your details")}`}</h3>
         <p className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-muted">
-          A real person will reach out{phone ? ` at ${phone}` : ''} shortly. Keep an eye on your phone
-          {email.trim() ? ' and email' : ''}.
+          {uiLocale === 'es'
+            ? `Una persona le contactará${phone ? ` al ${phone}` : ''} en breve. Esté atento a su teléfono${email.trim() ? ' y correo' : ''}.`
+            : `A real person will reach out${phone ? ` at ${phone}` : ''} shortly. Keep an eye on your phone${email.trim() ? ' and email' : ''}.`}
         </p>
       </div>
     );
@@ -232,9 +236,9 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
           <FileIcon size={20} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[16px] font-bold text-ink">Send your details</h3>
+          <h3 className="text-[16px] font-bold text-ink">{t('Send your details')}</h3>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
-            A few quick questions and we'll reach back shortly.
+            {t("A few quick questions and we'll reach back shortly.")}
           </p>
         </div>
         <PresenceVideo />
@@ -246,7 +250,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
           <button
             type="button"
             onClick={() => setStep((s) => Math.max(0, s - 1))}
-            aria-label="Previous step"
+            aria-label={t('Previous step')}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
           >
             <ChevronLeftIcon size={16} />
@@ -265,7 +269,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
         <span className="shrink-0 text-[11px] font-medium text-muted-soft">{step + 1}/4</span>
       </div>
 
-      <p className="text-[14px] font-semibold text-ink">{STEP_TITLES[step]}</p>
+      <p className="text-[14px] font-semibold text-ink">{t(STEP_TITLES[step])}</p>
 
       {step === 0 && (
         <OptionList
@@ -309,19 +313,19 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
             onChange={(e) => setHoneypot(e.target.value)}
             style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
           />
-          <Field label="Your name" error={show('name') ? nameErr : null}>
+          <Field label={t('Your name')} error={show('name') && nameErr ? t(nameErr) : null}>
             <input
               type="text"
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={() => touch('name')}
-              placeholder="First and last name"
+              placeholder={t('First and last name')}
               aria-invalid={show('name') && !!nameErr}
               className={fieldCls(show('name') && !!nameErr)}
             />
           </Field>
-          <Field label="Phone number" error={show('phone') ? phoneErr : null}>
+          <Field label={t('Phone number')} error={show('phone') && phoneErr ? t(phoneErr) : null}>
             <input
               type="tel"
               inputMode="tel"
@@ -334,7 +338,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
               className={fieldCls(show('phone') && !!phoneErr)}
             />
           </Field>
-          <Field label="Email" hint="optional" error={show('email') ? emailErr : null}>
+          <Field label={t('Email')} hint={t('optional')} error={show('email') && emailErr ? t(emailErr) : null}>
             <input
               type="email"
               inputMode="email"
@@ -364,7 +368,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
               <span className="text-[11.5px] leading-relaxed text-muted">{consentDisplay}</span>
             </label>
             {attempted && consentErr && (
-              <p className="mt-1 text-[11.5px] text-danger">Please agree before we continue.</p>
+              <p className="mt-1 text-[11.5px] text-danger">{t('Please agree before we continue.')}</p>
             )}
           </div>
 
@@ -381,7 +385,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
             disabled={submitting}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-famaash px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]"
           >
-            {submitting ? 'Sending…' : 'Submit my details'}
+            {submitting ? t('Sending…') : t('Submit my details')}
           </button>
         </div>
       )}
@@ -426,6 +430,7 @@ function OptionList({
   selected: string | null;
   onSelect: (value: string, label: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-2">
       {options.map((opt) => {
@@ -443,7 +448,7 @@ function OptionList({
                 : 'border-hairline bg-white text-ink hover:border-famaash-stroke hover:bg-famaash-soft',
             )}
           >
-            {opt.label}
+            {t(opt.label)}
             <ChevronRightIcon size={16} className="shrink-0 text-muted-soft" aria-hidden="true" />
           </button>
         );

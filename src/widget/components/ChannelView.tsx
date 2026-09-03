@@ -15,6 +15,7 @@ import { ScheduleCallback } from './ScheduleCallback';
 import { SendDetails } from './SendDetails';
 import { PoweredByFooter } from './PoweredByFooter';
 import { WidgetControls } from './WidgetControls';
+import { useT } from '../i18n';
 
 interface ChannelViewProps {
   channel: 'call' | 'text' | 'schedule' | 'email';
@@ -49,7 +50,10 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // the firm authored in the Law App's Compliance tab for the active language,
   // falling back to legacy/default copy. `consentVersion` is recorded with the
   // consent so the exact wording is provable in the audit log.
-  const language = useWidgetStore((s) => s.language);
+  // Consent + chrome render in the visitor's UI locale (so the backend's ES
+  // compliance variants load), NOT the agent's conversation language.
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
+  const t = useT();
   const firmName = branding?.name ?? 'the firm';
   // Consent copy for THIS channel. Proper, channel-appropriate defaults so a
   // call/booking screen never shows SMS-only wording or a bare placeholder. A
@@ -63,7 +67,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     booking: `By booking, you agree that ${firmName} may call you at the time you selected about your inquiry. Consent isn't a condition of hiring the firm.`,
     form: `By submitting, you agree that ${firmName} may contact you about your inquiry.`,
   };
-  const resolvedTcpa = resolveTcpa(compliance, language, consentChannel);
+  const resolvedTcpa = resolveTcpa(compliance, uiLocale, consentChannel);
   const authoredConsent = resolvedTcpa.text.trim().length >= 30 ? resolvedTcpa.text : null;
   const consentLabel = authoredConsent ?? CONSENT_DEFAULTS[consentChannel];
   const consentVersion = authoredConsent ? resolvedTcpa.version : undefined;
@@ -71,14 +75,15 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // Only claim what we actually have on file (and prefill into the form below),
   // and name those fields, so the banner never says "we kept it" over blanks.
   const kept = [
-    known.name?.trim() && 'name',
-    known.phone?.trim() && 'phone',
-    known.email?.trim() && 'email',
+    known.name?.trim() && t('name'),
+    known.phone?.trim() && t('phone'),
+    known.email?.trim() && t('email'),
   ].filter(Boolean) as string[];
+  const andWord = uiLocale === 'es' ? 'y' : 'and';
   const keptLabel =
     kept.length <= 1
       ? kept[0] ?? ''
-      : `${kept.slice(0, -1).join(', ')} and ${kept[kept.length - 1]}`;
+      : `${kept.slice(0, -1).join(', ')} ${andWord} ${kept[kept.length - 1]}`;
 
   const [done, setDone] = useState<string | null>(null);
   const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(settings.textMethods[0] ?? 'sms');
@@ -183,7 +188,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const finishCall = async (phone: string, name?: string) => {
     setCallError(null);
     if (!conversationId) {
-      setCallError("We couldn't start the call. Please try again.");
+      setCallError(t("We couldn't start the call. Please try again."));
       return;
     }
     setPlacing(true);
@@ -198,7 +203,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       setCallError(
         err instanceof ApiError && err.status === 400 && detail
           ? detail
-          : "We couldn't start the call. Please try again.",
+          : t("We couldn't start the call. Please try again."),
       );
     } finally {
       setPlacing(false);
@@ -211,7 +216,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const finishText = async (phone: string, name?: string) => {
     setTextError(null);
     if (!conversationId) {
-      setTextError('Your session expired. Please reopen the chat and try again.');
+      setTextError(t('Your session expired. Please reopen the chat and try again.'));
       return;
     }
     setTexting(true);
@@ -233,26 +238,26 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       if (out.channel === 'whatsapp') {
         if (out.waMeLink) {
           if (typeof window !== 'undefined') window.open(out.waMeLink, '_blank', 'noopener');
-          setDone('Continue in WhatsApp. We opened it with your message ready to send.');
+          setDone(t('Continue in WhatsApp. We opened it with your message ready to send.'));
         } else {
-          setDone("We've messaged you on WhatsApp. Check your phone to continue.");
+          setDone(t("We've messaged you on WhatsApp. Check your phone to continue."));
         }
       } else {
-        setDone('We just texted you. Reply to that message to continue.');
+        setDone(t('We just texted you. Reply to that message to continue.'));
       }
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
       const detail = errorDetail(err);
       if (status === 403) {
-        setTextError("Texting isn't available right now. Try another option.");
+        setTextError(t("Texting isn't available right now. Try another option."));
       } else if (status === 503) {
-        setTextError("We couldn't send that just now. Try another option.");
+        setTextError(t("We couldn't send that just now. Try another option."));
       } else if (status === 404) {
-        setTextError('Your session expired. Please reopen the chat and try again.');
+        setTextError(t('Your session expired. Please reopen the chat and try again.'));
       } else if (status === 400 && detail) {
         setTextError(detail);
       } else {
-        setTextError("We couldn't start the text. Please try again.");
+        setTextError(t("We couldn't start the text. Please try again."));
       }
     } finally {
       setTexting(false);
@@ -268,7 +273,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const stageActive = hasMorph && stageOpen;
 
   return (
-    <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-white" role="dialog" aria-label={TITLES[channel]}>
+    <div className="fa-view-in relative flex h-full w-full flex-col overflow-hidden bg-white" role="dialog" aria-label={t(TITLES[channel])}>
       {/* One video element: full-width stage on landing (edge-to-edge, under the
           header), morphs into the header slot on collapse (never remounts, so
           playback keeps its timestamp). Rendered before the header so the header
@@ -296,7 +301,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         <button
           type="button"
           onClick={back}
-          aria-label="Back to all options"
+          aria-label={t('Back to all options')}
           className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
             stageActive ? 'text-white hover:bg-white/20' : 'text-muted hover:bg-subtle hover:text-ink',
@@ -319,7 +324,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             stageActive ? 'text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]' : 'text-ink',
           )}
         >
-          {TITLES[channel]}
+          {t(TITLES[channel])}
         </h2>
         <WidgetControls tone={stageActive ? 'overlay' : 'solid'} onClose={onClose} onMinimize={onMinimize} onExpand={onExpand} isExpanded={isExpanded} />
       </header>
@@ -363,7 +368,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             {kept.length > 0 && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-famaash-stroke bg-famaash-soft px-3 py-2.5 text-[13px] text-famaash">
                 <CheckIcon size={15} aria-hidden="true" />
-                <span>We kept your {keptLabel}. Edit anything below.</span>
+                <span>{uiLocale === 'es' ? `Guardamos su ${keptLabel}. Edite lo que quiera abajo.` : `We kept your ${keptLabel}. Edit anything below.`}</span>
               </div>
             )}
 
@@ -376,9 +381,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                 )}
                 <CallbackForm
                   variant="alert"
-                  heading="Where should we call you?"
-                  body="We start the callback the moment you confirm, usually under a minute."
-                  cta={placing ? 'Starting your call…' : 'Call me now'}
+                  heading={t('Where should we call you?')}
+                  body={t('We start the callback the moment you confirm, usually under a minute.')}
+                  cta={placing ? t('Starting your call…') : t('Call me now')}
                   collectName
                   consentLabel={consentLabel}
                   onSubmit={finishCall}
@@ -417,14 +422,18 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                 )}
                 <CallbackForm
                   variant={textMethod === 'whatsapp' ? 'whatsapp' : 'brand'}
-                  heading="Pick up this chat by text"
-                  body={`Enter your number and we'll ${textMethod === 'whatsapp' ? 'message you on WhatsApp' : 'text you'} so you can continue from your phone.`}
+                  heading={t('Pick up this chat by text')}
+                  body={
+                    uiLocale === 'es'
+                      ? `Escriba su número y le ${textMethod === 'whatsapp' ? 'escribimos por WhatsApp' : 'enviamos un mensaje'} para continuar desde su teléfono.`
+                      : `Enter your number and we'll ${textMethod === 'whatsapp' ? 'message you on WhatsApp' : 'text you'} so you can continue from your phone.`
+                  }
                   cta={
                     texting
-                      ? 'Starting…'
+                      ? t('Starting…')
                       : textMethod === 'whatsapp'
-                        ? 'Message me on WhatsApp'
-                        : 'Text me'
+                        ? t('Message me on WhatsApp')
+                        : t('Text me')
                   }
                   busy={texting}
                   consentLabel={consentLabel}
@@ -473,6 +482,8 @@ function CallCountdown({
   const C = 2 * Math.PI * R;
   const offset = C * (1 - Math.max(0, Math.min(60, seconds)) / 60);
   const first = name?.trim().split(/\s+/)[0];
+  const t = useT();
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
 
   return (
     <div className="flex flex-col items-center py-6 text-center">
@@ -502,16 +513,18 @@ function CallCountdown({
         </div>
       </div>
 
-      <h3 className="mt-5 text-[18px] font-bold text-ink">We&apos;re dialing you now</h3>
+      <h3 className="mt-5 text-[18px] font-bold text-ink">{t("We're dialing you now")}</h3>
       <p className="mt-2 max-w-[32ch] text-[14px] leading-relaxed text-muted">
-        Your phone should ring at {phone} in a few seconds{first ? `, ${first}` : ''}. Keep it nearby.
+        {uiLocale === 'es'
+          ? `Su teléfono sonará al ${phone} en unos segundos${first ? `, ${first}` : ''}. Téngalo a la mano.`
+          : `Your phone should ring at ${phone} in a few seconds${first ? `, ${first}` : ''}. Keep it nearby.`}
       </p>
       <button
         type="button"
         onClick={onBack}
         className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
       >
-        Back to options
+        {t('Back to options')}
       </button>
     </div>
   );
@@ -519,22 +532,25 @@ function CallCountdown({
 
 function CallConnected({ phone, name, onBack }: { phone: string; name?: string; onBack: () => void }) {
   const first = name?.trim().split(/\s+/)[0];
+  const t = useT();
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
   return (
     <div className="flex flex-col items-center py-8 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
         <PhoneIcon size={26} aria-hidden="true" />
       </span>
-      <h3 className="mt-4 text-[18px] font-bold text-ink">You&apos;re connected</h3>
+      <h3 className="mt-4 text-[18px] font-bold text-ink">{t("You're connected")}</h3>
       <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
-        {first ? `${first}, you're` : "You're"} on the line with our team
-        {phone ? ` at ${phone}` : ''}.
+        {uiLocale === 'es'
+          ? `${first ? `${first}, está` : 'Está'} en línea con nuestro equipo${phone ? ` al ${phone}` : ''}.`
+          : `${first ? `${first}, you're` : "You're"} on the line with our team${phone ? ` at ${phone}` : ''}.`}
       </p>
       <button
         type="button"
         onClick={onBack}
         className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
       >
-        Back to options
+        {t('Back to options')}
       </button>
     </div>
   );
@@ -549,14 +565,18 @@ function CallFailed({
   onRetry: () => void;
   onBack: () => void;
 }) {
+  const t = useT();
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
   return (
     <div className="flex flex-col items-center py-8 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-danger-soft text-danger">
         <PhoneOffIcon size={26} aria-hidden="true" />
       </span>
-      <h3 className="mt-4 text-[18px] font-bold text-ink">We couldn&apos;t reach you</h3>
+      <h3 className="mt-4 text-[18px] font-bold text-ink">{t("We couldn't reach you")}</h3>
       <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">
-        We tried calling {phone || 'your number'} but couldn&apos;t connect. Want us to try again?
+        {uiLocale === 'es'
+          ? `Intentamos llamar a ${phone || 'su número'} pero no pudimos conectar. ¿Quiere que intentemos de nuevo?`
+          : `We tried calling ${phone || 'your number'} but couldn't connect. Want us to try again?`}
       </p>
       <div className="mt-6 flex gap-2">
         <button
@@ -564,14 +584,14 @@ function CallFailed({
           onClick={onBack}
           className="rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
         >
-          Back
+          {t('Back')}
         </button>
         <button
           type="button"
           onClick={onRetry}
           className="rounded-pill bg-famaash px-5 py-2 text-[13px] font-semibold text-white hover:opacity-95"
         >
-          Try again
+          {t('Try again')}
         </button>
       </div>
     </div>
@@ -579,19 +599,20 @@ function CallFailed({
 }
 
 function Confirmation({ message, onBack }: { message: string; onBack: () => void }) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center py-8 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
         <CheckIcon size={26} aria-hidden="true" />
       </span>
-      <h3 className="mt-4 text-[18px] font-bold text-ink">You're all set</h3>
+      <h3 className="mt-4 text-[18px] font-bold text-ink">{t("You're all set")}</h3>
       <p className="mt-2 max-w-[34ch] text-[14px] leading-relaxed text-muted">{message}</p>
       <button
         type="button"
         onClick={onBack}
         className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
       >
-        Back to options
+        {t('Back to options')}
       </button>
     </div>
   );

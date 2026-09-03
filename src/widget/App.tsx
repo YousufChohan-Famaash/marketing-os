@@ -265,15 +265,11 @@ export function App() {
     // ── Config track — paints the opener ─────────────────────────────────
     void (async () => {
       try {
-        // Best-guess the visitor's language before we know the firm's offered set
-        // (the backend falls back if it isn't offered), so the first video is
-        // already language-matched. The picker re-fetches on a later change.
-        const navLang = (typeof navigator !== 'undefined' ? navigator.language : 'en')
-          .slice(0, 2)
-          .toLowerCase();
-        // A consultation hand-off already told us the visitor's language; prefer
-        // it over the browser guess so the first video + copy load matched.
-        const config = await loadBootConfig(firmId, handoffLang ?? navLang, abort.signal);
+        // Fetch config in the visitor's UI locale (Free Consultation hand-off, or
+        // the host page's language), so the backend's language-matched compliance
+        // (the ES variants saved in /chat/compliance) + videos load with the
+        // chrome. The backend falls back to English for anything it doesn't have.
+        const config = await loadBootConfig(firmId, resolveUiLocale(), abort.signal);
         if (cancelled) return;
         setBootConfig(config);
         // setBootConfig re-picks language from navigator ∩ offered; if the firm

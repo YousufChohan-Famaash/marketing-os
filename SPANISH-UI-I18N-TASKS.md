@@ -20,19 +20,21 @@ English agent.
 - [x] i18n: `strings.ts` (en/es tables) + `useT()` hook
 - [x] App boot: set `uiLocale`; fetch boot config in it so the backend's ES
       compliance/consent variants (already saved in /chat/compliance) load
-- [ ] compliance: render AI-disclosure + TCPA copy in `uiLocale`
+- [x] compliance: AI-disclosure + TCPA rendered in `uiLocale`; boot config fetched in it so the backend's ES variants load
 
 ## Components to translate
 - [x] ScheduleCallback (day/time picker, summary, booked screen)
 - [x] CallbackForm (name/phone/email, consent, CTAs, errors)
 - [x] ConnectHome (the connect menu: Call / Schedule / Chat / Send details) + CHANNEL_META labels
 - [x] Composer (input placeholder, call banners, recording/listening, attachment menu)
-- [ ] SendDetails (the leave-your-details form)
-- [ ] ChatHeader ("Book a call" etc., controls)
-- [ ] ConnectingState
+- [x] SendDetails (the leave-your-details form)
+- [x] ChannelView (title, "we kept your…" banner, call/text flows, call lifecycle screens)
+- [x] ChatHeader (Live chat / specialist identity, controls)
+- [x] ConnectingState
+- [x] PoweredByFooter (Privacy / Terms)
 - [ ] ConversationIntro / ChatOpenerChips / QuickReplyChips (hardcoded labels only)
 - [ ] PracticeOptions, SafetyButtons, ConsentModal, TextHandoffModal, CaptureDrawer, CallMeModal, EmergencyModal, HumanTakeoverModal
-- [ ] PoweredByFooter / misc chrome + aria-labels
+- [ ] misc aria-labels
 
 ## Out of scope (later backend run)
 - The agent's chat messages (English until `es` is added to `CONVERSATION_LANGS`)

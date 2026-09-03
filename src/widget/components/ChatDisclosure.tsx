@@ -10,9 +10,11 @@ import { resolveAiDisclosure } from "../utils/compliance";
  */
 export function ChatDisclosure() {
   const compliance = useWidgetStore((s) => s.compliance);
-  const language = useWidgetStore((s) => s.language);
+  // The disclosure renders in the visitor's UI locale (so the backend's ES
+  // variant shows), not the agent's conversation language.
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
 
-  const text = resolveAiDisclosure(compliance, language);
+  const text = resolveAiDisclosure(compliance, uiLocale);
   const privacyUrl = compliance?.privacyUrl?.trim();
 
   return (

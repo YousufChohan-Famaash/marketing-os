@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { sanitizeUrl } from '../utils/richText';
+import { useT } from '../i18n';
 
 export function PoweredByFooter() {
+  const t = useT();
   const compliance = useWidgetStore((s) => s.compliance);
   const privacyUrl = compliance ? sanitizeUrl(compliance.privacyUrl) : null;
   const termsUrl = compliance ? sanitizeUrl(compliance.termsUrl) : null;
@@ -39,7 +41,7 @@ export function PoweredByFooter() {
             rel="noopener noreferrer"
             className="text-muted-soft hover:text-ink no-underline"
           >
-            Privacy
+            {t('Privacy')}
           </a>
         )}
         {termsUrl && (
@@ -49,7 +51,7 @@ export function PoweredByFooter() {
             rel="noopener noreferrer"
             className="text-muted-soft hover:text-ink no-underline"
           >
-            Terms
+            {t('Terms')}
           </a>
         )}
       </div>

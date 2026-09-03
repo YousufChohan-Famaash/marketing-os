@@ -1,4 +1,5 @@
 import { useWidgetStore } from '../store/widgetStore';
+import { useT } from '../i18n';
 
 /**
  * Branded connecting / boot state. Instead of a bare "Connecting…", we show a
@@ -13,6 +14,7 @@ import { useWidgetStore } from '../store/widgetStore';
 export function ConnectingState() {
   const branding = useWidgetStore((s) => s.branding);
   const name = branding?.name?.trim() || null;
+  const t = useT();
 
   return (
     <div className="flex h-full w-full flex-col bg-white">
@@ -33,7 +35,7 @@ export function ConnectingState() {
         <div className="mt-1 flex items-center gap-2.5">
           <TypingDots />
           <span className="text-[12.5px] font-medium text-muted">
-            {name ? `Connecting you to ${name}…` : 'Connecting…'}
+            {name ? `${t('Connecting you to')} ${name}…` : t('Connecting…')}
           </span>
         </div>
       </div>
