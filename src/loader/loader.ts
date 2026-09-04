@@ -826,7 +826,11 @@ function readScriptConfig(): {
   // the firm's dashboard (connect.size in /config, applied once it loads).
   const sizeAttr = script.getAttribute('data-size');
   const sizeExplicit = sizeAttr === 'small' || sizeAttr === 'medium' || sizeAttr === 'large';
-  const size: 'small' | 'medium' | 'large' = sizeExplicit ? (sizeAttr as 'small' | 'medium' | 'large') : 'large';
+  // Fallback pre-/config size = 'medium' (the most commonly configured size). The
+  // launcher is drawn at this size before /config resolves; matching the common
+  // dashboard choice means a medium firm never rebuilds large→medium and so never
+  // flashes the large card first if /config is slower than the reveal timer.
+  const size: 'small' | 'medium' | 'large' = sizeExplicit ? (sizeAttr as 'small' | 'medium' | 'large') : 'medium';
   const name = script.getAttribute('data-name') ?? 'our team';
   const poster = script.getAttribute('data-poster') ?? undefined;
   const cineAttr = script.getAttribute('data-cine');
