@@ -18,6 +18,7 @@ import { useInViewport } from '../utils/useInViewport';
 import { sanitizeCaptionText } from '../utils/useVideoCaptions';
 import { useVideoSound } from '../utils/useVideoSound';
 import { WidgetControls, languageName } from './WidgetControls';
+import { useT } from '../i18n';
 
 const CHANNEL_ICON: Record<ConnectChannel, typeof PhoneIcon> = {
   call: PhoneIcon,
@@ -52,6 +53,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
   const setConnectView = useWidgetStore((s) => s.setConnectView);
+  const t = useT();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const { soundOn, toggleSound } = useVideoSound(videoRef);
@@ -157,7 +159,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   };
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-obsidian" role="dialog" aria-label={`Contact ${name}`}>
+    <div className="relative h-full w-full overflow-hidden bg-obsidian" role="dialog" aria-label={`${t('Contact')} ${name}`}>
       <video
         ref={videoRef}
         src={inView ? src : undefined}
@@ -176,10 +178,10 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
           setEnded(true);
         }}
         className="absolute inset-0 h-full w-full object-cover"
-        aria-label="Attorney introduction video"
+        aria-label={t('Attorney introduction video')}
       >
         {useCaptions && captionsUrl && (
-          <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
+          <track kind="captions" src={captionsUrl} srcLang={language} label={t('Captions')} default />
         )}
       </video>
       {/* Once the clip has played through, rest on the firm's poster (a clean,
@@ -197,7 +199,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
         <button
           type="button"
           onClick={playFromTap}
-          aria-label={ended ? 'Replay video' : 'Play video'}
+          aria-label={ended ? t('Replay video') : t('Play video')}
           className="absolute left-1/2 top-[40%] z-10 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white ring-1 ring-white/50 backdrop-blur transition-transform hover:scale-105"
         >
           <PlayIcon size={26} className="ml-1" />
@@ -208,11 +210,11 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
       <button
         type="button"
         onClick={toggleSound}
-        aria-label={soundOn ? 'Mute video' : 'Play with sound'}
+        aria-label={soundOn ? t('Mute video') : t('Play with sound')}
         className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3 py-2 text-[11.5px] font-semibold text-white backdrop-blur transition-colors hover:bg-black/60"
       >
         {soundOn ? <VolumeOnIcon size={15} /> : <VolumeOffIcon size={15} />}
-        <span>{soundOn ? 'Sound on' : 'Tap for sound'}</span>
+        <span>{soundOn ? t('Sound on') : t('Tap for sound')}</span>
       </button>
 
       {/* Controls (top-right). */}
@@ -238,11 +240,11 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
           </div>
         )}
         <h2 className="text-[24px] font-bold leading-tight tracking-[-0.02em] text-white">
-          Talk to us <span className="font-normal text-white/85">your way.</span>
+          {t('Talk to us')} <span className="font-normal text-white/85">{t('your way.')}</span>
         </h2>
         <div className="mt-1.5 flex items-center gap-2 text-[12.5px] font-medium text-white/85">
           <span className="inline-block h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-          We answer. Day or night. 24/7
+          {t('We answer. Day or night. 24/7')}
         </div>
 
         {/* Primary: Call me now (full width). */}
@@ -252,10 +254,10 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
           className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-5 py-3.5 shadow-lg transition-transform hover:scale-[1.01]"
         >
           <PhoneIcon size={18} className="shrink-0 text-ink" aria-hidden="true" />
-          <span className="text-[15px] font-bold text-ink">{primary === 'call' ? 'Call me now' : CHANNEL_META[primary].label}</span>
+          <span className="text-[15px] font-bold text-ink">{primary === 'call' ? t('Call me now') : t(CHANNEL_META[primary].label)}</span>
           <span className="mx-0.5 h-4 w-px bg-hairline" aria-hidden="true" />
           <span className="truncate text-[12px] text-muted">
-            {primary === 'call' ? 'We call you within 60 sec' : CHANNEL_META[primary].sublabel}
+            {t(primary === 'call' ? 'We call you within 60 sec' : CHANNEL_META[primary].sublabel)}
           </span>
         </button>
 
@@ -274,7 +276,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
                   onMouseEnter={() => setHovered(id)}
                   onFocus={() => setHovered(id)}
                   onBlur={() => setHovered(null)}
-                  aria-label={CHANNEL_META[id].label}
+                  aria-label={t(CHANNEL_META[id].label)}
                   style={{ flexGrow: expanded ? 4 : 1 }}
                   className="flex min-w-0 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-white/10 px-3 py-2.5 text-white backdrop-blur transition-[flex-grow,background-color] duration-300 ease-out hover:bg-white/20"
                 >
@@ -287,7 +289,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
                     }}
                     className="overflow-hidden whitespace-nowrap text-[12.5px] font-semibold transition-all duration-300 ease-out"
                   >
-                    {expanded ? CHANNEL_META[id].label : SHORT[id]}
+                    {expanded ? t(CHANNEL_META[id].label) : t(SHORT[id])}
                   </span>
                 </button>
               );
@@ -322,14 +324,14 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
                 onClick={() => setConnectView('email')}
                 className="shrink-0 text-white/55 underline underline-offset-2 hover:text-white"
               >
-                Email us
+                {t('Email us')}
               </button>
             )}
           </div>
         )}
 
         <div className="mt-2.5 text-center text-[11px] font-medium text-white/55">
-          Powered by <span className="font-semibold text-white/75">Famaash</span>
+          {t('Powered by')} <span className="font-semibold text-white/75">Famaash</span>
         </div>
       </div>
     </div>

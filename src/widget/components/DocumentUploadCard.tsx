@@ -5,6 +5,7 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { uploadDocument } from '../services/api';
 import { CheckIcon, FileIcon, UploadIcon } from '../utils/icons';
+import { useT } from '../i18n';
 import { cn } from '../utils/cn';
 
 /**
@@ -18,6 +19,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
   const conversationId = useWidgetStore((s) => s.conversationId);
   const updateMessage = useWidgetStore((s) => s.updateMessage);
   const socket = useSocket();
+  const t = useT();
 
   const doc = message.document;
   const name = doc?.name ?? 'Document';
@@ -84,7 +86,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
           <FileIcon size={16} className="shrink-0 text-muted" aria-hidden="true" />
         )}
         <span className="font-medium">{name}</span>
-        <span>{uploaded ? 'uploaded' : 'skipped'}</span>
+        <span>{uploaded ? t('uploaded') : t('skipped')}</span>
       </div>
     );
   }
@@ -102,7 +104,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
           ),
         })}
       >
-        <input {...getInputProps()} aria-label={`Upload ${name}`} />
+        <input {...getInputProps()} aria-label={`${t('Upload')} ${name}`} />
         <UploadIcon size={20} className="text-muted" aria-hidden="true" />
         <p className="text-[13px] font-medium text-ink">{name}</p>
         {status === 'uploading' ? (
@@ -122,8 +124,8 @@ export function DocumentUploadCard({ message }: { message: Message }) {
         ) : (
           <p className="text-[11px] text-muted-soft">
             {status === 'failed'
-              ? 'Upload failed. Tap to try again'
-              : 'Tap to choose a file or drop it here · images / PDF'}
+              ? t('Upload failed. Tap to try again')
+              : t('Tap to choose a file or drop it here · images / PDF')}
           </p>
         )}
       </div>
@@ -134,7 +136,7 @@ export function DocumentUploadCard({ message }: { message: Message }) {
           onClick={skip}
           className="text-[12px] font-medium text-muted hover:text-ink"
         >
-          Skip, I don&apos;t have it
+          {t("Skip, I don't have it")}
         </button>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
+import { useT } from '../i18n';
 import { resolveAssistantAvatar, resolveIntroPoster, resolveIntroVideo } from '../config/demoMedia';
 import { postVideoEvent } from '../services/api';
 import { PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
@@ -27,6 +28,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
   const firmId = useWidgetStore((s) => s.firmId);
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   // Shared sound preference: this thumbnail starts muted/unmuted like every other
   // video and its toggle updates the same memory.
@@ -55,7 +57,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
   // tagging it "LIVE". Firm-authored caption wins, else "A welcome from <first name>".
   const firstName = (branding?.assistantName ?? '').trim().split(/\s+/)[0];
   const welcome =
-    branding?.introVideoCaption?.trim() || (firstName ? `A welcome from ${firstName}` : 'A welcome');
+    branding?.introVideoCaption?.trim() || (firstName ? `A welcome from ${firstName}` : t('A welcome'));
 
   useEffect(() => {
     if (!src) return;
@@ -110,7 +112,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
         loop
         preload="metadata"
         className="h-full w-full object-cover"
-        aria-label="Attorney introduction video"
+        aria-label={t('Attorney introduction video')}
         onPlay={() => {
           if (playedRef.current || !firmId) return;
           playedRef.current = true;
@@ -137,7 +139,7 @@ export function ConnectVideo({ className, compact }: ConnectVideoProps) {
       <button
         type="button"
         onClick={toggleSound}
-        aria-label={soundOn ? 'Mute video' : 'Unmute video'}
+        aria-label={soundOn ? t('Mute video') : t('Unmute video')}
         className={cn(
           'absolute z-10 flex items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-transform hover:scale-105',
           compact

@@ -343,7 +343,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           <button
             type="button"
             onClick={note.stop}
-            aria-label="Send recording"
+            aria-label={t('Send recording')}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-famaash text-white"
           >
             <SendArrowIcon size={15} />
@@ -379,7 +379,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
               setChatCallPhase("idle");
               setConnectCallStatus(null);
             }}
-            aria-label="Dismiss"
+            aria-label={t('Dismiss')}
             className="shrink-0 rounded-full px-1 text-[14px] leading-none text-danger hover:opacity-70"
           >
             ×
@@ -430,7 +430,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Add voice, dictation, or video"
+              aria-label={t('Add voice, dictation, or video')}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               className={cn(
@@ -491,7 +491,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         )}
 
         <label htmlFor="composer-textarea" className="sr-only">
-          Type your message
+          {t('Type your message')}
         </label>
         <textarea
           ref={textareaRef}
@@ -513,14 +513,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
             glass ? "text-white placeholder:text-white/55" : "placeholder:text-muted-soft",
           )}
           style={{ maxHeight: MAX_HEIGHT_PX }}
-          aria-label="Message"
+          aria-label={t('Message')}
         />
 
         {/* Send: a single clean circle, brand-filled once there's something to send. */}
         <button
           type="submit"
           disabled={!canSend}
-          aria-label="Send message"
+          aria-label={t('Send message')}
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-colors",
             canSend ? "bg-famaash hover:opacity-95" : "cursor-not-allowed bg-muted-soft",

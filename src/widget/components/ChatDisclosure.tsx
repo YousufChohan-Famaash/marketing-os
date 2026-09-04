@@ -1,5 +1,6 @@
 import { useWidgetStore } from "../store/widgetStore";
 import { resolveAiDisclosure } from "../utils/compliance";
+import { useT } from "../i18n";
 
 /**
  * Quiet, persistent AI disclosure shown just above the composer during a chat
@@ -9,6 +10,7 @@ import { resolveAiDisclosure } from "../utils/compliance";
  * a privacy URL on file.
  */
 export function ChatDisclosure() {
+  const t = useT();
   const compliance = useWidgetStore((s) => s.compliance);
   // The disclosure renders in the visitor's UI locale (so the backend's ES
   // variant shows), not the agent's conversation language.
@@ -29,7 +31,7 @@ export function ChatDisclosure() {
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-muted"
           >
-            Privacy
+            {t('Privacy')}
           </a>
         </>
       )}

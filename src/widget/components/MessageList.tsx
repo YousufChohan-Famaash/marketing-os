@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../i18n';
 import type { Message, ScopeChip as ScopeChipModel } from '../types/domain';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
@@ -70,6 +71,7 @@ export function MessageList({
   const updateMessage = useWidgetStore((s) => s.updateMessage);
 
   const socket = useSocket();
+  const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
 
@@ -194,7 +196,7 @@ export function MessageList({
 
   const handleRetainerReview = (msg: Message) => {
     // Legacy single retainer card — sign inline; backend auto-resolves the retainer.
-    setActiveSigning({ name: 'Retainer Agreement', messageId: msg.id });
+    setActiveSigning({ name: t('Retainer Agreement'), messageId: msg.id });
   };
 
   return (
@@ -211,7 +213,7 @@ export function MessageList({
       aria-live="polite"
       aria-relevant="additions text"
       aria-atomic="false"
-      aria-label="Conversation"
+      aria-label={t('Conversation')}
     >
       {topSpacerHeight != null && (
         <div

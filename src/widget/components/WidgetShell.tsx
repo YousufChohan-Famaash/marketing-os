@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWidgetStore } from "../store/widgetStore";
+import { useT } from "../i18n";
 import { resolveCinematicVideo, resolveViewVideo } from "../config/demoMedia";
 import { CaptureDrawer } from "./CaptureDrawer";
 import { CaptureProgress } from "./CaptureProgress";
@@ -35,6 +36,7 @@ export function WidgetShell({
   const composerRef = useRef<ComposerHandle>(null);
   const bootStatus = useWidgetStore((s) => s.bootStatus);
   const bootError = useWidgetStore((s) => s.bootError);
+  const t = useT();
   // The opener (greeting + case-type chips) shows until the lead picks a case
   // type — that pick is the first user message that starts the agent flow.
   const caseTypePicked = useWidgetStore((s) => s.caseTypePicked);
@@ -144,10 +146,10 @@ export function WidgetShell({
     return (
       <div className="flex h-full flex-col items-center justify-center bg-bg p-6 text-center">
         <p className="text-[14px] font-semibold text-ink">
-          We can't reach the chat right now.
+          {t("We can't reach the chat right now.")}
         </p>
         <p className="mt-2 text-[12px] text-muted">
-          {bootError ?? "Please try again."}
+          {bootError ?? t("Please try again.")}
         </p>
       </div>
     );

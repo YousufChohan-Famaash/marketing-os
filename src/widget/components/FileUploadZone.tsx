@@ -6,6 +6,7 @@ import { generateId } from '../utils/id';
 import { cn } from '../utils/cn';
 import { putToPresignedUrl, signUploads } from '../services/api';
 import { useWidgetStore } from '../store/widgetStore';
+import { useT } from '../i18n';
 
 interface FileUploadZoneProps {
   /** Fired once when all files in the batch finish uploading. */
@@ -20,6 +21,7 @@ export function FileUploadZone({
   hideOnComplete = true,
   disabled,
 }: FileUploadZoneProps) {
+  const t = useT();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [completed, setCompleted] = useState(false);
   // Hold onComplete in a ref so the completion-watching effect doesn't
@@ -118,7 +120,7 @@ export function FileUploadZone({
     return (
       <div className="mt-2 rounded-md border border-success/30 bg-success-soft px-3 py-2 text-[13px] text-ink">
         <span className="font-medium">{files.length}</span>{' '}
-        file{files.length === 1 ? '' : 's'} uploaded.
+        {files.length === 1 ? t('file uploaded.') : t('files uploaded.')}
       </div>
     );
   }
@@ -136,12 +138,12 @@ export function FileUploadZone({
           ),
         })}
       >
-        <input {...getInputProps()} aria-label="Upload files" />
+        <input {...getInputProps()} aria-label={t('Upload files')} />
         <UploadIcon size={20} className="text-muted" aria-hidden="true" />
         <p className="text-[13px] text-muted">
-          {isDragActive ? 'Drop files here' : 'Drop files here or click to browse'}
+          {isDragActive ? t('Drop files here') : t('Drop files here or click to browse')}
         </p>
-        <p className="text-[11px] text-muted-soft">Images, PDFs accepted</p>
+        <p className="text-[11px] text-muted-soft">{t('Images, PDFs accepted')}</p>
       </div>
 
       {files.length > 0 && (
@@ -182,7 +184,7 @@ export function FileUploadZone({
                 </div>
               </div>
               {f.status === 'failed' && (
-                <span className="shrink-0 text-[11px] font-medium text-danger">Failed</span>
+                <span className="shrink-0 text-[11px] font-medium text-danger">{t('Failed')}</span>
               )}
               {f.status === 'uploading' && (
                 <button

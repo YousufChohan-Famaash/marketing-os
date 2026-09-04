@@ -3,6 +3,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import { CheckIcon, MinimizeIcon, CollapseIcon, GlobeIcon, MaximizeIcon, ReplayIcon } from '../utils/icons';
 import { useIsFullscreen } from '../utils/useIsFullscreen';
 import { cn } from '../utils/cn';
+import { useT } from '../i18n';
 
 interface WidgetControlsProps {
   onClose: () => void;
@@ -21,6 +22,7 @@ export function WidgetControls({
   isExpanded = false,
   tone = 'solid',
 }: WidgetControlsProps) {
+  const t = useT();
   const wrap =
     tone === 'overlay'
       ? 'bg-white/70 backdrop-blur'
@@ -41,20 +43,20 @@ export function WidgetControls({
     <div className={cn('flex items-center gap-0.5 rounded-pill px-1.5 py-1', wrap)}>
       {showLanguage && <LanguagePicker />}
       {onReplay && (
-        <ControlBtn label="Replay video" onClick={onReplay}>
+        <ControlBtn label={t('Replay video')} onClick={onReplay}>
           <ReplayIcon size={15} />
         </ControlBtn>
       )}
       {showExpand && (
         <ControlBtn
-          label={isExpanded ? 'Collapse chat' : 'Expand chat'}
+          label={isExpanded ? t('Collapse chat') : t('Expand chat')}
           onClick={onExpand}
           active={isExpanded}
         >
           {isExpanded ? <CollapseIcon size={15} /> : <MaximizeIcon size={15} />}
         </ControlBtn>
       )}
-      <ControlBtn label="Minimize chat" onClick={onMinimize}>
+      <ControlBtn label={t('Minimize chat')} onClick={onMinimize}>
         <MinimizeIcon size={15} />
       </ControlBtn>
     </div>
@@ -75,6 +77,7 @@ export const languageName = (code: string) => LANGUAGE_NAMES[code] ?? code.toUpp
 
 /** Globe control that opens a menu of the firm's offered languages. */
 function LanguagePicker() {
+  const t = useT();
   const language = useWidgetStore((s) => s.language);
   const languages = useWidgetStore((s) => s.languages);
   const setLanguage = useWidgetStore((s) => s.setLanguage);
@@ -99,7 +102,7 @@ function LanguagePicker() {
 
   return (
     <div ref={ref} className="relative">
-      <ControlBtn label="Language" onClick={() => setOpen((o) => !o)} active={open}>
+      <ControlBtn label={t('Language')} onClick={() => setOpen((o) => !o)} active={open}>
         <GlobeIcon size={15} />
       </ControlBtn>
       {open && (

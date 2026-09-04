@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { CheckIcon, EditIcon, SpinnerIcon } from '../utils/icons';
+import { useT } from '../i18n';
 import { cn } from '../utils/cn';
 
 export function CaptureDrawer() {
@@ -12,6 +13,7 @@ export function CaptureDrawer() {
   const failedEdits = useWidgetStore((s) => s.failedEdits);
   const editField = useWidgetStore((s) => s.editField);
   const socket = useSocket();
+  const t = useT();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
@@ -38,7 +40,7 @@ export function CaptureDrawer() {
       id="capture-drawer"
       className="shrink-0 border-b border-hairline bg-bg-canvas px-4 py-3"
       role="region"
-      aria-label="Captured details"
+      aria-label={t('Captured details')}
     >
       <div className="space-y-3">
         {visibleSections.map((section) => (
@@ -46,7 +48,7 @@ export function CaptureDrawer() {
             <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
               {section.name}
               {section.isComplete && (
-                <CheckIcon size={11} className="text-success" aria-label="Section complete" />
+                <CheckIcon size={11} className="text-success" aria-label={t('Section complete')} />
               )}
             </p>
             <ul className="space-y-1">
@@ -74,7 +76,7 @@ export function CaptureDrawer() {
                             onChange={(e) => setDraft(e.target.value)}
                             onBlur={submitEdit}
                             className="w-full rounded border border-famaash-border bg-white px-1.5 py-0.5 text-[16px] focus:outline-none sm:text-[13px]"
-                            aria-label={`Edit ${field.displayName}`}
+                            aria-label={`${t('Edit')} ${field.displayName}`}
                           />
                         </form>
                       ) : (
@@ -84,11 +86,11 @@ export function CaptureDrawer() {
                             <SpinnerIcon
                               size={12}
                               className="text-muted"
-                              aria-label="Syncing edit"
+                              aria-label={t('Syncing edit')}
                             />
                           )}
                           {failed && (
-                            <span className="text-[10px] text-danger">retry</span>
+                            <span className="text-[10px] text-danger">{t('retry')}</span>
                           )}
                         </p>
                       )}
@@ -97,7 +99,7 @@ export function CaptureDrawer() {
                       <button
                         type="button"
                         onClick={() => beginEdit(field.id, current)}
-                        aria-label={`Edit ${field.displayName}`}
+                        aria-label={`${t('Edit')} ${field.displayName}`}
                         className="rounded p-1 text-muted hover:bg-hairline-soft hover:text-ink"
                       >
                         <EditIcon size={13} />

@@ -24,6 +24,7 @@ import {
   writeHandoffKey,
 } from './services/transport';
 import { useWidgetStore } from './store/widgetStore';
+import { translate } from './i18n';
 import { wireSocketToStore } from './store/wireSocket';
 import type { AnalyticsEvent, ConversationSocket } from './types/protocol';
 
@@ -163,7 +164,7 @@ export function App() {
         bridgeRef.current?.notifyEvent({ type: 'widget_opened', data: { firmId, conversationId: cid } });
       } catch (err) {
         if (disposedRef.current) return;
-        setBootStatus('error', err instanceof Error ? err.message : 'Connection failed');
+        setBootStatus('error', err instanceof Error ? err.message : translate(useWidgetStore.getState().uiLocale, 'Connection failed'));
       } finally {
         connectingRef.current = false;
       }
@@ -360,7 +361,7 @@ export function App() {
           setBootStatus('disabled');
           return;
         }
-        const message = err instanceof Error ? err.message : 'Unknown error';
+        const message = err instanceof Error ? err.message : translate(useWidgetStore.getState().uiLocale, 'Unknown error');
         setBootStatus('error', message);
       }
     })();
@@ -536,7 +537,7 @@ export function App() {
       session = await createFreshChatSession(firmId, { newChat: true });
     } catch (err) {
       if (!disposedRef.current) {
-        setBootStatus('error', err instanceof Error ? err.message : 'Could not start a new chat');
+        setBootStatus('error', err instanceof Error ? err.message : translate(useWidgetStore.getState().uiLocale, 'Could not start a new chat'));
       }
       return;
     }

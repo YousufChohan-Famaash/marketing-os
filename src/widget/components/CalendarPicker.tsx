@@ -3,6 +3,8 @@ import { CalendarGrid } from './CalendarGrid';
 import { WheelColumn } from './WheelColumn';
 import { CalendarIcon, SlidersIcon } from '../utils/icons';
 import { useMediaQuery } from '../utils/useMediaQuery';
+import { useT } from '../i18n';
+import { useWidgetStore } from '../store/widgetStore';
 import { cn } from '../utils/cn';
 
 export interface DateSelection {
@@ -26,11 +28,6 @@ interface CalendarPickerProps {
   onCancel?: () => void;
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 const pad = (n: number) => String(n).padStart(2, '0');
 const daysIn = (year: number, monthIdx: number) => new Date(year, monthIdx + 1, 0).getDate();
 
@@ -43,6 +40,12 @@ const daysIn = (year: number, monthIdx: number) => new Date(year, monthIdx + 1, 
  * blocks the past (scheduling); the other modes block the future.
  */
 export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: CalendarPickerProps) {
+  const t = useT();
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
+  const bcp = uiLocale === 'es' ? 'es' : 'en-US';
+  const MONTHS = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(bcp, { month: 'long' }).format(new Date(2000, i, 1)),
+  );
   const today = new Date();
   const thisYear = today.getFullYear();
   const isFutureMode = mode === 'future';
@@ -105,7 +108,7 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
   const submit = () => {
     if (blocked) return;
     const [y, m, d] = isoValue.split('-').map(Number);
-    const label = new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    const label = new Date(y, m - 1, d).toLocaleDateString(bcp, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -124,7 +127,7 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
         onClick={onCancel ?? reset}
         className="rounded-pill bg-[#F5F8FB] px-4 py-2 text-[12px] font-bold text-[#1A1A1A] transition-colors hover:bg-hairline-soft"
       >
-        Cancel
+        {t('Cancel')}
       </button>
       <button
         type="button"
@@ -132,7 +135,7 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
         disabled={blocked}
         className="rounded-pill bg-famaash px-5 py-2 text-[12px] font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
       >
-        OK
+        {t('OK')}
       </button>
     </>
   );
@@ -153,13 +156,13 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
           min={minDate}
           max={maxDate}
           onChange={onTyped}
-          aria-label="Type a date"
+          aria-label={t('Type a date')}
           className="cal-typed min-w-0 flex-1 rounded-lg border border-hairline bg-white px-3 py-2 text-[16px] text-ink focus:border-famaash focus:outline-none sm:text-[14px]"
         />
         <button
           type="button"
           onClick={() => setShowPicker((v) => !v)}
-          aria-label={showPicker ? 'Hide picker' : isTouch ? 'Open date picker' : 'Open calendar'}
+          aria-label={showPicker ? t('Hide picker') : isTouch ? t('Open date picker') : t('Open calendar')}
           aria-pressed={showPicker}
           className={cn(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors',
@@ -182,14 +185,14 @@ export function CalendarPicker({ mode = 'recent', onSubmit, onCancel }: Calendar
               aria-hidden="true"
             />
             <div className="relative flex items-stretch">
-              <WheelColumn items={MONTHS} index={monthIdx} onChange={setMonthIdx} ariaLabel="Month" />
+              <WheelColumn items={MONTHS} index={monthIdx} onChange={setMonthIdx} ariaLabel={t('Month')} />
               <WheelColumn
                 items={days}
                 index={Math.min(dayIdx, dayCount - 1)}
                 onChange={setDayIdx}
-                ariaLabel="Day"
+                ariaLabel={t('Day')}
               />
-              <WheelColumn items={years.map(String)} index={yearIdx} onChange={setYearIdx} ariaLabel="Year" />
+              <WheelColumn items={years.map(String)} index={yearIdx} onChange={setYearIdx} ariaLabel={t('Year')} />
             </div>
           </div>
         ) : (

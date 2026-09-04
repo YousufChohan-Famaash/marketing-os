@@ -6,6 +6,7 @@ import { useWidgetStore } from '../store/widgetStore';
 import type { ActiveSigning } from '../store/slices/uiSlice';
 import { createEsignSession } from '../services/api';
 import { CloseIcon, SpinnerIcon } from '../utils/icons';
+import { useT } from '../i18n';
 
 /**
  * Inline document signing via the Dropbox Sign (HelloSign) embedded SDK.
@@ -22,6 +23,7 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
   const setActiveSigning = useWidgetStore((s) => s.setActiveSigning);
   const updateMessage = useWidgetStore((s) => s.updateMessage);
   const socket = useSocket();
+  const t = useT();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const signedRef = useRef(false);
@@ -47,11 +49,11 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
 
     (async () => {
       if (!conversationId) {
-        setError('No active conversation.');
+        setError(t('No active conversation.'));
         return;
       }
       if (!clientId) {
-        setError('Inline signing isn’t configured for this firm.');
+        setError(t('Inline signing isn’t configured for this firm.'));
         return;
       }
       try {
@@ -70,7 +72,7 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
           // Fires after sign too; markSigned's guard makes this a no-op then.
           if (!signedRef.current) close();
         });
-        client.on('error', () => setError('Signing failed. Please try again.'));
+        client.on('error', () => setError(t('Signing failed. Please try again.')));
 
         client.open(session.signingUrl, {
           container: containerRef.current ?? undefined,
@@ -80,7 +82,7 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
         });
         if (!cancelled) setLaunched(true);
       } catch {
-        if (!cancelled) setError('Could not load the document. Please try again.');
+        if (!cancelled) setError(t('Could not load the document. Please try again.'));
       }
     })();
 
@@ -107,12 +109,12 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
         <div className="flex shrink-0 items-center justify-between border-b border-hairline px-4 py-3">
           <div>
             <h2 className="text-[15px] font-semibold text-ink">{signing.name}</h2>
-            <p className="mt-0.5 text-[12px] text-muted">Review and sign to continue.</p>
+            <p className="mt-0.5 text-[12px] text-muted">{t('Review and sign to continue.')}</p>
           </div>
           <button
             type="button"
             onClick={close}
-            aria-label="Close document"
+            aria-label={t('Close document')}
             className="rounded-md p-1 text-muted hover:bg-hairline-soft hover:text-ink"
           >
             <CloseIcon size={18} />
@@ -140,7 +142,7 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
             onClick={close}
             className="text-[12px] font-medium text-muted hover:text-ink"
           >
-            Close
+            {t('Close')}
           </button>
         </div>
       </div>

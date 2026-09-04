@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useT } from '../i18n';
 import { cn } from '../utils/cn';
 
 /**
@@ -36,6 +37,7 @@ function SubmitButton({
 }
 
 export function NameInput({ onSubmit }: { onSubmit: (content: string) => void }) {
+  const t = useT();
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const valid = first.trim().length > 0 && last.trim().length > 0;
@@ -46,16 +48,16 @@ export function NameInput({ onSubmit }: { onSubmit: (content: string) => void })
           className={FIELD}
           value={first}
           onChange={(e) => setFirst(e.target.value)}
-          placeholder="First name"
-          aria-label="First name"
+          placeholder={t('First name')}
+          aria-label={t('First name')}
           autoComplete="given-name"
         />
         <input
           className={FIELD}
           value={last}
           onChange={(e) => setLast(e.target.value)}
-          placeholder="Last name"
-          aria-label="Last name"
+          placeholder={t('Last name')}
+          aria-label={t('Last name')}
           autoComplete="family-name"
         />
       </div>
@@ -63,7 +65,7 @@ export function NameInput({ onSubmit }: { onSubmit: (content: string) => void })
         disabled={!valid}
         onClick={() => onSubmit(`${first.trim()} ${last.trim()}`)}
       >
-        Continue
+        {t('Continue')}
       </SubmitButton>
     </div>
   );
@@ -72,6 +74,7 @@ export function NameInput({ onSubmit }: { onSubmit: (content: string) => void })
 const COUNTRY_CODES = ['+1', '+44', '+92', '+91', '+61', '+971'];
 
 export function PhoneInput({ onSubmit }: { onSubmit: (content: string) => void }) {
+  const t = useT();
   const [code, setCode] = useState('+1');
   const [num, setNum] = useState('');
   const valid = num.replace(/\D/g, '').length >= 7;
@@ -81,7 +84,7 @@ export function PhoneInput({ onSubmit }: { onSubmit: (content: string) => void }
         <select
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          aria-label="Country code"
+          aria-label={t('Country code')}
           className="rounded-lg border border-hairline bg-white px-2 py-2.5 text-[16px] text-ink focus:border-famaash focus:outline-none sm:text-[14px]"
         >
           {COUNTRY_CODES.map((c) => (
@@ -97,18 +100,19 @@ export function PhoneInput({ onSubmit }: { onSubmit: (content: string) => void }
           autoComplete="tel-national"
           value={num}
           onChange={(e) => setNum(e.target.value)}
-          placeholder="Phone number"
-          aria-label="Phone number"
+          placeholder={t('Phone number')}
+          aria-label={t('Phone number')}
         />
       </div>
       <SubmitButton disabled={!valid} onClick={() => onSubmit(`${code} ${num.trim()}`)}>
-        Continue
+        {t('Continue')}
       </SubmitButton>
     </div>
   );
 }
 
 export function EmailInput({ onSubmit }: { onSubmit: (content: string) => void }) {
+  const t = useT();
   const [email, setEmail] = useState('');
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   return (
@@ -121,16 +125,17 @@ export function EmailInput({ onSubmit }: { onSubmit: (content: string) => void }
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        aria-label="Email address"
+        aria-label={t('Email address')}
       />
       <SubmitButton disabled={!valid} onClick={() => onSubmit(email.trim())}>
-        Continue
+        {t('Continue')}
       </SubmitButton>
     </div>
   );
 }
 
 export function NumberInput({ onSubmit }: { onSubmit: (content: string) => void }) {
+  const t = useT();
   const [value, setValue] = useState('');
   const valid = value.trim().length > 0;
   return (
@@ -141,11 +146,11 @@ export function NumberInput({ onSubmit }: { onSubmit: (content: string) => void 
         inputMode="numeric"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Enter a number"
-        aria-label="Number"
+        placeholder={t('Enter a number')}
+        aria-label={t('Number')}
       />
       <SubmitButton disabled={!valid} onClick={() => onSubmit(value.trim())}>
-        Continue
+        {t('Continue')}
       </SubmitButton>
     </div>
   );

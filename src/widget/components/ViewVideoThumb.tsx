@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
+import { useT } from '../i18n';
 import { resolveAssistantAvatar, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
 import { postVideoEvent } from '../services/api';
@@ -26,6 +27,7 @@ export function ViewVideoThumb({ view, className }: ViewVideoThumbProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
   const firmId = useWidgetStore((s) => s.firmId);
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const playedRef = useRef(false);
   const { soundOn, toggleSound } = useVideoSound(videoRef);
@@ -58,7 +60,7 @@ export function ViewVideoThumb({ view, className }: ViewVideoThumbProps) {
         loop
         preload="metadata"
         className="h-full w-full object-cover"
-        aria-label="Attorney video"
+        aria-label={t('Attorney video')}
         onPlay={() => {
           if (playedRef.current || !firmId) return;
           playedRef.current = true;
@@ -69,7 +71,7 @@ export function ViewVideoThumb({ view, className }: ViewVideoThumbProps) {
       <button
         type="button"
         onClick={toggleSound}
-        aria-label={soundOn ? 'Mute video' : 'Unmute video'}
+        aria-label={soundOn ? t('Mute video') : t('Unmute video')}
         className="absolute bottom-1.5 right-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-transform hover:scale-105"
       >
         {soundOn ? <VolumeOnIcon size={13} /> : <VolumeOffIcon size={13} />}

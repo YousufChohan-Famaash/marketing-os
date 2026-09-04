@@ -56,7 +56,7 @@ export function ConnectHome({ onClose, onMinimize, onExpand, isExpanded }: Conne
 
   // Hero video + 2×2 channel grid — identical across every widget size.
   return (
-    <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`Contact ${firmName}`}>
+    <div className="flex h-full w-full flex-col bg-white" role="dialog" aria-label={`${t('Contact')} ${firmName}`}>
       <div className="relative shrink-0">
         {/* Full-width cover video; only the expanded view gets a taller frame. */}
         <ConnectVideo className={cn('w-full', isExpanded ? 'h-[400px]' : 'aspect-[16/11] max-h-[248px]')} />

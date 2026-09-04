@@ -1,5 +1,7 @@
 import type { FallbackProps } from 'react-error-boundary';
 import { AlertIcon } from '../utils/icons';
+import { translate } from '../i18n';
+import { useWidgetStore } from '../store/widgetStore';
 
 /**
  * Top-level error fallback. Rendered when anything inside the widget throws.
@@ -7,6 +9,7 @@ import { AlertIcon } from '../utils/icons';
  * pick up `widget_error` events later.
  */
 export function WidgetErrorFallback({ resetErrorBoundary, error }: FallbackProps) {
+  const loc = useWidgetStore.getState().uiLocale;
   return (
     <div
       role="alert"
@@ -17,10 +20,10 @@ export function WidgetErrorFallback({ resetErrorBoundary, error }: FallbackProps
       </span>
       <div>
         <p className="text-[15px] font-semibold text-ink">
-          Chat is temporarily unavailable
+          {translate(loc, 'Chat is temporarily unavailable')}
         </p>
         <p className="mt-1 text-[13px] text-muted">
-          Please refresh. Our team will follow up shortly if the issue persists.
+          {translate(loc, 'Please refresh. Our team will follow up shortly if the issue persists.')}
         </p>
       </div>
       <button
@@ -28,7 +31,7 @@ export function WidgetErrorFallback({ resetErrorBoundary, error }: FallbackProps
         onClick={resetErrorBoundary}
         className="mt-1 rounded-md bg-famaash px-4 py-2 text-[13px] font-medium text-white hover:opacity-95"
       >
-        Try again
+        {translate(loc, 'Try again')}
       </button>
       {import.meta.env?.DEV && error?.message && (
         <pre className="mt-2 max-w-full overflow-auto rounded bg-subtle px-2 py-1 text-left text-[10px] text-muted">

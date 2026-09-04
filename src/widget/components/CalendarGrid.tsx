@@ -1,16 +1,8 @@
 import { useState } from 'react';
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from '../utils/icons';
+import { useT } from '../i18n';
+import { useWidgetStore } from '../store/widgetStore';
 import { cn } from '../utils/cn';
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-const MONTHS_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const daysIn = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
@@ -42,6 +34,18 @@ export function CalendarGrid({
   years,
   onPick,
 }: CalendarGridProps) {
+  const t = useT();
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
+  const bcp = uiLocale === 'es' ? 'es' : 'en-US';
+  const MONTHS = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(bcp, { month: 'long' }).format(new Date(2000, i, 1)),
+  );
+  const MONTHS_SHORT = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(bcp, { month: 'short' }).format(new Date(2000, i, 1)),
+  );
+  const WEEKDAYS = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(bcp, { weekday: 'short' }).format(new Date(2000, 0, 2 + i)),
+  );
   const [selY, selM] = selectedISO.split('-').map(Number);
   const [view, setView] = useState({ y: selY, m: selM - 1 });
   // Jump picker: closed → choose a year → choose a month → back to the grid.
@@ -86,7 +90,7 @@ export function CalendarGrid({
       {jump === 'year' ? (
         <div>
           <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
-            Choose a year
+            {t('Choose a year')}
           </div>
           <div className="wheel-col max-h-[196px] overflow-y-auto">
             <div className="grid grid-cols-4 gap-1.5">
@@ -115,14 +119,14 @@ export function CalendarGrid({
             <button
               type="button"
               onClick={() => setJump('year')}
-              aria-label="Back to years"
+              aria-label={t('Back to years')}
               className="flex items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-bold text-[#1A1A1A] transition-colors hover:bg-subtle"
             >
               <ChevronLeftIcon size={14} className="text-muted" />
               {view.y}
             </button>
             <span className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-soft">
-              Choose a month
+              {t('Choose a month')}
             </span>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
@@ -158,7 +162,7 @@ export function CalendarGrid({
             <button
               type="button"
               onClick={() => go(-1)}
-              aria-label="Previous month"
+              aria-label={t('Previous month')}
               className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-subtle"
             >
               <ChevronLeftIcon size={16} />
@@ -166,7 +170,7 @@ export function CalendarGrid({
             <button
               type="button"
               onClick={() => setJump('year')}
-              aria-label="Choose month and year"
+              aria-label={t('Choose month and year')}
               className="flex items-center gap-1 rounded-pill px-2 py-1 text-[13px] font-bold text-[#1A1A1A] transition-colors hover:bg-subtle"
             >
               {MONTHS[view.m]} {view.y}
@@ -175,7 +179,7 @@ export function CalendarGrid({
             <button
               type="button"
               onClick={() => go(1)}
-              aria-label="Next month"
+              aria-label={t('Next month')}
               className="flex h-7 w-7 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-subtle"
             >
               <ChevronRightIcon size={16} />

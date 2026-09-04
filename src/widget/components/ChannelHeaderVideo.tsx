@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
+import { useT } from '../i18n';
 import { resolveAssistantAvatar, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
 import { VolumeOffIcon } from '../utils/icons';
@@ -16,6 +17,7 @@ import { Avatar } from './Avatar';
 export function ChannelHeaderVideo({ view, size = 34 }: { view: VideoView | null; size?: number }) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const video = view ? resolveViewVideo(view, settings, branding) : undefined;
   // Resume where the collapsing stage left off (same clip URL) instead of from 0.
@@ -35,7 +37,7 @@ export function ChannelHeaderVideo({ view, size = 34 }: { view: VideoView | null
     <button
       type="button"
       onClick={toggleSound}
-      aria-label={soundOn ? 'Mute video' : 'Unmute video'}
+      aria-label={soundOn ? t('Mute video') : t('Unmute video')}
       className="relative shrink-0"
       style={{ width: size, height: size }}
     >

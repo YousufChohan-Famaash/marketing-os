@@ -31,7 +31,7 @@ export function PoweredByFooter() {
             </span>
           )}
         </span>
-        <span>Powered by Famaash</span>
+        <span>{t('Powered by')} Famaash</span>
       </span>
       <div className="flex items-center gap-2">
         {privacyUrl && (

@@ -4,6 +4,7 @@ import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { resolveAssistantAvatar } from '../config/demoMedia';
 import { cn } from '../utils/cn';
+import { useT } from '../i18n';
 import { findLeadEmail, useGravatar } from '../utils/useGravatar';
 import { UndoIcon } from '../utils/icons';
 import { Avatar } from './Avatar';
@@ -44,6 +45,7 @@ export const MessageBubble = memo(function MessageBubble({
   const isSending = message.status === 'sending';
   const leadIcon = isLead ? matchPracticeIcon(message.content, 16) : null;
 
+  const t = useT();
   // Slightly larger, more readable text when the chat is in its expanded size.
   const isExpanded = useWidgetStore((s) => s.isExpanded);
   const branding = useWidgetStore((s) => s.branding);
@@ -88,8 +90,8 @@ export const MessageBubble = memo(function MessageBubble({
         <button
           type="button"
           onClick={undo}
-          aria-label="Undo message"
-          title="Undo"
+          aria-label={t('Undo message')}
+          title={t('Undo')}
           className="flex h-7 w-7 shrink-0 items-center justify-center self-center rounded-full text-muted-soft transition-colors hover:bg-subtle hover:text-ink"
         >
           <UndoIcon size={15} />
@@ -130,8 +132,8 @@ export const MessageBubble = memo(function MessageBubble({
             isLead ? 'self-end' : 'self-start',
           )}
         >
-          {isSending && <span>Sending…</span>}
-          {isFailed && <span className="text-danger">Failed to send</span>}
+          {isSending && <span>{t('Sending…')}</span>}
+          {isFailed && <span className="text-danger">{t('Failed to send')}</span>}
           {!isSending && !isFailed && <time dateTime={new Date(message.timestamp).toISOString()}>{formatTime(message.timestamp)}</time>}
         </div>
       </div>

@@ -2,6 +2,7 @@ import type { Message } from '../types/domain';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import { CheckIcon, FileIcon, SignatureIcon } from '../utils/icons';
+import { useT } from '../i18n';
 import { cn } from '../utils/cn';
 
 /**
@@ -15,6 +16,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
   const setActiveSigning = useWidgetStore((s) => s.setActiveSigning);
   const updateMessage = useWidgetStore((s) => s.updateMessage);
   const socket = useSocket();
+  const t = useT();
 
   const doc = message.document;
   const name = doc?.name ?? 'Document';
@@ -49,7 +51,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
           <FileIcon size={16} className="shrink-0 text-muted" aria-hidden="true" />
         )}
         <span className="font-medium">{name}</span>
-        <span>{signed ? 'signed' : 'skipped'}</span>
+        <span>{signed ? t('signed') : t('skipped')}</span>
       </div>
     );
   }
@@ -62,14 +64,14 @@ export function DocumentSignCard({ message }: { message: Message }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-ink">{name}</p>
-          <p className="mt-0.5 text-[12px] text-muted">Review the document and sign inline.</p>
+          <p className="mt-0.5 text-[12px] text-muted">{t('Review the document and sign inline.')}</p>
           <div className="mt-2 flex flex-col items-start gap-1.5">
             <button
               type="button"
               onClick={open}
               className="inline-flex items-center gap-1.5 rounded-md bg-famaash px-3 py-1.5 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-95"
             >
-              Review &amp; Sign
+              {t('Review & Sign')}
             </button>
             {allowSkip && (
               <button
@@ -77,7 +79,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
                 onClick={skip}
                 className="text-[12px] font-medium text-muted hover:text-ink"
               >
-                Skip / I&apos;ll do it later
+                {t("Skip / I'll do it later")}
               </button>
             )}
           </div>

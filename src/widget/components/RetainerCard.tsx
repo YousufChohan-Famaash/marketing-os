@@ -1,5 +1,6 @@
 import type { Message } from '../types/domain';
 import { CheckIcon, SignatureIcon } from '../utils/icons';
+import { useT } from '../i18n';
 import { cn } from '../utils/cn';
 
 interface RetainerCardProps {
@@ -8,6 +9,7 @@ interface RetainerCardProps {
 }
 
 export function RetainerCard({ message, onReviewAndSign }: RetainerCardProps) {
+  const t = useT();
   const status = message.retainerStatus ?? 'pending';
   const signed = status === 'signed';
   const pct = message.contingencyPercent;
@@ -30,14 +32,14 @@ export function RetainerCard({ message, onReviewAndSign }: RetainerCardProps) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-ink">
-            {signed ? 'Retainer signed' : 'Retainer agreement'}
+            {signed ? t('Retainer signed') : t('Retainer agreement')}
           </p>
           <p className="mt-0.5 text-[12px] text-muted">
             {signed
-              ? 'A countersigned copy was emailed to you.'
+              ? t('A countersigned copy was emailed to you.')
               : typeof pct === 'number'
-                ? `${pct}% contingency · review the terms and sign below`
-                : 'Review the terms and sign below.'}
+                ? `${pct}% ${t('contingency · review the terms and sign below')}`
+                : t('Review the terms and sign below.')}
           </p>
           {!signed && (
             <button
@@ -46,7 +48,7 @@ export function RetainerCard({ message, onReviewAndSign }: RetainerCardProps) {
               disabled={status === 'signing'}
               className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-famaash px-3 py-1.5 text-[13px] font-medium text-white shadow-sm transition-opacity hover:opacity-95 disabled:opacity-60"
             >
-              {status === 'signing' ? 'Opening…' : 'Review & sign'}
+              {status === 'signing' ? t('Opening…') : t('Review & sign')}
             </button>
           )}
         </div>

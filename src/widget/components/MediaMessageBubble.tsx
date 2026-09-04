@@ -1,6 +1,7 @@
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import type { Message } from '../types/domain';
+import { useT } from '../i18n';
 
 /**
  * A lead's recorded voice / video note in the transcript (right-aligned, brand
@@ -8,6 +9,7 @@ import type { Message } from '../types/domain';
  * the same Undo affordance as text messages during the grace window.
  */
 export function MediaMessageBubble({ message }: { message: Message }) {
+  const t = useT();
   const socket = useSocket();
   const undoableMessageId = useWidgetStore((s) => s.undoableMessageId);
   const canUndo = undoableMessageId === message.id;
@@ -41,11 +43,11 @@ export function MediaMessageBubble({ message }: { message: Message }) {
         </p>
       )}
       <div className="flex items-center gap-2 px-2 text-[10px] text-muted">
-        {message.status === 'sending' && <span>Uploading…</span>}
-        {message.status === 'failed' && <span className="text-danger">Couldn&apos;t send</span>}
+        {message.status === 'sending' && <span>{t('Uploading…')}</span>}
+        {message.status === 'failed' && <span className="text-danger">{t("Couldn't send")}</span>}
         {canUndo && (
           <button type="button" onClick={undo} className="font-semibold text-famaash hover:underline">
-            Undo
+            {t('Undo')}
           </button>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../../store/widgetStore';
+import { useT } from '../../i18n';
 import { RecordIcon } from '../../utils/icons';
 import { Modal } from '../Modal';
 
@@ -7,6 +8,7 @@ type Phase = 'idle' | 'recording' | 'preview' | 'uploaded' | 'error';
 
 export default function VideoRecorderChunk() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -30,7 +32,7 @@ export default function VideoRecorderChunk() {
           videoRef.current.srcObject = stream;
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Camera unavailable');
+        setError(err instanceof Error ? err.message : t('Camera unavailable'));
         setPhase('error');
       }
     })();
@@ -70,8 +72,8 @@ export default function VideoRecorderChunk() {
 
   return (
     <Modal
-      title="Record a video"
-      description="A short video helps us understand your case faster"
+      title={t('Record a video')}
+      description={t('A short video helps us understand your case faster')}
       onClose={() => setActiveModal(null)}
       footer={
         phase === 'preview' ? (
@@ -84,14 +86,14 @@ export default function VideoRecorderChunk() {
               }}
               className="text-[12px] font-medium text-muted hover:text-ink"
             >
-              Retake
+              {t('Retake')}
             </button>
             <button
               type="button"
               onClick={submit}
               className="rounded-md bg-famaash px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-95"
             >
-              Submit
+              {t('Submit')}
             </button>
           </div>
         ) : null
@@ -100,7 +102,7 @@ export default function VideoRecorderChunk() {
       <div className="space-y-3">
         {phase === 'error' && (
           <div className="rounded-md bg-danger-soft px-3 py-2 text-[12px] text-danger">
-            {error ?? 'Camera unavailable.'}
+            {error ?? t('Camera unavailable.')}
           </div>
         )}
         {phase !== 'preview' && phase !== 'uploaded' && (
@@ -110,7 +112,7 @@ export default function VideoRecorderChunk() {
             muted
             playsInline
             className="aspect-video w-full rounded-md bg-obsidian"
-            aria-label="Live camera preview"
+            aria-label={t('Live camera preview')}
           />
         )}
         {phase === 'preview' && previewUrl && (
@@ -119,12 +121,12 @@ export default function VideoRecorderChunk() {
             src={previewUrl}
             controls
             className="aspect-video w-full rounded-md bg-obsidian"
-            aria-label="Recording preview"
+            aria-label={t('Recording preview')}
           />
         )}
         {phase === 'uploaded' && (
           <div className="rounded-md bg-success-soft px-3 py-3 text-center text-[13px] font-medium text-success">
-            Mock upload complete.
+            {t('Mock upload complete.')}
           </div>
         )}
         {phase === 'idle' && (
@@ -134,7 +136,7 @@ export default function VideoRecorderChunk() {
             className="mx-auto flex items-center gap-2 rounded-pill bg-danger px-4 py-2 text-[13px] font-medium text-white hover:opacity-90"
           >
             <RecordIcon size={14} aria-hidden="true" />
-            Start recording
+            {t('Start recording')}
           </button>
         )}
         {phase === 'recording' && (
@@ -144,7 +146,7 @@ export default function VideoRecorderChunk() {
             className="mx-auto flex items-center gap-2 rounded-pill bg-ink px-4 py-2 text-[13px] font-medium text-white hover:opacity-90"
           >
             <span className="block h-2.5 w-2.5 rounded-sm bg-danger" aria-hidden="true" />
-            Stop
+            {t('Stop')}
           </button>
         )}
       </div>

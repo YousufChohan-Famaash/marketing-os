@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useWidgetStore } from '../../store/widgetStore';
+import { useT } from '../../i18n';
 import { MicIcon, MicOffIcon, PhoneOffIcon } from '../../utils/icons';
 import { Modal } from '../Modal';
 
 export default function VoiceCallChunk() {
   const setActiveModal = useWidgetStore((s) => s.setActiveModal);
   const branding = useWidgetStore((s) => s.branding);
+  const t = useT();
   const [connectStage, setConnectStage] = useState<'connecting' | 'connected'>('connecting');
   const [muted, setMuted] = useState(false);
 
@@ -18,7 +20,7 @@ export default function VoiceCallChunk() {
 
   return (
     <Modal
-      title="Voice with AI agent"
+      title={t('Voice with AI agent')}
       description={`Calling ${branding?.name ?? 'support'}…`}
       onClose={close}
     >
@@ -29,17 +31,17 @@ export default function VoiceCallChunk() {
           </span>
         </div>
         <p className="text-[13px] text-muted">
-          {connectStage === 'connecting' ? 'Connecting to AI voice agent…' : 'Connected'}
+          {connectStage === 'connecting' ? t('Connecting to AI voice agent…') : t('Connected')}
         </p>
         <p className="rounded-md bg-warning-soft px-3 py-1.5 text-[11px] font-medium text-warning">
-          This is a UI prototype. No real call is happening.
+          {t('This is a UI prototype. No real call is happening.')}
         </p>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
             aria-pressed={muted}
-            aria-label={muted ? 'Unmute' : 'Mute'}
+            aria-label={muted ? t('Unmute') : t('Mute')}
             className="flex h-12 w-12 items-center justify-center rounded-full bg-subtle text-ink hover:bg-hairline"
           >
             {muted ? <MicOffIcon size={20} /> : <MicIcon size={20} />}
@@ -47,7 +49,7 @@ export default function VoiceCallChunk() {
           <button
             type="button"
             onClick={close}
-            aria-label="Hang up"
+            aria-label={t('Hang up')}
             className="flex h-12 w-12 items-center justify-center rounded-full bg-danger text-white hover:opacity-90"
           >
             <PhoneOffIcon size={20} />

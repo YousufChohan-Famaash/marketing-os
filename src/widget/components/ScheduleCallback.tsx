@@ -310,7 +310,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
   if (phase === 'booked') {
     const info = bookedInfo;
     const cal = info
-      ? calendarHref(info.slotStart, info.end, `Call with ${firmName}`, `${firmName} will call you about your inquiry.`)
+      ? calendarHref(info.slotStart, info.end, `${t('Call with')} ${firmName}`, `${firmName} ${t('will call you about your inquiry.')}`)
       : null;
     const when = info ? formatWhen(info.slotStart, info.timezone, uiLocale) : null;
     const callTo = formatPhone(info?.callbackPhone);

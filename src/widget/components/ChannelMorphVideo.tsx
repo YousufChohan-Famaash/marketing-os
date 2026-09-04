@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
+import { useT } from '../i18n';
 import { resolveCaptionsUrl, resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
 import { PlayIcon, VolumeOffIcon, VolumeOnIcon } from '../utils/icons';
@@ -70,6 +71,7 @@ export function ChannelMorphVideo({
   overlayBottom,
 }: ChannelMorphVideoProps) {
   const branding = useWidgetStore((s) => s.branding);
+  const t = useT();
   const settings = useWidgetStore((s) => s.connect);
   const language = useWidgetStore((s) => s.language);
   const soundOn = useWidgetStore((s) => s.videoSoundOn);
@@ -173,10 +175,10 @@ export function ChannelMorphVideo({
         }}
         onPlay={() => setEnded(false)}
         className="h-full w-full object-cover"
-        aria-label="Attorney video"
+        aria-label={t('Attorney video')}
       >
         {useCaptions && captionsUrl && (
-          <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
+          <track kind="captions" src={captionsUrl} srcLang={language} label={t('Captions')} default />
         )}
       </video>
       {/* Top scrim so the transparent header (back / title / controls) stays
@@ -214,7 +216,7 @@ export function ChannelMorphVideo({
         <button
           type="button"
           onClick={replay}
-          aria-label="Replay video"
+          aria-label={t('Replay video')}
           className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white ring-1 ring-white/50 backdrop-blur transition-transform hover:scale-105"
         >
           <PlayIcon size={22} className="ml-0.5" />
@@ -231,7 +233,7 @@ export function ChannelMorphVideo({
       <button
         type="button"
         onClick={collapsed ? onCollapsedTap : toggleSound}
-        aria-label={collapsed ? (onThumbClick ? 'Watch the welcome' : 'Unmute video') : soundOn ? 'Mute video' : 'Unmute video'}
+        aria-label={collapsed ? (onThumbClick ? t('Watch the welcome') : t('Unmute video')) : soundOn ? t('Mute video') : t('Unmute video')}
         className={
           collapsed
             ? 'absolute inset-0'

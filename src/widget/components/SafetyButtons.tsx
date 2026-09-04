@@ -12,7 +12,7 @@ export function SafetyButtons() {
   return (
     <div
       role="toolbar"
-      aria-label="Safety and assistance options"
+      aria-label={t('Safety and assistance options')}
       className="flex shrink-0 items-center gap-2 px-3"
     >
       {(flags.voice || flags.human_takeover) && (

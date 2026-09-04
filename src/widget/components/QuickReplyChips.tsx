@@ -81,7 +81,7 @@ export function QuickReplyChips({
   };
 
   return (
-    <div role="group" aria-label="Quick reply options" className="mt-2">
+    <div role="group" aria-label={t('Quick reply options')} className="mt-2">
       <div className="flex flex-wrap gap-2">
         {options.map((option, i) => {
           const isSelected = selectedSet.has(option);

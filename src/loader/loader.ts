@@ -535,6 +535,39 @@ const SVG = {
   minimize: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
 };
 
+// Minimal ES lookup for the host-page teaser. The React widget has its own i18n
+// (src/widget/i18n.ts); this covers ONLY the loader's own DOM strings, keyed by
+// the English source. Gated on the host page's language (data-lang / <html lang>),
+// so a Spanish page gets a Spanish teaser without waiting on the iframe.
+const TEASER_ES: Record<string, string> = {
+  'Hurt? Talk to us your way.': '¿Lesionado? Hable con nosotros como prefiera.',
+  'Hurt? Talk to us': '¿Lesionado? Hable con nosotros',
+  'your way.': 'como prefiera.',
+  'Talk to us': 'Hable con nosotros',
+  'Online now': 'En línea ahora',
+  'We answer. Day or night. 24/7': 'Respondemos. De día o de noche. 24/7',
+  'Powered by': 'Con tecnología de',
+  'Open chat': 'Abrir chat',
+  'Open contact options': 'Abrir opciones de contacto',
+  'Minimize': 'Minimizar',
+  'Connecting you to': 'Conectándole con',
+  'Connecting…': 'Conectando…',
+  // channel chip labels (short + full)
+  'Call': 'Llamar',
+  'Call me now': 'Llámenme ahora',
+  'Chat': 'Chat',
+  'Start a conversation': 'Iniciar una conversación',
+  'Text': 'Texto',
+  'Text me on my phone': 'Envíeme un mensaje al teléfono',
+  'Book': 'Agendar',
+  'Schedule a call': 'Agendar una llamada',
+};
+let teaserLang: 'en' | 'es' = 'en';
+/** Translate a loader teaser string to the host page's language (English fallback). */
+function tt(en: string): string {
+  return teaserLang === 'es' ? TEASER_ES[en] ?? en : en;
+}
+
 // Teaser "ways" (quick-contact chips). Which appear and their order are driven
 // by the firm's connect.channels config; falls back to all four when unset.
 const WAY: Record<string, { icon: string; short: string; full: string }> = {
@@ -550,7 +583,7 @@ function channelsHtml(channels?: string[]): string {
   return use
     .map((k) => {
       const w = WAY[k];
-      return `<span class="fa-way" data-channel="${k}">${w.icon}<span class="fa-lbl">${w.short}</span><span class="fa-lbl-full">${w.full}</span></span>`;
+      return `<span class="fa-way" data-channel="${k}">${w.icon}<span class="fa-lbl">${tt(w.short)}</span><span class="fa-lbl-full">${tt(w.full)}</span></span>`;
     })
     .join('');
 }
@@ -600,12 +633,12 @@ function makeDock(
     pic.id = LAUNCHER_ID;
     pic.type = 'button';
     pic.setAttribute('aria-haspopup', 'dialog');
-    pic.setAttribute('aria-label', 'Open chat');
+    pic.setAttribute('aria-label', tt('Open chat'));
     const avaStyle = opts.poster
       ? ` style="background-image:url('${opts.poster.replace(/'/g, '%27')}')"`
       : '';
     pic.innerHTML = `
-      <span class="fa-pic-bubble">Hurt? Talk to us your way.</span>
+      <span class="fa-pic-bubble">${tt('Hurt? Talk to us your way.')}</span>
       <span class="fa-pic-ava"${avaStyle}>${opts.poster ? '' : SVG.chat}<span class="fa-bdot"></span></span>`;
     pic.addEventListener('click', () => onOpen());
     dock.appendChild(pic);
@@ -629,11 +662,11 @@ function makeDock(
   teaser.setAttribute('role', 'button');
   teaser.setAttribute('tabindex', '0');
   teaser.setAttribute('aria-haspopup', 'dialog');
-  teaser.setAttribute('aria-label', 'Open contact options');
+  teaser.setAttribute('aria-label', tt('Open contact options'));
 
-  const headline = `<div class="fa-h">Hurt? Talk to us <em>your way.</em></div>`;
+  const headline = `<div class="fa-h">${tt('Hurt? Talk to us')} <em>${tt('your way.')}</em></div>`;
   const minBtnHTML = (cls: string) =>
-    `<button class="fa-min ${cls}" type="button" aria-label="Minimize">${SVG.minimize}</button>`;
+    `<button class="fa-min ${cls}" type="button" aria-label="${tt('Minimize')}">${SVG.minimize}</button>`;
 
   teaser.innerHTML = large
     ? `
@@ -641,16 +674,16 @@ function makeDock(
       ${videoSurfaceHTML(true, opts.poster)}
       <div class="fa-body">
         ${headline}
-        <div class="fa-status"><i></i>We answer. Day or night. 24/7</div>
+        <div class="fa-status"><i></i>${tt('We answer. Day or night. 24/7')}</div>
         <div class="fa-ways">${channelsHtml(opts.channels)}</div>
-        <div class="fa-foot"><span>Powered by <b>Famaash</b></span></div>
+        <div class="fa-foot"><span>${tt('Powered by')} <b>Famaash</b></span></div>
       </div>`
     : `
       <div class="fa-t-row">
         <span class="fa-t-thumb">${videoSurfaceHTML(false, opts.poster)}<i class="fa-t-dot"></i></span>
         <div class="fa-t-main">
-          <div class="fa-t-title">Talk to us <em>your way.</em></div>
-          <div class="fa-t-status">Online now</div>
+          <div class="fa-t-title">${tt('Talk to us')} <em>${tt('your way.')}</em></div>
+          <div class="fa-t-status">${tt('Online now')}</div>
           <div class="fa-t-actions" aria-hidden="true">
             <span class="fa-t-act">${SVG.phone}</span>
             <span class="fa-t-act">${SVG.chat}</span>
@@ -664,7 +697,7 @@ function makeDock(
   bubble.className = 'fa-bubble';
   bubble.id = LAUNCHER_ID;
   bubble.type = 'button';
-  bubble.setAttribute('aria-label', 'Open contact options');
+  bubble.setAttribute('aria-label', tt('Open contact options'));
   bubble.innerHTML = `${SVG.chat}<span class="fa-bdot"></span>`;
 
   const minBtn = teaser.querySelector<HTMLButtonElement>('.fa-min');
@@ -847,6 +880,7 @@ function readScriptConfig(): {
 
 (function boot() {
   const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, uiLang } = readScriptConfig();
+  teaserLang = /^es/i.test(uiLang) ? 'es' : 'en';
   injectStyles();
 
   // Marketing attribution from the HOST page (the sandboxed iframe can't read the
@@ -1033,7 +1067,7 @@ function readScriptConfig(): {
           '</div>' + bottom +
         '</div>';
       const txtEl = loadingEl.querySelector('.fa-sk-txt');
-      if (txtEl) txtEl.textContent = name && name !== 'our team' ? `Connecting you to ${name}…` : 'Connecting…';
+      if (txtEl) txtEl.textContent = name && name !== 'our team' ? `${tt('Connecting you to')} ${name}…` : tt('Connecting…');
     } else {
       // Neutral skeleton: a few field/row placeholders + an action bar. Reads as
       // a form or menu loading, not an agent conversation.

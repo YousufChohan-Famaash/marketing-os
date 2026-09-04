@@ -1,6 +1,7 @@
 import FocusTrap from 'focus-trap-react';
 import { useEffect, type ReactNode } from 'react';
 import { CloseIcon } from '../utils/icons';
+import { useT } from '../i18n';
 
 interface ModalProps {
   title: string;
@@ -12,6 +13,7 @@ interface ModalProps {
 }
 
 export function Modal({ title, description, onClose, children, footer }: ModalProps) {
+  const t = useT();
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -55,7 +57,7 @@ export function Modal({ title, description, onClose, children, footer }: ModalPr
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close dialog"
+              aria-label={t('Close dialog')}
               className="rounded-md p-1 text-muted hover:bg-hairline-soft hover:text-ink"
             >
               <CloseIcon size={16} />
