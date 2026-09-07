@@ -251,13 +251,15 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
         <button
           type="button"
           onClick={() => setConnectView(primary)}
-          className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-5 py-3.5 shadow-lg transition-transform hover:scale-[1.01]"
+          className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-full bg-white px-5 py-3 shadow-lg transition-transform hover:scale-[1.01]"
         >
           <PhoneIcon size={18} className="shrink-0 text-ink" aria-hidden="true" />
-          <span className="text-[15px] font-bold text-ink">{primary === 'call' ? t('Call me now') : t(CHANNEL_META[primary].label)}</span>
-          <span className="mx-0.5 h-4 w-px bg-hairline" aria-hidden="true" />
-          <span className="truncate text-[12px] text-muted">
-            {t(primary === 'call' ? 'We call you within 60 sec' : CHANNEL_META[primary].sublabel)}
+          {/* Label over sublabel — a single row + divider overflowed once the
+              copy localised (e.g. "Llámenme ahora" in Spanish). Stacking holds
+              any language; each line truncates rather than wraps. */}
+          <span className="flex min-w-0 flex-col items-center leading-tight">
+            <span className="max-w-full truncate text-[15px] font-bold text-ink">{primary === 'call' ? t('Call me now') : t(CHANNEL_META[primary].label)}</span>
+            <span className="max-w-full truncate text-[11.5px] text-muted">{t(primary === 'call' ? 'We call you within 60 sec' : CHANNEL_META[primary].sublabel)}</span>
           </span>
         </button>
 
