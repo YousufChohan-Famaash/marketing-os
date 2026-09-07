@@ -359,23 +359,9 @@ const ES: Record<string, string> = {
   'will call you about your inquiry.': 'le llamará sobre su consulta.',
   'file uploaded.': 'archivo subido.',
   'files uploaded.': 'archivos subidos.',
-  // ── Case-type opener chips ── labels arrive from /widget/config in English
-  // (the config language param doesn't localise them), and the chips render via
-  // t(), so map the standard set here. Icons still match on the English value.
-  'Car Accident': 'Accidente de auto',
-  'Truck Accident': 'Accidente de camión',
-  'Motorcycle': 'Motocicleta',
-  'Rideshare': 'Viaje compartido',
-  'Slip & Fall': 'Resbalón y caída',
-  'Pedestrian / Bicycle': 'Peatón / Bicicleta',
-  'Workplace Injury': 'Lesión en el trabajo',
-  'Medical Malpractice': 'Negligencia médica',
-  'Wrongful Death': 'Muerte por negligencia',
-  'Brain Injury': 'Lesión cerebral',
-  'Catastrophic Injury': 'Lesión catastrófica',
-  'Nursing Home': 'Hogar de ancianos',
-  'Dog Bite': 'Mordedura de perro',
-  'Other': 'Otro',
+  // Case-type opener chips are localised by the backend now — /widget/config
+  // returns the label already in the requested language (CI pins chat == FC), so
+  // the FE renders it verbatim and needs no per-label map here.
 };
 
 export function translate(loc: UiLocale, en: string): string {
