@@ -73,12 +73,14 @@ export function ChannelMorphVideo({
   const branding = useWidgetStore((s) => s.branding);
   const t = useT();
   const settings = useWidgetStore((s) => s.connect);
-  const language = useWidgetStore((s) => s.language);
+  // Captions follow the UI locale (the clip is the UI-locale variant), not the
+  // agent conversation language which is clamped to English.
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
   const soundOn = useWidgetStore((s) => s.videoSoundOn);
   const setVideoSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
   const videoRef = useRef<HTMLVideoElement>(null);
   const video = resolveViewVideo(view, settings, branding);
-  const captionsUrl = resolveCaptionsUrl(video?.captions, language);
+  const captionsUrl = resolveCaptionsUrl(video?.captions, uiLocale);
   const { crossOrigin, useCaptions, onError } = useCaptionSafeVideo(videoRef, captionsUrl);
   const caption = useVideoCaptions(videoRef, useCaptions ? captionsUrl : undefined);
 
@@ -178,7 +180,7 @@ export function ChannelMorphVideo({
         aria-label={t('Attorney video')}
       >
         {useCaptions && captionsUrl && (
-          <track kind="captions" src={captionsUrl} srcLang={language} label={t('Captions')} default />
+          <track kind="captions" src={captionsUrl} srcLang={uiLocale} label={t('Captions')} default />
         )}
       </video>
       {/* Top scrim so the transparent header (back / title / controls) stays

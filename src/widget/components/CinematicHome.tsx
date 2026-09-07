@@ -67,6 +67,10 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
 
   // Language + email affordances shown in the bottom meta row.
   const language = useWidgetStore((s) => s.language);
+  // UI locale drives caption selection: the clip shown is the UI-locale variant
+  // (config is fetched in the UI locale), so its captions must match that, not
+  // the agent's conversation language (which is clamped to English).
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
   const languages = useWidgetStore((s) => s.languages);
   const setLanguage = useWidgetStore((s) => s.setLanguage);
   const multiLanguage = Boolean(useWidgetStore((s) => s.flags?.multi_language)) && languages.length > 1;
@@ -115,7 +119,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   // track, as fallbacks). Shown burned-in over the video, on by default since
   // the video autoplays. Backend-owned — absent until the captions spec ships.
   const caps = branding?.introVideoCaptions;
-  const captionsUrl = caps?.[language] ?? caps?.en ?? (caps ? Object.values(caps)[0] : undefined);
+  const captionsUrl = caps?.[uiLocale] ?? caps?.[language] ?? caps?.en ?? (caps ? Object.values(caps)[0] : undefined);
   // If the CDN blocks the captioned (crossOrigin) load, fall back to a plain
   // playable video so the panel is never blank; captions gracefully degrade.
   const { crossOrigin, useCaptions, onError } = useCaptionSafeVideo(videoRef, captionsUrl);
@@ -181,7 +185,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
         aria-label={t('Attorney introduction video')}
       >
         {useCaptions && captionsUrl && (
-          <track kind="captions" src={captionsUrl} srcLang={language} label={t('Captions')} default />
+          <track kind="captions" src={captionsUrl} srcLang={uiLocale} label={t('Captions')} default />
         )}
       </video>
       {/* Once the clip has played through, rest on the firm's poster (a clean,

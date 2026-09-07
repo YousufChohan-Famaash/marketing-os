@@ -29,13 +29,13 @@ const fmt = (s: number) => {
 export function VideoLightbox({ view = 'chat', onClose, onCall, onChat }: VideoLightboxProps) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
-  const language = useWidgetStore((s) => s.language);
+  const uiLocale = useWidgetStore((s) => s.uiLocale);
   const video = resolveViewVideo(view, settings, branding);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(true);
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(0);
-  const captionsUrl = resolveCaptionsUrl(video?.captions, language);
+  const captionsUrl = resolveCaptionsUrl(video?.captions, uiLocale);
   const { crossOrigin, useCaptions, onError } = useCaptionSafeVideo(videoRef, captionsUrl);
   const caption = useVideoCaptions(videoRef, useCaptions ? captionsUrl : undefined);
 
@@ -101,7 +101,7 @@ export function VideoLightbox({ view = 'chat', onClose, onCall, onChat }: VideoL
             onEnded={() => setPlaying(false)}
           >
             {useCaptions && captionsUrl && (
-              <track kind="captions" src={captionsUrl} srcLang={language} label="Captions" default />
+              <track kind="captions" src={captionsUrl} srcLang={uiLocale} label="Captions" default />
             )}
           </video>
           {/* Burned-in captions, centered above the scrubber. */}
