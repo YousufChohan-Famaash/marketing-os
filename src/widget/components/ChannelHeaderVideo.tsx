@@ -9,19 +9,23 @@ import { Avatar } from './Avatar';
 
 /**
  * The one video on a contact screen: a small round attorney avatar pinned in the
- * header (top), playing muted + looping so a face stays present without a hero
- * eating the form. Tapping it toggles sound (shared preference); a small mute
- * badge shows while muted. Falls back to the firm avatar when there's no video
- * (or the screen has no per-view clip, e.g. email).
+ * header (top). It plays through ONCE (no loop) and then rests on its last frame;
+ * once the visitor has already been greeted (the stage clip played + morphed in)
+ * it doesn't auto-play again, so the countdown / confirmation screens show a
+ * still face rather than replaying the clip. Tapping it toggles sound (shared
+ * preference); a small mute badge shows while muted. Falls back to the firm
+ * avatar when there's no video (or the screen has no per-view clip, e.g. email).
  */
 export function ChannelHeaderVideo({ view, size = 34 }: { view: VideoView | null; size?: number }) {
   const branding = useWidgetStore((s) => s.branding);
   const settings = useWidgetStore((s) => s.connect);
+  const introVideoPlayed = useWidgetStore((s) => s.introVideoPlayed);
   const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const video = view ? resolveViewVideo(view, settings, branding) : undefined;
   // Resume where the collapsing stage left off (same clip URL) instead of from 0.
-  const { soundOn, toggleSound } = useVideoSound(videoRef, video?.url);
+  // Don't auto-play once the visitor's been greeted — rest on the last frame.
+  const { soundOn, toggleSound } = useVideoSound(videoRef, video?.url, !introVideoPlayed);
 
   if (!video) {
     return (
@@ -47,7 +51,6 @@ export function ChannelHeaderVideo({ view, size = 34 }: { view: VideoView | null
           src={video.url}
           poster={video.poster}
           playsInline
-          loop
           preload="metadata"
           className="h-full w-full object-cover"
           aria-hidden="true"
