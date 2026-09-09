@@ -86,6 +86,13 @@ export interface UiSlice {
    * subsequent videos start unmuted (and vice-versa). One toggle, one memory.
    */
   videoSoundOn: boolean;
+  /**
+   * True once the visitor has been greeted by a hero video this session. Keeps
+   * the home clip from restarting every time they return to it, and stops the
+   * contact screens from replaying a full-screen greeting they've already seen
+   * (they get the small looping header avatar instead).
+   */
+  introVideoPlayed: boolean;
   /** Bumped when the agent asks to start a fresh intake (start_new_intake). App
    * watches this and runs the same reset as the "New chat" button. */
   newIntakeNonce: number;
@@ -101,6 +108,7 @@ export interface UiSlice {
   requestNewIntake: () => void;
   setSessionLeader: (isLeader: boolean) => void;
   setVideoSoundOn: (on: boolean) => void;
+  setIntroVideoPlayed: (played: boolean) => void;
   setConnectView: (view: ConnectView) => void;
   setConversationStarted: (started: boolean) => void;
   dismissCinematic: () => void;
@@ -153,6 +161,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   chatCallPhase: 'idle',
   humanRequested: false,
   videoSoundOn: false,
+  introVideoPlayed: false,
   newIntakeNonce: 0,
   isSessionLeader: true,
 
@@ -160,6 +169,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   requestNewIntake: () => set((s) => ({ newIntakeNonce: s.newIntakeNonce + 1 })),
   setSessionLeader: (isLeader) => set({ isSessionLeader: isLeader }),
   setVideoSoundOn: (on) => set({ videoSoundOn: on }),
+  setIntroVideoPlayed: (played) => set({ introVideoPlayed: played }),
   setConnectView: (view) => set({ connectView: view }),
   setConversationStarted: (started) => set({ conversationStarted: started }),
   dismissCinematic: () => set({ cinematicDismissed: true }),

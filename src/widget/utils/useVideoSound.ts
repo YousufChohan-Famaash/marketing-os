@@ -18,7 +18,13 @@ import { loadVideoPosition, saveVideoPosition } from './videoPosition';
  * mute/unmute button. Toggling flips the shared flag, so it propagates to the
  * next video the visitor opens.
  */
-export function useVideoSound(videoRef: RefObject<HTMLVideoElement>, resumeKey?: string) {
+export function useVideoSound(
+  videoRef: RefObject<HTMLVideoElement>,
+  resumeKey?: string,
+  /** When false, apply the mute preference but never auto-start playback (the
+   *  caller has already seen this clip and doesn't want it to restart). */
+  autoPlay = true,
+) {
   const soundOn = useWidgetStore((s) => s.videoSoundOn);
   const setSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
 
@@ -63,6 +69,7 @@ export function useVideoSound(videoRef: RefObject<HTMLVideoElement>, resumeKey?:
     const v = videoRef.current;
     if (!v) return;
     v.muted = !soundOn;
+    if (!autoPlay) return; // seen already — keep it resting, don't restart
     v.play().catch(() => {
       // Unmuted autoplay blocked (no prior gesture) → play muted instead.
       if (!v.muted) {
@@ -70,7 +77,7 @@ export function useVideoSound(videoRef: RefObject<HTMLVideoElement>, resumeKey?:
         v.play().catch(() => undefined);
       }
     });
-  }, [soundOn, videoRef]);
+  }, [soundOn, videoRef, autoPlay]);
 
   const toggleSound = () => {
     const v = videoRef.current;

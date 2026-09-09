@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 import { ApiError, connectText, errorDetail, fetchCallStatus, placeCallNow } from '../services/api';
@@ -45,6 +45,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const firmId = useWidgetStore((s) => s.firmId);
   const known = useKnownContact();
   const setConnectView = useWidgetStore((s) => s.setConnectView);
+  const setIntroVideoPlayed = useWidgetStore((s) => s.setIntroVideoPlayed);
+  // Was the visitor already greeted by a hero video (home, or an earlier contact
+  // screen)? Captured once at mount so a mid-visit change never yanks the stage
+  // out from under a greeting that's currently playing. When true we skip the
+  // full-screen re-greet here and show the small looping header avatar instead,
+  // so clicking "Call me now" never replays a video they've already seen.
+  const introSeen = useRef(useWidgetStore.getState().introVideoPlayed).current;
 
   // TCPA gate before we capture a phone number for any channel. Uses the copy
   // the firm authored in the Law App's Compliance tab for the active language,
@@ -108,12 +115,17 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const headerVideoView: VideoView | null = channel === 'email' ? null : channel;
   const inFormState = !callPhase && !done;
   const hasStageVideo = headerVideoView ? Boolean(resolveViewVideo(headerVideoView, settings, branding)) : false;
-  const hasMorph = hasStageVideo && inFormState && headerVideoView !== null;
+  const hasMorph = hasStageVideo && inFormState && headerVideoView !== null && !introSeen;
   const [stageOpen, setStageOpen] = useState(true);
   // The clip greets full-width and morphs into the thumbnail on ONE of two cues:
   // it finishes playing (onFinish below), or the visitor engages (scrolls the
   // form / focuses a field). No timer. Tapping the thumbnail re-expands + replays.
-  const collapseStage = useCallback(() => setStageOpen(false), []);
+  // Collapsing also marks the visitor greeted, so returning home (or another
+  // contact screen) won't replay a full-screen video they've now seen.
+  const collapseStage = useCallback(() => {
+    setStageOpen(false);
+    setIntroVideoPlayed(true);
+  }, [setIntroVideoPlayed]);
 
   // Tick the connecting countdown.
   useEffect(() => {

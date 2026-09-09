@@ -56,7 +56,11 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   const t = useT();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { soundOn, toggleSound } = useVideoSound(videoRef);
+  // Play the greeting once per session. On a later return to home we rest on the
+  // poster with a play button instead of restarting from the top.
+  const introVideoPlayed = useWidgetStore((s) => s.introVideoPlayed);
+  const setIntroVideoPlayed = useWidgetStore((s) => s.setIntroVideoPlayed);
+  const { soundOn, toggleSound } = useVideoSound(videoRef, undefined, !introVideoPlayed);
   const setVideoSoundOn = useWidgetStore((s) => s.setVideoSoundOn);
   // Poster-facade: don't download the hero clip while the panel is prewarmed
   // (display:none) — only once it's actually revealed on screen. The poster shows
@@ -84,7 +88,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   // browser paused it (e.g. iOS pausing a hidden panel on minimize) — we show a
   // big center play button so it can always be resumed, and rest on the firm's
   // poster after it ends instead of freezing on the last frame.
-  const [playing, setPlaying] = useState(true); // optimistic (it autoplays) → no mount flash
+  const [playing, setPlaying] = useState(!introVideoPlayed); // optimistic only on the first, autoplaying visit
   const [ended, setEnded] = useState(false);
   const playFromTap = () => {
     const v = videoRef.current;
@@ -106,14 +110,16 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
   // the clip actually mounts its source. Muted fallback if unmuted autoplay is
   // blocked (same policy as useVideoSound).
   useEffect(() => {
-    if (!inView) return;
+    // Only auto-greet the first time. Coming back to home leaves it resting on
+    // the poster (with the play button) rather than restarting.
+    if (!inView || introVideoPlayed) return;
     const v = videoRef.current;
     if (!v) return;
     v.play().catch(() => {
       v.muted = true;
       void v.play().catch(() => undefined);
     });
-  }, [inView]);
+  }, [inView, introVideoPlayed]);
 
   // Captions: the WebVTT track for the active language (English, then the only
   // track, as fallbacks). Shown burned-in over the video, on by default since
@@ -175,6 +181,7 @@ export function CinematicHome({ onClose, onMinimize, onExpand, isExpanded }: Cin
         onPlay={() => {
           setPlaying(true);
           setEnded(false);
+          if (!introVideoPlayed) setIntroVideoPlayed(true); // greeted — don't auto-restart on return
         }}
         onPause={() => setPlaying(false)}
         onEnded={() => {
