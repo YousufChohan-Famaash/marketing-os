@@ -185,7 +185,10 @@ export interface CallNowResponse {
 }
 
 export function placeCallNow(args: {
-  conversationId: string;
+  /** Null when the visitor came straight from the launcher and no chat session
+   *  has been minted yet. The endpoint only actually requires `phone`, and
+   *  creates-or-resumes from firmId, so this must NOT be treated as a blocker. */
+  conversationId?: string | null;
   /** Lets the backend create-or-resume the conversation when the visitor reached
    *  this straight from the launcher (Option B defers the socket that would
    *  otherwise register it), instead of 404ing on an unknown conversation. */
@@ -198,7 +201,7 @@ export function placeCallNow(args: {
   return request<CallNowResponse>('/connect/call-now', {
     method: 'POST',
     body: JSON.stringify({
-      conversationId: args.conversationId,
+      conversationId: args.conversationId ?? null,
       firmId: args.firmId,
       phone: args.phone,
       name: args.name,

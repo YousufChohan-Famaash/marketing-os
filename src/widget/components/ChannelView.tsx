@@ -95,6 +95,8 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const [callPhase, setCallPhase] = useState<'calling' | 'connected' | 'failed' | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [callTarget, setCallTarget] = useState<{ phone: string; name?: string } | null>(null);
+  /** Whether this call's outcome is observable (we have a conversation to poll). */
+  const [callTracked, setCallTracked] = useState(true);
   const [callError, setCallError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
   // Text-me lifecycle: hand the intake off to the visitor's phone (WhatsApp/SMS).
@@ -144,10 +146,12 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     }
   }, [connectCallStatus, callPhase]);
 
-  // No status within the window → assume we couldn't reach them.
+  // No status within the window → assume we couldn't reach them. Only when the
+  // call is trackable: with no conversation to poll, silence tells us nothing,
+  // so we must not turn it into "we couldn't reach you".
   useEffect(() => {
-    if (callPhase === 'calling' && countdown === 0) setCallPhase('failed');
-  }, [callPhase, countdown]);
+    if (callPhase === 'calling' && callTracked && countdown === 0) setCallPhase('failed');
+  }, [callPhase, countdown, callTracked]);
 
   // Poll the persisted dial state every 2s while dialing. The data-channel event
   // above only fires when there's an open chat session; a launcher-direct call
@@ -182,6 +186,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     setCallPhase(null);
     setCountdown(null);
     setCallError(null);
+    setCallTracked(true);
     setConnectCallStatus(null);
   };
   const back = () => {
@@ -193,21 +198,35 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // old request_human event). On success we show the live countdown.
   const finishCall = async (phone: string, name?: string) => {
     setCallError(null);
-    if (!conversationId) {
+    // Having no chat session here is NORMAL, not an error: the visitor can come
+    // straight from the launcher to "Call me now" (Option B defers the socket
+    // that would have registered a conversation). /connect/call-now requires
+    // only `phone` and creates-or-resumes from firmId, so bailing on a missing
+    // conversationId used to fail the call before any request was even made.
+    if (!conversationId && !firmId) {
       setCallError(t("We couldn't start the call. Please try again."));
       return;
     }
+    // /connect/call-status is keyed on conversationId, so without one we can
+    // place the call but never learn how it went. Remember that, so we don't
+    // later claim it failed when we simply can't see the outcome.
+    const trackable = Boolean(conversationId);
     setPlacing(true);
     try {
       await placeCallNow({ conversationId, firmId: firmId ?? undefined, phone, name, consentText: consentLabel, copyVersion: consentVersion });
       setConnectCallStatus(null); // clear any prior status before this call
       setCallTarget({ phone, name });
+      setCallTracked(trackable);
       setCallPhase('calling');
-      setCountdown(60);
+      setCountdown(trackable ? 60 : null);
     } catch (err) {
       const detail = errorDetail(err);
+      const status = err instanceof ApiError ? err.status : 0;
+      // Show the backend's own reason for ANY client error (a bad/unroutable
+      // number is the common one), not just a 400 — collapsing every failure
+      // into one line is what made this undiagnosable.
       setCallError(
-        err instanceof ApiError && err.status === 400 && detail
+        detail && status >= 400 && status < 500
           ? detail
           : t("We couldn't start the call. Please try again."),
       );
@@ -354,7 +373,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         <div className="px-5 py-4">
         {callPhase === 'calling' ? (
           <CallCountdown
-            seconds={countdown ?? 0}
+            seconds={countdown}
             phone={callTarget?.phone ?? ''}
             name={callTarget?.name}
             onBack={back}
@@ -479,14 +498,15 @@ function CallCountdown({
   name,
   onBack,
 }: {
-  seconds: number;
+  /** null = we can't observe this call's outcome, so no timer arc is drawn. */
+  seconds: number | null;
   phone: string;
   name?: string;
   onBack: () => void;
 }) {
   const R = 46;
   const C = 2 * Math.PI * R;
-  const offset = C * (1 - Math.max(0, Math.min(60, seconds)) / 60);
+  const offset = seconds == null ? 0 : C * (1 - Math.max(0, Math.min(60, seconds)) / 60);
   const first = name?.trim().split(/\s+/)[0];
   const t = useT();
   const uiLocale = useWidgetStore((s) => s.uiLocale);
@@ -501,18 +521,20 @@ function CallCountdown({
         />
         <svg viewBox="0 0 110 110" className="relative h-full w-full -rotate-90">
           <circle cx="55" cy="55" r={R} fill="none" stroke="var(--hairline)" strokeWidth="6" />
-          <circle
-            cx="55"
-            cy="55"
-            r={R}
-            fill="none"
-            stroke="var(--famaash-brand)"
-            strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={C}
-            strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 1s linear' }}
-          />
+          {seconds != null && (
+            <circle
+              cx="55"
+              cy="55"
+              r={R}
+              fill="none"
+              stroke="var(--famaash-brand)"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={C}
+              strokeDashoffset={offset}
+              style={{ transition: 'stroke-dashoffset 1s linear' }}
+            />
+          )}
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <PhoneIcon size={30} className="text-famaash" aria-hidden="true" />
