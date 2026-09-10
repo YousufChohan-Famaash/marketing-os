@@ -208,7 +208,10 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       setFormError(t('Pick a time above first.'));
       return;
     }
-    if (!conversationId) {
+    // Booking straight from the launcher means no conversation exists yet —
+    // normal, not an expired session. The endpoint creates-or-resumes from
+    // firmId, so only refuse when we have neither.
+    if (!conversationId && !firmId) {
       setFormError(t('Your session expired. Please restart the chat.'));
       return;
     }

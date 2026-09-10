@@ -240,7 +240,11 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // conversation then runs on the phone (nothing more to show in the widget).
   const finishText = async (phone: string, name?: string) => {
     setTextError(null);
-    if (!conversationId) {
+    // Same as the call path: arriving here straight from the launcher means
+    // there is no conversation yet, which is normal, not an expired session.
+    // /connect/text requires only phone + channel and creates-or-resumes from
+    // firmId, so only refuse when we have neither.
+    if (!conversationId && !firmId) {
       setTextError(t('Your session expired. Please reopen the chat and try again.'));
       return;
     }

@@ -44,7 +44,10 @@ export function CallMeModal() {
   const submit = async (phone: string, name?: string) => {
     if (placing) return;
     setError(null);
-    if (!conversationId) {
+    // A conversation normally exists here (this is the mid-chat button), but
+    // don't refuse the call over a missing one: the endpoint needs only a phone
+    // and creates-or-resumes from firmId.
+    if (!conversationId && !firmId) {
       setError(t("We couldn't start the call. Please try again."));
       return;
     }

@@ -247,7 +247,9 @@ export interface TextConnectResponse {
 }
 
 export function connectText(args: {
-  conversationId: string;
+  /** Null when the visitor came straight from the launcher and no chat session
+   *  has been minted yet. /connect/text requires only `phone` + `channel`. */
+  conversationId?: string | null;
   /** Lets the backend create-or-resume the conversation when the visitor reached
    *  this straight from the launcher (Option B defers the socket that would
    *  otherwise register it), instead of 404ing on an unknown conversation. */
@@ -262,7 +264,7 @@ export function connectText(args: {
   return request<TextConnectResponse>('/connect/text', {
     method: 'POST',
     body: JSON.stringify({
-      conversationId: args.conversationId,
+      conversationId: args.conversationId ?? null,
       firmId: args.firmId,
       phone: args.phone,
       channel: args.channel,
@@ -383,7 +385,9 @@ export interface ScheduleCallbackResponse {
 }
 
 export function scheduleCallback(args: {
-  conversationId: string;
+  /** Null when the visitor came straight from the launcher and no chat session
+   *  has been minted yet. The endpoint requires only phone + email + slotStart. */
+  conversationId?: string | null;
   /** Lets the backend create-or-resume the conversation when the visitor reached
    *  this straight from the launcher (Option B defers the socket that would
    *  otherwise register it), instead of 404ing on an unknown conversation. */
@@ -399,7 +403,7 @@ export function scheduleCallback(args: {
   return request<ScheduleCallbackResponse>('/connect/schedule-callback', {
     method: 'POST',
     body: JSON.stringify({
-      conversationId: args.conversationId,
+      conversationId: args.conversationId ?? null,
       firmId: args.firmId,
       name: args.name,
       phone: args.phone,
