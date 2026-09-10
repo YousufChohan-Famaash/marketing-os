@@ -9,6 +9,7 @@ import {
 } from '../services/api';
 import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
 import { CallbackForm } from './CallbackForm';
+import { connectErrorMessage } from '../utils/connectErrors';
 import { translate, type UiLocale } from '../i18n';
 
 // The backend returns availability in Eastern (TCPA calling-hours), and the
@@ -100,6 +101,8 @@ interface DayGroup {
 export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFallback }: ScheduleCallbackProps) {
   const firmId = useWidgetStore((s) => s.firmId);
   const conversationId = useWidgetStore((s) => s.conversationId);
+  const setConversationId = useWidgetStore((s) => s.setConversationId);
+  const firmPhone = useWidgetStore((s) => s.connect?.phone) ?? null;
   const firmName = useWidgetStore((s) => s.branding)?.name ?? 'the firm';
   const uiLocale = useWidgetStore((s) => s.uiLocale);
   const t = (s: string) => translate(uiLocale, s);
@@ -228,6 +231,9 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         consentText: consentLabel,
         copyVersion: consentVersion,
       });
+      // Hold the conversation the server used or minted, so a later Call/Text
+      // stays on the SAME lead instead of creating a second one (§4).
+      if (res.conversationId) setConversationId(res.conversationId);
       const slot = slots.find((s) => s.start === selectedStart);
       setBookedInfo({
         // Render from the RETURNED instant + tz, never the tz we posted — the
@@ -242,7 +248,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       });
       setPhase('booked');
     } catch (err) {
-      const detail = errorDetail(err);
+      const detail = errorDetail(err); // for OUR branching only, never rendered
       const status = err instanceof ApiError ? err.status : 0;
       // 502 = slot raced/taken; 400 "too soon" = stale slot under the 60-min
       // notice. Both mean the grid is stale → silently refresh and re-pick.
@@ -254,14 +260,12 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
         void loadAvailability();
       } else if (status === 503) {
         setPhase('unavailable');
-      } else if (status === 404) {
-        setFormError(t('Your session expired. Please reopen the chat and try again.'));
       } else if (status === 400 && detail?.toLowerCase().includes('email')) {
-        setEmailError(detail);
-      } else if (status === 400 && detail) {
-        setFormError(detail);
+        setEmailError(t("That email doesn't look right. Can you check it?"));
       } else {
-        setFormError(t("We couldn't book that time. Please try again."));
+        // Our own copy, mapped from the status/code. The backend's detail names
+        // internal fields and infra, and this renders on public sites (§7).
+        setFormError(connectErrorMessage(err, 'book', uiLocale, firmPhone));
       }
     } finally {
       setBusy(false);

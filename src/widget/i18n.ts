@@ -10,6 +10,25 @@ import { useWidgetStore } from './store/widgetStore';
 export type UiLocale = 'en' | 'es';
 
 const ES: Record<string, string> = {
+  // ── Connect action failures (visitor-safe copy; we never render the API's
+  //    `detail`, which names internal fields and infra) ──
+  "That option isn't available right now. Try Call or Chat.":
+    'Esa opción no está disponible ahora. Pruebe Llamar o Chat.',
+  "Please tick the box so we're allowed to call you.":
+    'Marque la casilla para que podamos llamarle.',
+  "Please tick the box so we're allowed to text you.":
+    'Marque la casilla para que podamos enviarle mensajes.',
+  "That number doesn't look right. Can you check it?":
+    'Ese número no parece correcto. ¿Puede revisarlo?',
+  "That email doesn't look right. Can you check it?":
+    'Ese correo no parece correcto. ¿Puede revisarlo?',
+  'That time just went. Please pick another slot.':
+    'Ese horario acaba de ocuparse. Elija otro.',
+  'Something went wrong on our side. Please try again, or call us at':
+    'Algo falló de nuestro lado. Inténtelo de nuevo o llámenos al',
+  'Something went wrong on our side. Please try again.':
+    'Algo falló de nuestro lado. Inténtelo de nuevo.',
+
   // ── Schedule a callback ──
   'Checking available times…': 'Buscando horarios disponibles…',
   'No times to show right now': 'No hay horarios disponibles ahora',

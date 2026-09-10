@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
-import { ApiError, errorDetail, placeCallNow } from '../services/api';
+import { placeCallNow } from '../services/api';
+import { connectErrorMessage } from '../utils/connectErrors';
 import { resolveTcpa } from '../utils/compliance';
 import { Modal } from './Modal';
 import { CallbackForm } from './CallbackForm';
@@ -18,7 +19,9 @@ export function CallMeModal() {
   const setChatCallPhase = useWidgetStore((s) => s.setChatCallPhase);
   const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
   const conversationId = useWidgetStore((s) => s.conversationId);
+  const setConversationId = useWidgetStore((s) => s.setConversationId);
   const firmId = useWidgetStore((s) => s.firmId);
+  const firmPhone = useWidgetStore((s) => s.connect?.phone) ?? null;
   const compliance = useWidgetStore((s) => s.compliance);
   const uiLocale = useWidgetStore((s) => s.uiLocale);
   const branding = useWidgetStore((s) => s.branding);
@@ -53,7 +56,7 @@ export function CallMeModal() {
     }
     setPlacing(true);
     try {
-      await placeCallNow({
+      const res = await placeCallNow({
         conversationId,
         firmId: firmId ?? undefined,
         phone,
@@ -61,20 +64,18 @@ export function CallMeModal() {
         consentText: consentLabel,
         copyVersion: consentVersion,
       });
+      // Keep the id the server used or minted, so the composer's poll has
+      // something to key on and a later action stays on the same lead (§4).
+      if (res.conversationId) setConversationId(res.conversationId);
       // Clear any prior status, then enter the calling state and hand off to the
       // composer, which owns the live lifecycle (push + poll → connected/failed).
       setConnectCallStatus(null);
       setChatCallPhase('calling');
       close();
     } catch (err) {
-      const detail = errorDetail(err);
-      // A 400 here is almost always the consent gate — show the server's message
-      // verbatim (e.g. "TCPA consent is required to place a call"), inline.
-      setError(
-        err instanceof ApiError && err.status === 400 && detail
-          ? detail
-          : t("We couldn't start the call. Please try again."),
-      );
+      // Our own copy, never the server's detail — it names internal fields and
+      // this widget renders on public marketing sites (§7).
+      setError(connectErrorMessage(err, 'call', uiLocale, firmPhone));
     } finally {
       setPlacing(false);
     }

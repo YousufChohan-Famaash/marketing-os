@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
-import { ApiError, connectText, errorDetail, fetchCallStatus, placeCallNow } from '../services/api';
+import { ApiError, connectText, fetchCallStatus, placeCallNow } from '../services/api';
+import { connectErrorMessage } from '../utils/connectErrors';
 import { resolveTcpa } from '../utils/compliance';
 import { resolveViewVideo } from '../config/demoMedia';
 import type { VideoView } from '../types/domain';
@@ -45,7 +46,10 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const firmId = useWidgetStore((s) => s.firmId);
   const known = useKnownContact();
   const setConnectView = useWidgetStore((s) => s.setConnectView);
+  const setConversationId = useWidgetStore((s) => s.setConversationId);
   const setIntroVideoPlayed = useWidgetStore((s) => s.setIntroVideoPlayed);
+  /** Offered in the fallback error copy so a stuck visitor has a way through. */
+  const firmPhone = settings.phone ?? null;
 
   // TCPA gate before we capture a phone number for any channel. Uses the copy
   // the firm authored in the Law App's Compliance tab for the active language,
@@ -94,7 +98,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
   const [callPhase, setCallPhase] = useState<'calling' | 'connected' | 'failed' | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [callTarget, setCallTarget] = useState<{ phone: string; name?: string } | null>(null);
+  const [callTarget, setCallTarget] = useState<{ phone: string; name?: string; callerId?: string | null } | null>(null);
   /** Whether this call's outcome is observable (we have a conversation to poll). */
   const [callTracked, setCallTracked] = useState(true);
   const [callError, setCallError] = useState<string | null>(null);
@@ -207,29 +211,27 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       setCallError(t("We couldn't start the call. Please try again."));
       return;
     }
-    // /connect/call-status is keyed on conversationId, so without one we can
-    // place the call but never learn how it went. Remember that, so we don't
-    // later claim it failed when we simply can't see the outcome.
-    const trackable = Boolean(conversationId);
     setPlacing(true);
     try {
-      await placeCallNow({ conversationId, firmId: firmId ?? undefined, phone, name, consentText: consentLabel, copyVersion: consentVersion });
+      const res = await placeCallNow({ conversationId, firmId: firmId ?? undefined, phone, name, consentText: consentLabel, copyVersion: consentVersion });
+      // Hold the conversation the server used or minted: /connect/call-status is
+      // keyed on it, and dropping it mints a SECOND lead for the same person if
+      // they then try another channel. Never overwrite a real id with null.
+      if (res.conversationId) setConversationId(res.conversationId);
+      const tracked = Boolean(res.conversationId ?? conversationId);
       setConnectCallStatus(null); // clear any prior status before this call
-      setCallTarget({ phone, name });
-      setCallTracked(trackable);
+      // Render the number from the server's normalised form, not the raw input,
+      // so it matches what actually dials. callerId can't be derived at all.
+      setCallTarget({
+        phone: res.callbackPhone ?? phone,
+        name,
+        callerId: res.callerId ?? null,
+      });
+      setCallTracked(tracked);
       setCallPhase('calling');
-      setCountdown(trackable ? 60 : null);
+      setCountdown(tracked ? 60 : null);
     } catch (err) {
-      const detail = errorDetail(err);
-      const status = err instanceof ApiError ? err.status : 0;
-      // Show the backend's own reason for ANY client error (a bad/unroutable
-      // number is the common one), not just a 400 — collapsing every failure
-      // into one line is what made this undiagnosable.
-      setCallError(
-        detail && status >= 400 && status < 500
-          ? detail
-          : t("We couldn't start the call. Please try again."),
-      );
+      setCallError(connectErrorMessage(err, 'call', uiLocale, firmPhone));
     } finally {
       setPlacing(false);
     }
@@ -264,6 +266,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
           throw err;
         }
       }
+      // Hold the conversation the server used or minted, so a later Call/Book
+      // lands on the SAME lead instead of creating a second one (§4).
+      if (out.conversationId) setConversationId(out.conversationId);
       if (out.channel === 'whatsapp') {
         if (out.waMeLink) {
           if (typeof window !== 'undefined') window.open(out.waMeLink, '_blank', 'noopener');
@@ -275,18 +280,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         setDone(t('We just texted you. Reply to that message to continue.'));
       }
     } catch (err) {
+      // Keep the two channel-specific cases we word better ourselves, and hand
+      // everything else to the shared mapper — never the backend's `detail`.
       const status = err instanceof ApiError ? err.status : 0;
-      const detail = errorDetail(err);
-      if (status === 403) {
-        setTextError(t("Texting isn't available right now. Try another option."));
-      } else if (status === 503) {
+      if (status === 503) {
         setTextError(t("We couldn't send that just now. Try another option."));
-      } else if (status === 404) {
-        setTextError(t('Your session expired. Please reopen the chat and try again.'));
-      } else if (status === 400 && detail) {
-        setTextError(detail);
       } else {
-        setTextError(t("We couldn't start the text. Please try again."));
+        setTextError(connectErrorMessage(err, 'text', uiLocale, firmPhone));
       }
     } finally {
       setTexting(false);
@@ -380,6 +380,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             seconds={countdown}
             phone={callTarget?.phone ?? ''}
             name={callTarget?.name}
+            callerId={callTarget?.callerId ?? null}
             onBack={back}
           />
         ) : callPhase === 'connected' ? (
@@ -500,12 +501,16 @@ function CallCountdown({
   seconds,
   phone,
   name,
+  callerId,
   onBack,
 }: {
   /** null = we can't observe this call's outcome, so no timer arc is drawn. */
   seconds: number | null;
   phone: string;
   name?: string;
+  /** The number the call arrives FROM. Null = undeterminable, so say nothing
+   *  rather than print a number that won't match and gets screened. */
+  callerId?: string | null;
   onBack: () => void;
 }) {
   const R = 46;
@@ -551,6 +556,12 @@ function CallCountdown({
           ? `Su teléfono sonará al ${phone} en unos segundos${first ? `, ${first}` : ''}. Téngalo a la mano.`
           : `Your phone should ring at ${phone} in a few seconds${first ? `, ${first}` : ''}. Keep it nearby.`}
       </p>
+      {/* The number it arrives from, so the visitor doesn't screen the call. */}
+      {callerId && (
+        <p className="mt-1.5 text-[13px] text-muted">
+          {uiLocale === 'es' ? `Llamamos desde ${callerId}` : `We're calling from ${callerId}`}
+        </p>
+      )}
       <button
         type="button"
         onClick={onBack}

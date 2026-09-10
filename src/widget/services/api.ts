@@ -178,10 +178,21 @@ export function postVideoEvent(
 /** POST /connect/call-now — places an immediate outbound AI voice call. */
 export interface CallNowResponse {
   ok: boolean;
-  status: string; // 'calling'
+  status: string; // 'calling' | 'queued' | 'failed'
   chip?: { kind: string; label: string };
   call_id?: string;
   room_name?: string;
+  /** The conversation the server used or minted. HOLD THIS for the visit and
+   *  send it on every later connect action: /connect/call-status is keyed on it,
+   *  and dropping it mints a second lead for the same person. Null only on the
+   *  firmId + leadId marketing path. */
+  conversationId?: string | null;
+  /** The number the call ARRIVES FROM — can't be derived, so show it from here
+   *  ("we're calling you from …") and omit the line when null. */
+  callerId?: string | null;
+  /** The number we'll dial, normalised to E.164. Render "we'll call you at …"
+   *  from THIS, not the raw input, so it matches what actually dials. */
+  callbackPhone?: string | null;
 }
 
 export function placeCallNow(args: {
@@ -374,6 +385,8 @@ export interface ScheduleCallbackResponse {
    *  back to that when absent (callback-confirmation-caller-id.md). */
   timezone?: string;
   booking_id?: string;
+  /** The conversation the server used or minted — hold it for the visit (§4). */
+  conversationId?: string | null;
   /** The number the call comes FROM (E.164) — "save this number". `callerId` is
    *  the canonical field; `callFromNumber` is the legacy name, read as a
    *  fallback. `null`/absent → drop the "save this number" line, never show a
@@ -424,6 +437,25 @@ export function errorDetail(err: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The machine-readable code from a structured error body, e.g.
+ * `{"detail": {"code": "text_method_disabled", "method": "sms"}}`. Prefer this
+ * over matching on `detail` prose, which reworks the day someone edits a string.
+ */
+export function errorCode(err: unknown): string | null {
+  if (!(err instanceof ApiError) || !err.detail) return null;
+  try {
+    const parsed = JSON.parse(err.detail) as { detail?: unknown };
+    const d = parsed.detail;
+    if (d && typeof d === 'object' && typeof (d as { code?: unknown }).code === 'string') {
+      return (d as { code: string }).code;
+    }
+  } catch {
+    /* not JSON — no code */
+  }
+  return null;
 }
 
 /**
