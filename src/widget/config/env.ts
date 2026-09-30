@@ -99,6 +99,10 @@ export interface Attribution {
   utm_campaign?: string;
   referrer?: string;
   landing_path?: string;
+  /** GA4 client id read from the host page's `_ga` cookie by the loader. Sent
+   *  with every lead-creating request so the backend can fire `retainer_signed`
+   *  to GA4 later against the same browser (Measurement Protocol). */
+  ga_client_id?: string;
 }
 
 export function getAttribution(): Attribution | null {
@@ -113,6 +117,7 @@ export function getAttribution(): Attribution | null {
       utm_campaign: str(p.utm_campaign),
       referrer: str(p.referrer),
       landing_path: str(p.landing_path),
+      ga_client_id: str(p.ga_client_id),
     };
     return Object.values(a).some(Boolean) ? a : null;
   } catch {

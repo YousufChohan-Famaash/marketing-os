@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { placeCallNow } from '../services/api';
+import { track } from '../services/track';
 import { connectErrorMessage } from '../utils/connectErrors';
 import { resolveTcpa } from '../utils/compliance';
 import { Modal } from './Modal';
@@ -67,6 +68,7 @@ export function CallMeModal() {
       // Keep the id the server used or minted, so the composer's poll has
       // something to key on and a later action stays on the same lead (§4).
       if (res.conversationId) setConversationId(res.conversationId);
+      track('call_me_now'); // GTM: only once the request succeeded
       // Clear any prior status, then enter the calling state and hand off to the
       // composer, which owns the live lifecycle (push + poll → connected/failed).
       setConnectCallStatus(null);

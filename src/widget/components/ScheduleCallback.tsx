@@ -10,6 +10,7 @@ import {
 import { CalendarIcon, CheckIcon, PhoneIcon } from '../utils/icons';
 import { CallbackForm } from './CallbackForm';
 import { connectErrorMessage } from '../utils/connectErrors';
+import { track } from '../services/track';
 import { translate, type UiLocale } from '../i18n';
 
 // The backend returns availability in Eastern (TCPA calling-hours), and the
@@ -234,6 +235,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
       // Hold the conversation the server used or minted, so a later Call/Text
       // stays on the SAME lead instead of creating a second one (§4).
       if (res.conversationId) setConversationId(res.conversationId);
+      track('schedule_a_call'); // GTM: the booking is confirmed
       const slot = slots.find((s) => s.start === selectedStart);
       setBookedInfo({
         // Render from the RETURNED instant + tz, never the tz we posted — the

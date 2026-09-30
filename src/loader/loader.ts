@@ -898,6 +898,41 @@ function readScriptConfig(): {
     return a;
   })();
 
+  // GA4 client id from the host page's first-party `_ga` cookie
+  // ("GA1.1.123456789.1700000000" → "123456789.1700000000"). The iframe cannot
+  // read it. Forwarded with the attribution so every lead the widget creates
+  // carries it, and the backend can fire `retainer_signed` to GA4 later for the
+  // same browser. Read lazily at iframe creation, since GA may load after us.
+  const gaClientId = (): string | null => {
+    try {
+      const m = document.cookie.match(/(?:^|;\s*)_ga=([^;]+)/);
+      if (!m) return null;
+      const parts = decodeURIComponent(m[1]).split('.');
+      return parts.length >= 4 ? `${parts[2]}.${parts[3]}` : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Marketing events from the widget → Google Tag Manager on the host page.
+  // ⚠️ The widget is a sandboxed cross-origin iframe, so its own
+  // `window.dataLayer` is not this page's. It sends the event over the bridge
+  // and the push happens here, where GTM can see it (Faisal, Sep 30 2026).
+  const MARKETING_EVENTS = new Set([
+    'call_me_now', 'chat_started', 'send_your_details', 'schedule_a_call', 'contact_via_email', 'click_to_call',
+  ]);
+  const pushToDataLayer = (event: { type: string; data: unknown }): void => {
+    if (!MARKETING_EVENTS.has(event.type)) return;
+    try {
+      const w = window as unknown as { dataLayer?: unknown[] };
+      w.dataLayer = w.dataLayer || [];
+      const data = event.data && typeof event.data === 'object' ? (event.data as Record<string, unknown>) : {};
+      w.dataLayer.push({ event: event.type, lead_source: 'widget', ...data });
+    } catch {
+      /* analytics must never break the page */
+    }
+  };
+
   // Top-of-funnel beacon: public, no auth, fire-and-forget. An unknown firm_id is
   // a soft no-op server-side; never let analytics throw into the host page.
   let openBeaconFired = false;
@@ -1241,6 +1276,7 @@ function readScriptConfig(): {
       utm: parseUtm(),
     }),
     notifyEvent: (event) => {
+      pushToDataLayer(event);
       if (window.console && typeof window.console.debug === 'function') {
         // eslint-disable-next-line no-console
         console.debug('[famaash:event]', event);
@@ -1287,7 +1323,8 @@ function readScriptConfig(): {
     const ctxParam = ctx ? `&ctx=${encodeURIComponent(JSON.stringify(ctx))}` : '';
     // Host-page marketing attribution → the widget reads this at boot and sends
     // it on POST /token so the chat lead is attributed to its source/campaign.
-    const attrParam = `&attr=${encodeURIComponent(JSON.stringify(attribution))}`;
+    const ga = gaClientId();
+    const attrParam = `&attr=${encodeURIComponent(JSON.stringify(ga ? { ...attribution, ga_client_id: ga } : attribution))}`;
     // Durable visitor id (first-party) → the widget sends it on POST /token so a
     // refresh resumes instead of minting a phantom chat (phantom-chats guide §2).
     const vidParam = `&vid=${encodeURIComponent(famaashVisitorId())}`;

@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { trackLinkClick } from '../services/track';
 import type { LinkCardPayload } from '../types/domain';
 import { ExternalLinkIcon, FileIcon } from '../utils/icons';
 import { sanitizeUrl } from '../utils/richText';
@@ -55,6 +56,7 @@ export const LinkCard = memo(function LinkCard({ card }: LinkCardProps) {
       target="_blank"
       rel="noopener noreferrer"
       className={`${containerClass} no-underline`}
+      onClick={() => trackLinkClick(safeHref)}
     >
       {body}
     </a>

@@ -9,6 +9,7 @@ import { applyFont, applyTheme } from './config/theme';
 import { getConsultationContext, getHandoffLanguage, resolveUiLocale } from './config/env';
 import { ApiError } from './services/api';
 import { createHostBridge, type HostBridgeClient } from './services/hostBridge';
+import { setTrackSink } from './services/track';
 import { SocketContext } from './services/socketContext';
 import type { ConversationTokenResponse } from './services/api';
 import {
@@ -480,6 +481,12 @@ export function App() {
   const notifyHostEvent = (event: AnalyticsEvent) => {
     bridgeRef.current?.notifyEvent(event);
   };
+  // Marketing events (track.ts) go out through the same bridge; the loader
+  // pushes them to the host page's dataLayer.
+  useEffect(() => {
+    setTrackSink((e) => bridgeRef.current?.notifyEvent(e));
+    return () => setTrackSink(null);
+  }, []);
 
   // Reset to a fresh conversation `freshId` and RECONNECT immediately so the
   // agent opens the intake. `presetSession` is the just-minted session from a

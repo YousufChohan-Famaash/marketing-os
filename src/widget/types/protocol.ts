@@ -370,7 +370,21 @@ export interface HostBridge {
 // Document the contract here so the names don't drift.
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Marketing events the loader forwards to Google Tag Manager as
+ * `dataLayer.push({ event, lead_source: 'widget', ...data })`. Names are GTM
+ * trigger names agreed with Faisal (Sep 30 2026); do not rename.
+ */
+export type MarketingEventType =
+  | 'call_me_now'
+  | 'chat_started'
+  | 'send_your_details'
+  | 'schedule_a_call'
+  | 'contact_via_email'
+  | 'click_to_call';
+
 export type AnalyticsEventType =
+  | MarketingEventType
   | 'widget_opened'
   | 'widget_closed'
   | 'widget_error'

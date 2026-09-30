@@ -15,7 +15,7 @@ import type {
   UploadedFile,
   WidgetBootConfig,
 } from '../types/domain';
-import { getApiBase, getVisitorId } from '../config/env';
+import { getApiBase, getVisitorId, getAttribution } from '../config/env';
 
 // ─────────────────────────────────────────────────────────────────────
 // Response DTOs (exactly what the backend returns)
@@ -221,6 +221,7 @@ export function placeCallNow(args: {
         copyVersion: args.copyVersion ?? 'v1',
         text: args.consentText,
       },
+      ga_client_id: getAttribution()?.ga_client_id,
     }),
   });
 }
@@ -348,6 +349,8 @@ export function submitWebForm(args: {
       consent: { agreed: true, text: args.consentText, copyVersion: args.copyVersion ?? 'web_form_v1' },
       website: args.website ?? '',
       utm: args.utm,
+      // Dropped by the backend until it stores it (t102131 GA4 retainer_signed).
+      ga_client_id: getAttribution()?.ga_client_id,
     }),
   });
 }
@@ -424,6 +427,7 @@ export function scheduleCallback(args: {
       slotStart: args.slotStart,
       timezone: args.timezone,
       consent: { agreed: true, copyVersion: args.copyVersion ?? 'v1', text: args.consentText },
+      ga_client_id: getAttribution()?.ga_client_id,
     }),
   });
 }

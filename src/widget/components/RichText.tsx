@@ -1,5 +1,6 @@
 import { memo, type ReactNode } from 'react';
 import { parseRichText, type RichTextNode } from '../utils/richText';
+import { trackLinkClick } from '../services/track';
 
 /**
  * Renders a markdown-light AI message. Safe by construction — all URLs pass
@@ -33,6 +34,7 @@ function renderNodes(nodes: RichTextNode[], keyPrefix = ''): ReactNode {
         target="_blank"
         rel="noopener noreferrer"
         className="text-famaash underline underline-offset-2 hover:opacity-80"
+        onClick={() => trackLinkClick(node.href)}
       >
         {renderNodes(node.children, `${key}-`)}
       </a>

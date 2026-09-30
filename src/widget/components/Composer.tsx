@@ -9,6 +9,7 @@ import {
 import { useSocket } from "../services/socketContext";
 import { useWidgetStore } from "../store/widgetStore";
 import { fetchCallStatus, uploadMedia } from "../services/api";
+import { trackFirstChatMessage } from "../services/track";
 import type { ConnectCallStatus } from "../types/protocol";
 import { generateId } from "../utils/id";
 import { canRecordMedia, useMediaNote, type MediaKind } from "../utils/useMediaNote";
@@ -177,6 +178,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           mimeType: res.mimeType,
           durationMs: res.durationMs ?? Math.round(durationMs),
         });
+        trackFirstChatMessage();
         store.beginTyping();
       })
       .catch(() => store.updateMessage(clientId, { status: "failed" }));
@@ -251,6 +253,9 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         clientMessageId: clientId,
       });
     }
+    // GTM chat_started: the visitor's first message this session, whichever
+    // branch carried it.
+    trackFirstChatMessage();
     // Show the typing dots immediately while we wait for the AI's reply.
     beginTyping();
     // Offer an Undo for the grace window.

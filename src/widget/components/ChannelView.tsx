@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
 import { ApiError, connectText, fetchCallStatus, placeCallNow } from '../services/api';
+import { track } from '../services/track';
 import { connectErrorMessage } from '../utils/connectErrors';
 import { resolveTcpa } from '../utils/compliance';
 import { resolveViewVideo } from '../config/demoMedia';
@@ -218,6 +219,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       // keyed on it, and dropping it mints a SECOND lead for the same person if
       // they then try another channel. Never overwrite a real id with null.
       if (res.conversationId) setConversationId(res.conversationId);
+      track('call_me_now'); // GTM: only once the request succeeded
       const tracked = Boolean(res.conversationId ?? conversationId);
       setConnectCallStatus(null); // clear any prior status before this call
       // Render the number from the server's normalised form, not the raw input,

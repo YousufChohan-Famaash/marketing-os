@@ -13,6 +13,7 @@ import { cn } from '../utils/cn';
 import { nameError, phoneError, emailError as validateEmail, formatPhone } from '../utils/validation';
 import { PresenceVideo } from './PresenceVideo';
 import { translate, useT } from '../i18n';
+import { track } from '../services/track';
 
 interface SendDetailsProps {
   consentLabel: string;
@@ -170,6 +171,7 @@ export function SendDetails({ consentLabel, prefill }: SendDetailsProps) {
         website: honeypot,
         utm: readUtm(),
       });
+      track('send_your_details'); // GTM: after the request succeeded
       setDone(true);
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
