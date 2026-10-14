@@ -239,7 +239,8 @@ export function initDni(firmId: string): Dni {
   const run = () => {
     if (!cfg || cfg.enabled === false || !cfg.default) { reveal(); return; }
     const mainN = national(cfg.default);
-    const target = cfg.sources?.[source];
+    // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
+    const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
     const newN = national(target);
     if (!target || !newN || newN === mainN || mainN.length !== 10) { current = cfg.default; reveal(); return; }
     current = target;
