@@ -11,6 +11,7 @@
  */
 
 import { connectToChild, type Connection, type Methods } from 'penpal';
+import { clickIds, initDni, type DniConfig } from './dni';
 
 interface IframeMethods {
   open(): Promise<void>;
@@ -881,6 +882,11 @@ function readScriptConfig(): {
 (function boot() {
   const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, uiLang } = readScriptConfig();
   teaserLang = /^es/i.test(uiLang) ? 'es' : 'en';
+  // Dynamic number insertion (t102224): classify the visit and remember its
+  // source first, then swap the tagged phone numbers as soon as the firm's
+  // number map is known (cached, else when /config lands). Before the launcher,
+  // so a visitor never sees the main number flash.
+  const dni = (() => { try { return initDni(firmId); } catch { return null; } })();
   injectStyles();
 
   // Marketing attribution from the HOST page (the sandboxed iframe can't read the
@@ -895,6 +901,12 @@ function readScriptConfig(): {
     if (utm.utm_campaign) a.utm_campaign = utm.utm_campaign;
     if (document.referrer) a.referrer = document.referrer;
     a.landing_path = window.location.pathname || '/';
+    // The visit's source after the number changer's memory rule, and the ad
+    // click ids: the chat lead carries the same source as a call would.
+    if (dni && dni.source !== 'direct') a.fl_src = dni.source;
+    const ids = clickIds(window.location.search);
+    if (ids.gclid) a.gclid = ids.gclid;
+    if (ids.msclkid) a.msclkid = ids.msclkid;
     return a;
   })();
 
@@ -1506,8 +1518,12 @@ function readScriptConfig(): {
             videoMode?: 'intro' | 'story' | 'none';
             storyVideoUrl?: string;
           };
+          /** The number changer's map (t102224). Absent: the main number everywhere. */
+          dni?: DniConfig | null;
         } | null,
       ) => {
+        // The number map, before anything visual: the swap must not wait for the launcher.
+        dni?.apply(cfg?.dni ?? null);
         // The intro clip to preview in the medium teaser's thumbnail — the same
         // video the panel plays (story video in story mode, else the intro),
         // unless the firm turned video off.
@@ -1536,6 +1552,8 @@ function readScriptConfig(): {
         // launcher. Any branding tweaks below apply in the same tick, so the first
         // paint already shows the correctly sized + themed teaser.
         revealDock();
+        // Numbers only: the firm wants the swap and no chat launcher.
+        if (cfg?.dni?.dni_only) { moduleDisabled = true; setDockHidden(true); }
 
         const b = cfg?.branding;
         if (!b) return;

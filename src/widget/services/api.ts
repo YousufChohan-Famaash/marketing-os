@@ -222,6 +222,8 @@ export function placeCallNow(args: {
         text: args.consentText,
       },
       ga_client_id: getAttribution()?.ga_client_id,
+      fl_src: getAttribution()?.fl_src,
+      gclid: getAttribution()?.gclid,
     }),
   });
 }
@@ -351,6 +353,8 @@ export function submitWebForm(args: {
       utm: args.utm,
       // Dropped by the backend until it stores it (t102131 GA4 retainer_signed).
       ga_client_id: getAttribution()?.ga_client_id,
+      fl_src: getAttribution()?.fl_src,
+      gclid: getAttribution()?.gclid,
     }),
   });
 }
@@ -428,6 +432,8 @@ export function scheduleCallback(args: {
       timezone: args.timezone,
       consent: { agreed: true, copyVersion: args.copyVersion ?? 'v1', text: args.consentText },
       ga_client_id: getAttribution()?.ga_client_id,
+      fl_src: getAttribution()?.fl_src,
+      gclid: getAttribution()?.gclid,
     }),
   });
 }
@@ -511,6 +517,10 @@ export function createConversationToken(
     utm_campaign?: string;
     referrer?: string;
     landing_path?: string;
+    /** The number changer's source and the ad click ids (t102224). */
+    fl_src?: string;
+    gclid?: string;
+    msclkid?: string;
   },
   signal?: AbortSignal,
 ): Promise<ConversationTokenResponse> {

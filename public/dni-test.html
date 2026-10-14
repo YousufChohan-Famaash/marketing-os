@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DNI test host</title>
+    <!-- The anti-flash snippet, as Jebran pastes it (prompts/number-changer). -->
+    <style>html.dni-wait [data-dni]{visibility:hidden}</style>
+    <script>
+    (function(){try{
+      var d=document.documentElement,q=location.search,r=document.referrer;
+      var stored=/(?:^|; )fl_src=/.test(document.cookie)||sessionStorage.getItem('fl_src');
+      var ads=/[?&](gclid|gbraid|wbraid|gad_source|msclkid|utm_source|fl_test)=/.test(q);
+      var ext=r&&r.indexOf(location.hostname)===-1;
+      if(stored||ads||ext){d.classList.add('dni-wait');setTimeout(function(){d.classList.remove('dni-wait')},1200);}
+    }catch(e){}})();
+    </script>
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"LegalService","name":"Law Offices of James Vasquez","telephone":"+1-973-400-5519"}
+    </script>
+    <script type="module" src="/loader.js" data-firm-id="eb456c72-8a82-48df-8354-602be3fb4a70" data-api-base="https://api.catafleet.com/api/v1/widget"></script>
+  </head>
+  <body>
+    <header>
+      <a id="hdr" data-dni="phone" href="tel:+19734005519">(973) 400-5519</a>
+      <a id="btn" data-dni="phone" href="tel:+19734005519"><span class="icon">☎</span><div>Call (973) 400-5519</div></a>
+    </header>
+    <main>
+      <p id="sentence">Call us 24/7 at <span data-dni="phone">973.400.5519</span> for a free consultation.</p>
+      <div id="rich" data-dni="scan"><p>Reach the office at +1 973 400 5519 or <a href="tel:19734005519">call now</a>.</p></div>
+      <p id="untagged-text">Our fax is (973) 400-5519 too, untagged text stays.</p>
+      <a id="untagged-tel" href="tel:+19734005519">Untagged link</a>
+      <a id="other-tel" href="tel:+12015550100">Another number</a>
+      <div id="late"></div>
+      <button id="add-late" onclick="document.getElementById('late').innerHTML='<a data-dni=&quot;phone&quot; href=&quot;tel:+19734005519&quot;>(973) 400-5519</a>'">add a late number</button>
+    </main>
+    <footer><span id="ftr" data-dni="phone">Phone: 973-400-5519</span></footer>
+  </body>
+</html>

@@ -103,6 +103,12 @@ export interface Attribution {
    *  with every lead-creating request so the backend can fire `retainer_signed`
    *  to GA4 later against the same browser (Measurement Protocol). */
   ga_client_id?: string;
+  /** The number changer's source for this visitor (t102224): google_ads,
+   *  google_organic, facebook_ads, gbp, … Absent for a direct visit. */
+  fl_src?: string;
+  /** Ad click ids from the landing URL. */
+  gclid?: string;
+  msclkid?: string;
 }
 
 export function getAttribution(): Attribution | null {
@@ -118,6 +124,9 @@ export function getAttribution(): Attribution | null {
       referrer: str(p.referrer),
       landing_path: str(p.landing_path),
       ga_client_id: str(p.ga_client_id),
+      fl_src: str(p.fl_src),
+      gclid: str(p.gclid),
+      msclkid: str(p.msclkid),
     };
     return Object.values(a).some(Boolean) ? a : null;
   } catch {
