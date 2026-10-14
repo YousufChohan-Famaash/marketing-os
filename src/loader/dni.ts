@@ -172,6 +172,17 @@ function swapLinks(root: ParentNode, oldN: string, newN: string, only?: (a: HTML
     if (/^tel:/i.test(href)) { const next = rewriteTel(href, oldN, newN); if (next !== href) root.setAttribute('href', next); }
   }
 }
+/** The number a tagged element holds: the configured main number when it's there, else the first
+ *  ten-digit number in it. A tag is the firm's word that this is their phone, so a main number set
+ *  wrong on the Law App (it happened twice on day one) must not stop the swap. */
+function heldNumber(el: HTMLElement, mainN: string): string | null {
+  const text = `${Array.from(el.querySelectorAll<HTMLAnchorElement>('a[href^="tel:" i]')).map((a) => a.getAttribute('href')).join(' ')} ${el instanceof HTMLAnchorElement ? el.getAttribute('href') ?? '' : ''} ${el.textContent ?? ''}`;
+  const d = digitsOf(text);
+  if (mainN && d.includes(mainN)) return mainN;
+  const m = text.match(/\+?[\d(][\d\s().\- ‑‒–]{7,}\d/);
+  const first = national(m ? m[0] : '');
+  return first.length === 10 ? first : null;
+}
 function applySwap(root: ParentNode, mainN: string, newN: string): number {
   let n = 0;
   const tagged = root.querySelectorAll<HTMLElement>('[data-dni="phone"], [data-dni="scan"]');
@@ -179,8 +190,10 @@ function applySwap(root: ParentNode, mainN: string, newN: string): number {
   if (root instanceof HTMLElement && (root.getAttribute('data-dni') === 'phone' || root.getAttribute('data-dni') === 'scan')) list.unshift(root);
   for (const el of list) {
     if (el.getAttribute(DONE_ATTR) === newN) continue;
-    swapLinks(el, mainN, newN);
-    swapTextNodes(el, mainN, newN);
+    const oldN = heldNumber(el, mainN);
+    if (!oldN || oldN === newN) { el.setAttribute(DONE_ATTR, newN); continue; }
+    swapLinks(el, oldN, newN);
+    swapTextNodes(el, oldN, newN);
     el.setAttribute(DONE_ATTR, newN);
     n += 1;
   }
@@ -242,7 +255,7 @@ export function initDni(firmId: string): Dni {
     // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
     const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
     const newN = national(target);
-    if (!target || !newN || newN === mainN || mainN.length !== 10) { current = cfg.default; reveal(); return; }
+    if (!target || !newN || newN === mainN) { current = cfg.default; reveal(); return; }
     current = target;
     const go = () => { try { applySwap(document, mainN, newN); } catch { /* never break the page */ } reveal(); };
     if (document.body) go(); else document.addEventListener('DOMContentLoaded', go, { once: true });
