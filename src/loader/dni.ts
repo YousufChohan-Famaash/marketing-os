@@ -39,6 +39,12 @@ const COOKIE = 'fl_src';
 const COOKIE_AT = 'fl_src_at';
 const TEST_PARAM = 'fl_test';
 const WAIT_CLASS = 'dni-wait';
+/**
+ * The number swap, on or off for every firm. Off (Faisal, Oct 15): he tests it with the client before the roll
+ * out. The visit's source is still worked out and carried on leads; only the numbers on the page stay as they are.
+ * Replaced by the firm's super admin switch once `dni.enabled` comes from it (DNI-ADMIN-TOGGLE-SPEC).
+ */
+const SWAP_ON = false;
 const DONE_ATTR = 'data-dni-done';
 const CACHE_PREFIX = 'famaash_dni_';
 const CACHE_TTL_MS = 10 * 60_000;
@@ -250,7 +256,7 @@ export function initDni(firmId: string): Dni {
   let current: string | null = null;
 
   const run = () => {
-    if (!cfg || cfg.enabled === false || !cfg.default) { reveal(); return; }
+    if (!SWAP_ON || !cfg || cfg.enabled === false || !cfg.default) { reveal(); return; }
     const mainN = national(cfg.default);
     // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
     const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
@@ -283,7 +289,9 @@ export function initDni(firmId: string): Dni {
     number: () => current,
   };
   // The cached map swaps now; a page with no cache shows the main number until /config lands or 1.5 s passes.
-  if (cfg) run();
+  // With the swap off, the numbers the early snippet hid show at once.
+  if (!SWAP_ON) reveal();
+  else if (cfg) run();
   setTimeout(() => { if (!applied) reveal(); }, 1500);
   try { (window as unknown as { FamaashDNI: Dni }).FamaashDNI = api; } catch { /* fine */ }
   return api;
