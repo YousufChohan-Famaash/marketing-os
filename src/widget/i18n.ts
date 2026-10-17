@@ -56,7 +56,7 @@ const ES: Record<string, string> = {
   "You're booked": 'Su llamada está agendada',
   "We'll call you at": 'Le llamaremos al',
   'The call comes from': 'La llamada vendrá del número',
-  "save this number so you know it's us": 'guarde este número para saber que somos nosotros',
+  "Save this number so you know it's us": 'Guarde este número para saber que somos nosotros',
   'A confirmation and reminder are on their way to your phone and email.':
     'Le enviaremos confirmación y recordatorio por mensaje de texto y correo.',
   'Add to calendar': 'Agregar al calendario',
@@ -201,7 +201,7 @@ const ES: Record<string, string> = {
   'Back': 'Atrás',
   // ── Modals ──
   'Talk instead of type?': '¿Prefiere hablar en vez de escribir?',
-  "We'll call you now and pick up right where we left off — everything you've already shared is carried into the call.":
+  "We'll call you now and pick up right where we left off. Everything you've already shared is carried into the call.":
     'Le llamamos ahora y seguimos justo donde lo dejamos; todo lo que ya compartió pasa a la llamada.',
   'Talk to a human': 'Hablar con una persona',
   "We're here to help": 'Estamos aquí para ayudar',

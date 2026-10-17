@@ -92,7 +92,7 @@ export function CallMeModal() {
       )}
       <CallbackForm
         heading={t('Talk instead of type?')}
-        body={t("We'll call you now and pick up right where we left off — everything you've already shared is carried into the call.")}
+        body={t("We'll call you now and pick up right where we left off. Everything you've already shared is carried into the call.")}
         cta={t('Call me now')}
         collectName
         consentLabel={consentLabel}

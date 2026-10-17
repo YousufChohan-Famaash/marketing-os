@@ -56,7 +56,7 @@ export function CaptureDrawer() {
                 const current = capturedFields[field.id]?.value ?? field.value;
                 const pending = pendingEdits[field.id];
                 const failed = failedEdits[field.id];
-                const displayValue = pending ?? current ?? '—';
+                const displayValue = pending ?? current ?? '…';
                 const isEditing = editingId === field.id;
                 return (
                   <li

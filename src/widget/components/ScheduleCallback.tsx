@@ -340,7 +340,7 @@ export function ScheduleCallback({ consentLabel, consentVersion, prefill, onFall
           {/* Only when the backend gave a real caller ID — a wrong number gets the
               real call screened as spam. */}
           {callFrom && (
-            <p>{t('The call comes from')} <span className="font-semibold text-ink">{callFrom}</span> — {t("save this number so you know it's us")}.</p>
+            <p>{t('The call comes from')} <span className="font-semibold text-ink">{callFrom}</span>. {t("Save this number so you know it's us")}.</p>
           )}
           <p>{t('A confirmation and reminder are on their way to your phone and email.')}</p>
         </div>
