@@ -3,7 +3,6 @@ import { useWidgetStore } from '../store/widgetStore';
 import { EmergencyModal } from './EmergencyModal';
 import { HumanTakeoverModal } from './HumanTakeoverModal';
 import { TextHandoffModal } from './TextHandoffModal';
-import { CallMeModal } from './CallMeModal';
 import { SpinnerIcon } from '../utils/icons';
 
 // Lazy chunks — each loaded only when its modal opens.
@@ -28,7 +27,6 @@ export function ModalHost() {
   if (activeModal === 'human-takeover') return <HumanTakeoverModal />;
   if (activeModal === 'emergency') return <EmergencyModal />;
   if (activeModal === 'text-handoff') return <TextHandoffModal />;
-  if (activeModal === 'call-me') return <CallMeModal />;
 
   return (
     <Suspense fallback={<ChunkFallback />}>

@@ -200,9 +200,8 @@ const ES: Record<string, string> = {
   'Back to options': 'Volver a las opciones',
   'Back': 'Atrás',
   // ── Modals ──
-  'Talk instead of type?': '¿Prefiere hablar en vez de escribir?',
-  "We'll call you now and pick up right where we left off. Everything you've already shared is carried into the call.":
-    'Le llamamos ahora y seguimos justo donde lo dejamos; todo lo que ya compartió pasa a la llamada.',
+  'Back to chat': 'Volver al chat',
+  'Keep chatting': 'Seguir chateando',
   'Talk to a human': 'Hablar con una persona',
   "We're here to help": 'Estamos aquí para ayudar',
   'Please provide your phone number so we can call you immediately.': 'Proporcione su número de teléfono para llamarle de inmediato.',

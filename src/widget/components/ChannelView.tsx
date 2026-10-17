@@ -47,6 +47,11 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   const firmId = useWidgetStore((s) => s.firmId);
   const known = useKnownContact();
   const setConnectView = useWidgetStore((s) => s.setConnectView);
+  // From the mid-chat "Call me instead": Back returns to the chat, and the
+  // call's progress is mirrored into the composer's own call state.
+  const fromChat = useWidgetStore((s) => s.connectReturn) === 'chat';
+  const setConnectReturn = useWidgetStore((s) => s.setConnectReturn);
+  const setChatCallPhase = useWidgetStore((s) => s.setChatCallPhase);
   const setConversationId = useWidgetStore((s) => s.setConversationId);
   const setIntroVideoPlayed = useWidgetStore((s) => s.setIntroVideoPlayed);
   /** Offered in the fallback error copy so a stuck visitor has a way through. */
@@ -140,6 +145,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     if (callPhase !== 'calling' || !connectCallStatus) return;
     if (connectCallStatus === 'connected' || connectCallStatus === 'completed') {
       setCallPhase('connected');
+      if (fromChat) setChatCallPhase('connected');
       setCountdown(null);
     } else if (
       connectCallStatus === 'no_answer' ||
@@ -147,16 +153,20 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       connectCallStatus === 'failed'
     ) {
       setCallPhase('failed');
+      if (fromChat) setChatCallPhase('failed');
       setCountdown(null);
     }
-  }, [connectCallStatus, callPhase]);
+  }, [connectCallStatus, callPhase, fromChat, setChatCallPhase]);
 
   // No status within the window → assume we couldn't reach them. Only when the
   // call is trackable: with no conversation to poll, silence tells us nothing,
   // so we must not turn it into "we couldn't reach you".
   useEffect(() => {
-    if (callPhase === 'calling' && callTracked && countdown === 0) setCallPhase('failed');
-  }, [callPhase, countdown, callTracked]);
+    if (callPhase === 'calling' && callTracked && countdown === 0) {
+      setCallPhase('failed');
+      if (fromChat) setChatCallPhase('failed');
+    }
+  }, [callPhase, countdown, callTracked, fromChat, setChatCallPhase]);
 
   // Poll the persisted dial state every 2s while dialing. The data-channel event
   // above only fires when there's an open chat session; a launcher-direct call
@@ -195,9 +205,13 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
     setConnectCallStatus(null);
   };
   const back = () => {
-    resetCall();
-    setConnectView('home');
+    // Back to the chat mid-call: the composer carries on with the calling banner
+    // and its own status poll, so keep the pushed status for it.
+    if (!(fromChat && callPhase === 'calling')) resetCall();
+    setConnectView(fromChat ? 'chat' : 'home');
+    setConnectReturn('home');
   };
+  const backLabel = fromChat ? t('Back to chat') : t('Back to options');
 
   // Call now → backend places an immediate outbound AI voice call (REST, not the
   // old request_human event). On success we show the live countdown.
@@ -231,6 +245,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       });
       setCallTracked(tracked);
       setCallPhase('calling');
+      if (fromChat) setChatCallPhase('calling');
       setCountdown(tracked ? 60 : null);
     } catch (err) {
       setCallError(connectErrorMessage(err, 'call', uiLocale, firmPhone));
@@ -332,7 +347,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
         <button
           type="button"
           onClick={back}
-          aria-label={t('Back to all options')}
+          aria-label={fromChat ? t('Back to chat') : t('Back to all options')}
           className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
             stageActive ? 'text-white hover:bg-white/20' : 'text-muted hover:bg-subtle hover:text-ink',
@@ -384,17 +399,19 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
             name={callTarget?.name}
             callerId={callTarget?.callerId ?? null}
             onBack={back}
+            backLabel={backLabel}
           />
         ) : callPhase === 'connected' ? (
-          <CallConnected phone={callTarget?.phone ?? ''} name={callTarget?.name} onBack={back} />
+          <CallConnected phone={callTarget?.phone ?? ''} name={callTarget?.name} onBack={back} backLabel={backLabel} />
         ) : callPhase === 'failed' ? (
           <CallFailed
             phone={callTarget?.phone ?? ''}
             onRetry={() => callTarget && void finishCall(callTarget.phone, callTarget.name)}
             onBack={back}
+            backLabel={fromChat ? t('Keep chatting') : undefined}
           />
         ) : done ? (
-          <Confirmation message={done} onBack={back} />
+          <Confirmation message={done} onBack={back} backLabel={backLabel} />
         ) : (
           <>
             {kept.length > 0 && (
@@ -505,6 +522,7 @@ function CallCountdown({
   name,
   callerId,
   onBack,
+  backLabel,
 }: {
   /** null = we can't observe this call's outcome, so no timer arc is drawn. */
   seconds: number | null;
@@ -513,7 +531,7 @@ function CallCountdown({
   /** The number the call arrives FROM. Null = undeterminable, so say nothing
    *  rather than print a number that won't match and gets screened. */
   callerId?: string | null;
-  onBack: () => void;
+  onBack: () => void; backLabel?: string;
 }) {
   const R = 46;
   const C = 2 * Math.PI * R;
@@ -569,13 +587,13 @@ function CallCountdown({
         onClick={onBack}
         className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
       >
-        {t('Back to options')}
+        {backLabel ?? t('Back to options')}
       </button>
     </div>
   );
 }
 
-function CallConnected({ phone, name, onBack }: { phone: string; name?: string; onBack: () => void }) {
+function CallConnected({ phone, name, onBack, backLabel }: { phone: string; name?: string; onBack: () => void; backLabel?: string }) {
   const first = name?.trim().split(/\s+/)[0];
   const t = useT();
   const uiLocale = useWidgetStore((s) => s.uiLocale);
@@ -595,7 +613,7 @@ function CallConnected({ phone, name, onBack }: { phone: string; name?: string; 
         onClick={onBack}
         className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
       >
-        {t('Back to options')}
+        {backLabel ?? t('Back to options')}
       </button>
     </div>
   );
@@ -605,10 +623,11 @@ function CallFailed({
   phone,
   onRetry,
   onBack,
+  backLabel,
 }: {
   phone: string;
   onRetry: () => void;
-  onBack: () => void;
+  onBack: () => void; backLabel?: string;
 }) {
   const t = useT();
   const uiLocale = useWidgetStore((s) => s.uiLocale);
@@ -629,7 +648,7 @@ function CallFailed({
           onClick={onBack}
           className="rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
         >
-          {t('Back')}
+          {backLabel ?? t('Back')}
         </button>
         <button
           type="button"
@@ -643,7 +662,7 @@ function CallFailed({
   );
 }
 
-function Confirmation({ message, onBack }: { message: string; onBack: () => void }) {
+function Confirmation({ message, onBack, backLabel }: { message: string; onBack: () => void; backLabel?: string }) {
   const t = useT();
   return (
     <div className="flex flex-col items-center py-8 text-center">
@@ -657,7 +676,7 @@ function Confirmation({ message, onBack }: { message: string; onBack: () => void
         onClick={onBack}
         className="mt-6 rounded-pill border border-hairline px-5 py-2 text-[13px] font-semibold text-ink hover:bg-subtle"
       >
-        {t('Back to options')}
+        {backLabel ?? t('Back to options')}
       </button>
     </div>
   );

@@ -74,6 +74,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const agentTakeover = useWidgetStore((s) => s.agentTakeover);
   const humanRequested = useWidgetStore((s) => s.humanRequested);
   const chatCallPhase = useWidgetStore((s) => s.chatCallPhase);
+  const openCallFromChat = useWidgetStore((s) => s.openCallFromChat);
   const setChatCallPhase = useWidgetStore((s) => s.setChatCallPhase);
   const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
   const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
@@ -373,7 +374,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           <span className="min-w-0 flex-1">{t("We couldn't reach you. Try again, or keep chatting here.")}</span>
           <button
             type="button"
-            onClick={() => setActiveModal("call-me")}
+            onClick={openCallFromChat}
             className="shrink-0 font-semibold underline hover:opacity-80"
           >
             {t('Try again')}
@@ -394,7 +395,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
       {callEligible && (
         <button
           type="button"
-          onClick={() => setActiveModal("call-me")}
+          onClick={openCallFromChat}
           className="mb-2 inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash"
         >
           <PhoneIcon size={13} aria-hidden="true" />

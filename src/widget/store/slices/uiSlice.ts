@@ -29,7 +29,6 @@ export type ActiveModal =
   | 'human-takeover'
   | 'emergency'
   | 'text-handoff'
-  | 'call-me'
   | null;
 
 /** Lifecycle of a mid-chat "Call me" request (chat-in-call-button guide §4). */
@@ -64,6 +63,9 @@ export interface UiSlice {
   activeSigning: ActiveSigning | null;
   /** Connect launcher view: the home menu, or a channel the lead routed into. */
   connectView: ConnectView;
+  /** Where a contact screen's Back goes: the home menu, or the chat when the
+   *  visitor came from the mid-chat "Call me instead" button. */
+  connectReturn: 'home' | 'chat';
   /** True once a conversation (chat) has actually begun — drives Small-mode
    * expand and the video shrink-to-avatar. */
   conversationStarted: boolean;
@@ -110,6 +112,9 @@ export interface UiSlice {
   setVideoSoundOn: (on: boolean) => void;
   setIntroVideoPlayed: (played: boolean) => void;
   setConnectView: (view: ConnectView) => void;
+  /** Mid-chat "Call me instead": the launcher's call screen, with Back leading to the chat. */
+  openCallFromChat: () => void;
+  setConnectReturn: (to: 'home' | 'chat') => void;
   setConversationStarted: (started: boolean) => void;
   dismissCinematic: () => void;
   /** Mark a message undoable for the configured grace window, then auto-clear. */
@@ -154,6 +159,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   consent: null,
   activeSigning: null,
   connectView: 'home',
+  connectReturn: 'home',
   conversationStarted: false,
   cinematicDismissed: false,
   undoableMessageId: null,
@@ -171,6 +177,8 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   setVideoSoundOn: (on) => set({ videoSoundOn: on }),
   setIntroVideoPlayed: (played) => set({ introVideoPlayed: played }),
   setConnectView: (view) => set({ connectView: view }),
+  openCallFromChat: () => set({ connectView: 'call', connectReturn: 'chat' }),
+  setConnectReturn: (to) => set({ connectReturn: to }),
   setConversationStarted: (started) => set({ conversationStarted: started }),
   dismissCinematic: () => set({ cinematicDismissed: true }),
   setUndoable: (id) => {
