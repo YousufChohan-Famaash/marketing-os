@@ -43,12 +43,23 @@ const COOKIE_AT = 'fl_src_at';
 const TEST_PARAM = 'fl_test';
 const WAIT_CLASS = 'dni-wait';
 /**
- * The number swap, on or off for every firm. Off (Faisal, Oct 15): he tests it with the client before the roll
- * out. The visit's source is still worked out and carried on leads; only the numbers on the page stay as they are.
- * Each firm now has its own switch too (`dni.enabled`, dni-switch guide); this stays the platform-wide hold until
- * Faisal clears the roll out, then it can go.
+ * The number swap on prod: held for every firm (Faisal, Oct 15) until he has tested it with the client. The visit's
+ * source is still worked out and carried on leads; only the numbers on the page stay as they are. Each firm also has
+ * its own switch (`dni.enabled`, dni-switch guide). Once Faisal clears the roll out this becomes true and the
+ * firm's switch alone decides.
  */
 const SWAP_ON = false;
+/**
+ * Dev and staging test the swap now (Oct 23): a site whose snippet explicitly points at the dev or staging API
+ * (`data-api-base`) swaps. Prod, and a snippet that names no API, stay held by SWAP_ON.
+ */
+const TEST_APIS = /^(api\.catafleet\.com|api\.stage\.catafleet\.com)$/i;
+/** The swap runs for this page: lifted everywhere, or this snippet named the dev or staging API. */
+export function swapAllowed(explicitApiBase: string | null | undefined): boolean {
+  if (SWAP_ON) return true;
+  if (!explicitApiBase) return false;
+  try { return TEST_APIS.test(new URL(explicitApiBase).hostname); } catch { return false; }
+}
 const DONE_ATTR = 'data-dni-done';
 const CACHE_PREFIX = 'famaash_dni_';
 const CACHE_TTL_MS = 10 * 60_000;
@@ -256,7 +267,8 @@ export interface Dni {
  * Classify, remember, and swap as soon as a number map is known: from the
  * cache now, from /config when it lands. Exposed as `window.FamaashDNI`.
  */
-export function initDni(firmId: string): Dni {
+export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
+  const swapOn = swapAllowed(explicitApiBase);
   const params = new URLSearchParams(location.search);
   const test = params.get(TEST_PARAM);
   const visit = classifyVisit(location, document.referrer);
@@ -270,7 +282,7 @@ export function initDni(firmId: string): Dni {
   let current: string | null = null;
 
   const run = () => {
-    if (!SWAP_ON || !cfg || cfg.enabled === false || !cfg.default) {
+    if (!swapOn || !cfg || cfg.enabled === false || !cfg.default) {
       // Off (the firm's switch, or nothing to swap to): change nothing on the page. A swap this page made from the
       // cached map before /config said so is put back, and the watcher stops (dni-switch guide §2). The default
       // number is never written in: what the site prints is the right number.
@@ -314,7 +326,7 @@ export function initDni(firmId: string): Dni {
   };
   // The cached map swaps now; a page with no cache shows the main number until /config lands or 1.5 s passes.
   // With the swap off, the numbers the early snippet hid show at once.
-  if (!SWAP_ON) reveal();
+  if (!swapOn) reveal();
   else if (cfg) run();
   setTimeout(() => { if (!applied) reveal(); }, 1500);
   try { (window as unknown as { FamaashDNI: Dni }).FamaashDNI = api; } catch { /* fine */ }

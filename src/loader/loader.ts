@@ -842,6 +842,8 @@ function readScriptConfig(): {
   cine: boolean;
   media: boolean;
   apiBase: string;
+  /** `data-api-base` exactly as the snippet set it; null when it names none (the dev default is used then). */
+  apiBaseAttr: string | null;
   /** Visitor UI language for the widget chrome (empty = English). From the
    *  embed's data-lang, else the host page's <html lang>. The iframe can't read
    *  the host <html>, so we forward it as ?ui_lang=. */
@@ -871,22 +873,24 @@ function readScriptConfig(): {
   const cine = cineAttr === '1' || cineAttr === 'true';
   const mediaAttr = script.getAttribute('data-media');
   const media = mediaAttr === '1' || mediaAttr === 'true';
-  const apiBase = (script.getAttribute('data-api-base') ?? 'https://api.catafleet.com/api/v1/widget').replace(/\/+$/, '');
+  const apiBaseAttr = script.getAttribute('data-api-base');
+  const apiBase = (apiBaseAttr ?? 'https://api.catafleet.com/api/v1/widget').replace(/\/+$/, '');
   // Same signal the Free Consultation wizard uses: data-lang wins, else the
   // page's <html lang>. Forwarded into the iframe so the widget chrome can be
   // Spanish for a Spanish visitor.
   const uiLang = (script.getAttribute('data-lang') || document.documentElement.getAttribute('lang') || '').trim();
-  return { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, uiLang };
+  return { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, apiBaseAttr, uiLang };
 }
 
 (function boot() {
-  const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, uiLang } = readScriptConfig();
+  const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, apiBaseAttr, uiLang } = readScriptConfig();
   teaserLang = /^es/i.test(uiLang) ? 'es' : 'en';
   // Dynamic number insertion (t102224): classify the visit and remember its
   // source first, then swap the tagged phone numbers as soon as the firm's
   // number map is known (cached, else when /config lands). Before the launcher,
   // so a visitor never sees the main number flash.
-  const dni = (() => { try { return initDni(firmId); } catch { return null; } })();
+  // The swap itself is held on prod; a snippet that names the dev or staging API tests it (dni.ts, swapAllowed).
+  const dni = (() => { try { return initDni(firmId, apiBaseAttr); } catch { return null; } })();
   injectStyles();
 
   // Marketing attribution from the HOST page (the sandboxed iframe can't read the
