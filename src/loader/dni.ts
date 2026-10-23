@@ -17,7 +17,10 @@
  */
 
 export interface DniConfig {
+  /** false: change nothing on the page (dni-switch guide §2). The site's own markup is the right number then. */
   enabled?: boolean;
+  /** Why it's off: true = the firm switched the changer off; false = no tagged numbers yet. Either way, no swap. */
+  switched_off?: boolean;
   /** The firm's main number, what the site shows today. */
   default?: string | null;
   /** source key → number. A missing key keeps the default. */
@@ -42,7 +45,8 @@ const WAIT_CLASS = 'dni-wait';
 /**
  * The number swap, on or off for every firm. Off (Faisal, Oct 15): he tests it with the client before the roll
  * out. The visit's source is still worked out and carried on leads; only the numbers on the page stay as they are.
- * Replaced by the firm's super admin switch once `dni.enabled` comes from it (DNI-ADMIN-TOGGLE-SPEC).
+ * Each firm now has its own switch too (`dni.enabled`, dni-switch guide); this stays the platform-wide hold until
+ * Faisal clears the roll out, then it can go.
  */
 const SWAP_ON = false;
 const DONE_ATTR = 'data-dni-done';
@@ -135,6 +139,12 @@ function remember(source: DniSource, attribution: 'first' | 'last_non_direct', t
 }
 
 // ── the swap ──
+/** What this page load changed, newest last: a config that switches the changer off puts each one back, so the
+ *  page shows exactly what the site printed (dni-switch guide §2). Only our own changes are undone. */
+const undoLog: (() => void)[] = [];
+function undoSwap(): void {
+  while (undoLog.length) { try { undoLog.pop()?.(); } catch { /* the node is gone */ } }
+}
 /** Rewrite one phone string: the national digits of the old number become the new ones, in the same shape.
  *  "(973) 400-5519" → "(973) 555-0142", "+1 973 400 5519" → "+1 973 555 0142". */
 export function rewriteNumber(text: string, oldNational: string, newNational: string): string {
@@ -162,7 +172,7 @@ function swapTextNodes(root: Node, oldN: string, newN: string): void {
     const v = t.nodeValue ?? '';
     if (!/\d{3}/.test(v)) continue;
     const next = rewriteNumber(v, oldN, newN);
-    if (next !== v) t.nodeValue = next;
+    if (next !== v) { t.nodeValue = next; undoLog.push(() => { if (t.nodeValue === next) t.nodeValue = v; }); }
   }
 }
 function swapLinks(root: ParentNode, oldN: string, newN: string, only?: (a: HTMLAnchorElement) => boolean): void {
@@ -171,11 +181,14 @@ function swapLinks(root: ParentNode, oldN: string, newN: string, only?: (a: HTML
     if (only && !only(a)) return;
     const href = a.getAttribute('href') ?? '';
     const next = rewriteTel(href, oldN, newN);
-    if (next !== href) a.setAttribute('href', next);
+    if (next !== href) { a.setAttribute('href', next); undoLog.push(() => { if (a.getAttribute('href') === next) a.setAttribute('href', href); }); }
   });
   if (root instanceof HTMLAnchorElement) {
     const href = root.getAttribute('href') ?? '';
-    if (/^tel:/i.test(href)) { const next = rewriteTel(href, oldN, newN); if (next !== href) root.setAttribute('href', next); }
+    if (/^tel:/i.test(href)) {
+      const next = rewriteTel(href, oldN, newN);
+      if (next !== href) { root.setAttribute('href', next); undoLog.push(() => { if (root.getAttribute('href') === next) root.setAttribute('href', href); }); }
+    }
   }
 }
 /** The number a tagged element holds: the configured main number when it's there, else the first
@@ -197,6 +210,7 @@ function applySwap(root: ParentNode, mainN: string, newN: string): number {
   for (const el of list) {
     if (el.getAttribute(DONE_ATTR) === newN) continue;
     const oldN = heldNumber(el, mainN);
+    undoLog.push(() => el.removeAttribute(DONE_ATTR));
     if (!oldN || oldN === newN) { el.setAttribute(DONE_ATTR, newN); continue; }
     swapLinks(el, oldN, newN);
     swapTextNodes(el, oldN, newN);
@@ -234,7 +248,7 @@ export interface Dni {
   visit: DniSource;
   /** Apply (or re-apply) the firm's number map. null = no config: show the main number. */
   apply(cfg: DniConfig | null | undefined): void;
-  /** The number the site shows right now for this visitor. */
+  /** The number the changer put on the page, or null when it changed nothing (off, or the main number). */
   number(): string | null;
 }
 
@@ -256,12 +270,22 @@ export function initDni(firmId: string): Dni {
   let current: string | null = null;
 
   const run = () => {
-    if (!SWAP_ON || !cfg || cfg.enabled === false || !cfg.default) { reveal(); return; }
+    if (!SWAP_ON || !cfg || cfg.enabled === false || !cfg.default) {
+      // Off (the firm's switch, or nothing to swap to): change nothing on the page. A swap this page made from the
+      // cached map before /config said so is put back, and the watcher stops (dni-switch guide §2). The default
+      // number is never written in: what the site prints is the right number.
+      observer?.disconnect(); observer = null;
+      undoSwap();
+      current = null;
+      reveal();
+      return;
+    }
     const mainN = national(cfg.default);
     // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
     const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
     const newN = national(target);
-    if (!target || !newN || newN === mainN) { current = cfg.default; reveal(); return; }
+    // Nothing to swap to for this source: the page as printed (an earlier swap from the cache is put back).
+    if (!target || !newN || newN === mainN) { observer?.disconnect(); observer = null; undoSwap(); current = null; reveal(); return; }
     current = target;
     const go = () => { try { applySwap(document, mainN, newN); } catch { /* never break the page */ } reveal(); };
     if (document.body) go(); else document.addEventListener('DOMContentLoaded', go, { once: true });
