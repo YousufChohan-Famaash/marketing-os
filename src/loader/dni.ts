@@ -43,16 +43,13 @@ const COOKIE_AT = 'fl_src_at';
 const TEST_PARAM = 'fl_test';
 const WAIT_CLASS = 'dni-wait';
 /**
- * The number swap on prod: held for every firm (Faisal, Oct 15) until he has tested it with the client. The visit's
- * source is still worked out and carried on leads; only the numbers on the page stay as they are. Each firm also has
- * its own switch (`dni.enabled`, dni-switch guide). Once Faisal clears the roll out this becomes true and the
- * firm's switch alone decides.
+ * The number swap is live everywhere (Faisal cleared it, Oct 27). It was held on prod from Oct 15 until he had
+ * tested it with the client. Each firm's own switch (`dni.enabled`, dni-switch guide) alone decides now. Set this
+ * back to false to hold the swap on every site again; while held, a snippet that names the dev or staging API
+ * (`data-api-base`) still swaps so those can be tested.
  */
-const SWAP_ON = false;
-/**
- * Dev and staging test the swap now (Oct 23): a site whose snippet explicitly points at the dev or staging API
- * (`data-api-base`) swaps. Prod, and a snippet that names no API, stay held by SWAP_ON.
- */
+const SWAP_ON = true;
+/** While SWAP_ON is false, a site whose snippet explicitly points at the dev or staging API still swaps. */
 const TEST_APIS = /^(api\.catafleet\.com|api\.stage\.catafleet\.com)$/i;
 /** The swap runs for this page: lifted everywhere, or this snippet named the dev or staging API. */
 export function swapAllowed(explicitApiBase: string | null | undefined): boolean {

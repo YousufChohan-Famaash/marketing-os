@@ -889,7 +889,7 @@ function readScriptConfig(): {
   // source first, then swap the tagged phone numbers as soon as the firm's
   // number map is known (cached, else when /config lands). Before the launcher,
   // so a visitor never sees the main number flash.
-  // The swap itself is held on prod; a snippet that names the dev or staging API tests it (dni.ts, swapAllowed).
+  // The swap is live everywhere since Oct 27 (SWAP_ON in dni.ts); the firm's own switch decides.
   const dni = (() => { try { return initDni(firmId, apiBaseAttr); } catch { return null; } })();
   injectStyles();
 
