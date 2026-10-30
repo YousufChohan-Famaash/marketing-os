@@ -1602,6 +1602,23 @@ function readScriptConfig(): {
     )
     .catch(() => revealDock());
 
+  // The number map is decided per request and the after-hours window opens and closes on a clock
+  // (after-hours-number guide §2): a page left open since the afternoon re-reads the map when the visitor comes
+  // back to it, so the number changes without a reload. Only the map is re-applied; the launcher keeps what it has.
+  if (dni) {
+    let mapAt = Date.now();
+    const refreshMap = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - mapAt < 60_000) return;
+      mapAt = Date.now();
+      fetch(`${apiBase}/config?firm_id=${encodeURIComponent(firmId)}`, { credentials: 'omit' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((cfg: { dni?: DniConfig | null } | null) => { if (cfg) dni.apply(cfg.dni ?? null); })
+        .catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', refreshMap);
+    window.addEventListener('focus', refreshMap);
+  }
+
   type FamaashApi = {
     // `ctx` is the Free Consultation hand-off payload (case type, injury, timing);
     // it's only honored on the first open (it seeds the widget's /token at boot).

@@ -30,6 +30,10 @@ export interface DniConfig {
   ttl_days?: number | null;
   /** Run the swap and draw no chat launcher. */
   dni_only?: boolean;
+  /** True inside the firm's after-hours window (after-hours-number guide §2): `default` is then the after-hours
+   *  number and every visitor sees it, whatever their source. Decided per request, so a page re-reads the map when
+   *  the visitor comes back to it (the loader's refresh). */
+  after_hours?: boolean;
 }
 
 /** The source keys the classifier produces. Ali maps each tracking number's lead_source to one of these. */
@@ -225,8 +229,9 @@ function applySwap(root: ParentNode, mainN: string, newN: string): number {
     el.setAttribute(DONE_ATTR, newN);
     n += 1;
   }
-  // The safety net: a tel: link to the main number that nobody tagged. Links only, never text.
-  swapLinks(root, mainN, newN, (a) => !a.closest('[data-dni]') && !a.closest('[itemprop="telephone"]'));
+  // The safety net: a tel: link to the main number that nobody tagged. Links only, never text. After hours on a
+  // first visit the main number isn't known, and the tagged elements are all that swap.
+  if (mainN) swapLinks(root, mainN, newN, (a) => !a.closest('[data-dni]') && !a.closest('[itemprop="telephone"]'));
   return n;
 }
 function reveal(): void {
@@ -234,13 +239,23 @@ function reveal(): void {
 }
 
 // ── the cache ──
-function readCache(firmId: string): DniConfig | null {
+function readCache(firmId: string): { cfg: DniConfig; fresh: boolean } | null {
   try {
     const raw = localStorage.getItem(CACHE_PREFIX + firmId);
     if (!raw) return null;
     const { cfg, at } = JSON.parse(raw) as { cfg: DniConfig; at: number };
-    return Date.now() - at < CACHE_TTL_MS ? cfg : cfg; // stale is still better than a wait; refreshed by /config
+    return { cfg, fresh: Date.now() - at < CACHE_TTL_MS }; // stale is still better than a wait; refreshed by /config
   } catch { return null; }
+}
+// The number the site prints. Inside the after-hours window the config's `default` is the after-hours number
+// instead, so the printed one is kept from the last daytime map: it names the untagged tel: links the safety net
+// may swap, and tells a return visitor's page what to put back.
+const SITE_PREFIX = 'famaash_dni_site_';
+function rememberSite(firmId: string, cfg: DniConfig | null): void {
+  try { if (cfg && !cfg.after_hours && cfg.default) localStorage.setItem(SITE_PREFIX + firmId, cfg.default); } catch { /* storage blocked */ }
+}
+function siteNumber(firmId: string): string | null {
+  try { return localStorage.getItem(SITE_PREFIX + firmId); } catch { return null; }
 }
 function writeCache(firmId: string, cfg: DniConfig | null): void {
   try {
@@ -269,7 +284,8 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
   const params = new URLSearchParams(location.search);
   const test = params.get(TEST_PARAM);
   const visit = classifyVisit(location, document.referrer);
-  let cfg: DniConfig | null = readCache(firmId);
+  const cached = readCache(firmId);
+  let cfg: DniConfig | null = cached?.cfg ?? null;
   const attribution = cfg?.attribution === 'first' ? 'first' : 'last_non_direct';
   const ttl = cfg?.ttl_days && cfg.ttl_days > 0 ? cfg.ttl_days : DEFAULT_TTL_DAYS;
   // A test link forces a source for this page only; it is never remembered.
@@ -277,26 +293,28 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
   let applied = false;
   let observer: MutationObserver | null = null;
   let current: string | null = null;
+  // The numbers the swap works with right now. The watcher reads them each time, so a map that changes on an open
+  // page (the after-hours window opening at 6 PM, read on the next focus) reaches numbers added later too.
+  let mainN = '';
+  let newN = '';
 
-  const run = () => {
-    if (!swapOn || !cfg || cfg.enabled === false || !cfg.default) {
-      // Off (the firm's switch, or nothing to swap to): change nothing on the page. A swap this page made from the
-      // cached map before /config said so is put back, and the watcher stops (dni-switch guide §2). The default
-      // number is never written in: what the site prints is the right number.
-      observer?.disconnect(); observer = null;
-      undoSwap();
-      current = null;
-      reveal();
-      return;
-    }
-    const mainN = national(cfg.default);
-    // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
-    const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
-    const newN = national(target);
-    // Nothing to swap to for this source: the page as printed (an earlier swap from the cache is put back).
-    if (!target || !newN || newN === mainN) { observer?.disconnect(); observer = null; undoSwap(); current = null; reveal(); return; }
-    current = target;
-    const go = () => { try { applySwap(document, mainN, newN); } catch { /* never break the page */ } reveal(); };
+  /** Nothing to swap to: change nothing on the page. A swap this page made (from the cached map, or before the map
+   *  changed) is put back, and the watcher stops (dni-switch guide §2). The default number is never written in:
+   *  what the site prints is the right number. */
+  const stop = () => {
+    observer?.disconnect(); observer = null;
+    undoSwap();
+    current = null;
+    reveal();
+  };
+  const swap = () => { try { applySwap(document, mainN, newN); } catch { /* never break the page */ } };
+  /** Swap to `next` (ten digits, `target` as the config spelled it), from `main` where the page prints it. */
+  const start = (target: string, main: string, next: string) => {
+    // A different number from the one this page already put in: the earlier swap is put back first, so every tagged
+    // element holds the printed number again and the change is one clean rewrite.
+    if (observer && next !== newN) undoSwap();
+    mainN = main; newN = next; current = target;
+    const go = () => { swap(); reveal(); };
     if (document.body) go(); else document.addEventListener('DOMContentLoaded', go, { once: true });
     if (!observer && typeof MutationObserver !== 'undefined') {
       // Numbers added later (a mobile menu, a tab, an interaction) get swapped too.
@@ -304,11 +322,33 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
       observer = new MutationObserver(() => {
         if (pending) return;
         pending = true;
-        setTimeout(() => { pending = false; try { applySwap(document, mainN, newN); } catch { /* fine */ } }, 50);
+        setTimeout(() => { pending = false; swap(); }, 50);
       });
-      const start = () => observer?.observe(document.body, { childList: true, subtree: true });
-      if (document.body) start(); else document.addEventListener('DOMContentLoaded', start, { once: true });
+      const watch = () => observer?.observe(document.body, { childList: true, subtree: true });
+      if (document.body) watch(); else document.addEventListener('DOMContentLoaded', watch, { once: true });
     }
+  };
+
+  const run = () => {
+    // Off (the firm's switch, or nothing to swap to): change nothing on the page.
+    if (!swapOn || !cfg || cfg.enabled === false || !cfg.default) { stop(); return; }
+    if (cfg.after_hours) {
+      // After hours (after-hours-number guide §2): `default` is the after-hours number and every visitor sees it,
+      // whatever their source. The printed number isn't in this map; each tagged element gives up its own
+      // (heldNumber), and the untagged tel: safety net uses the number the last daytime map named, if any.
+      const night = national(cfg.default);
+      const site = national(siteNumber(firmId));
+      if (!night || night === site) { stop(); return; }
+      start(cfg.default, site, night);
+      return;
+    }
+    const main = national(cfg.default);
+    // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
+    const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
+    const next = national(target);
+    // Nothing to swap to for this source: the page as printed (an earlier swap from the cache is put back).
+    if (!target || !next || next === main) { stop(); return; }
+    start(target, main, next);
   };
 
   const api: Dni = {
@@ -317,14 +357,16 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
       applied = true;
       cfg = next && typeof next === 'object' ? next : null;
       writeCache(firmId, cfg);
+      rememberSite(firmId, cfg);
       run();
     },
     number: () => current,
   };
-  // The cached map swaps now; a page with no cache shows the main number until /config lands or 1.5 s passes.
-  // With the swap off, the numbers the early snippet hid show at once.
+  // The cached map swaps now; a page with no cache shows the main number until /config lands or 1.5 s passes. An
+  // after-hours map older than the cache's ten minutes may be from the wrong side of 8 AM, so that one waits for
+  // /config rather than flash the night number. With the swap off, the numbers the early snippet hid show at once.
   if (!swapOn) reveal();
-  else if (cfg) run();
+  else if (cfg && (!cfg.after_hours || cached?.fresh)) run();
   setTimeout(() => { if (!applied) reveal(); }, 1500);
   try { (window as unknown as { FamaashDNI: Dni }).FamaashDNI = api; } catch { /* fine */ }
   return api;
