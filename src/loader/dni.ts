@@ -42,7 +42,7 @@ export interface DniConfig {
 
 /** The source keys the classifier produces. Ali maps each tracking number's lead_source to one of these. */
 export const DNI_SOURCE_KEYS = [
-  'google_ads', 'bing_ads', 'facebook_ads', 'gbp', 'email', 'google_organic', 'organic_search', 'social', 'directory', 'referral', 'other',
+  'google_paid', 'google_ads', 'bing_ads', 'facebook_ads', 'gbp', 'email', 'google_organic', 'organic_search', 'social', 'directory', 'referral', 'other',
 ] as const;
 export type DniSource = (typeof DNI_SOURCE_KEYS)[number] | 'direct';
 
@@ -96,8 +96,10 @@ export function classifyVisit(loc: { search: string; hostname: string }, referre
   const src = (q.get('utm_source') ?? '').trim().toLowerCase();
   const med = (q.get('utm_medium') ?? '').trim().toLowerCase();
   const paid = PAID.test(med);
-  if (q.has('gclid') || q.has('gbraid') || q.has('wbraid') || q.has('gad_source')) return 'google_ads';
-  if (/^(google|adwords|googleads)$/.test(src) && paid) return 'google_ads';
+  // A paid Google visit is "google_paid", the ticket's word (ticket-rules guide §0); the backend files it under
+  // google_ads on the lead, and the number map's key for it is google_ads too (see the lookup in initDni).
+  if (q.has('gclid') || q.has('gbraid') || q.has('wbraid') || q.has('gad_source')) return 'google_paid';
+  if (/^(google|adwords|googleads)$/.test(src) && paid) return 'google_paid';
   if (q.has('msclkid') || (/^(bing|microsoft|msn)$/.test(src) && paid)) return 'bing_ads';
   if (/^(facebook|instagram|meta|fb|ig)$/.test(src) && paid) return 'facebook_ads';
   if (/^(gbp|google_business|google_my_business|gmb|googlemybusiness)$/.test(src)) return 'gbp';
@@ -352,8 +354,11 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
       return;
     }
     const main = national(siteNumber(firmId, cfg) ?? cfg.default);
-    // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
-    const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
+    // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14). A paid Google visit's number,
+    // when the firm swaps for it, sits under the map's google_ads key.
+    const target = cfg.sources?.[source]
+      ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined)
+      ?? (source === 'google_paid' ? cfg.sources?.google_ads : undefined);
     const next = national(target);
     // Nothing to swap to for this source: the page as printed (an earlier swap from the cache is put back).
     if (!target || !next || next === main) { stop(); return; }
