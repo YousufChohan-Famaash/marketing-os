@@ -21,8 +21,12 @@ export interface DniConfig {
   enabled?: boolean;
   /** Why it's off: true = the firm switched the changer off; false = no tagged numbers yet. Either way, no swap. */
   switched_off?: boolean;
-  /** The firm's main number, what the site shows today. */
+  /** The number to swap to when the visitor's source has none of its own. By day the number the site prints; inside
+   *  the after-hours window the after-hours number. */
   default?: string | null;
+  /** The number the page prints, sent at every hour (Ali, Oct 30): what tagged numbers and untagged tel: links are
+   *  matched against. Absent on an older backend, where `default` by day is the same thing. */
+  site_number?: string | null;
   /** source key → number. A missing key keeps the default. */
   sources?: Record<string, string | null | undefined> | null;
   /** "last_non_direct" (default): the latest non-direct visit wins. "first": the first visit wins for the cookie's life. */
@@ -247,14 +251,19 @@ function readCache(firmId: string): { cfg: DniConfig; fresh: boolean } | null {
     return { cfg, fresh: Date.now() - at < CACHE_TTL_MS }; // stale is still better than a wait; refreshed by /config
   } catch { return null; }
 }
-// The number the site prints. Inside the after-hours window the config's `default` is the after-hours number
-// instead, so the printed one is kept from the last daytime map: it names the untagged tel: links the safety net
-// may swap, and tells a return visitor's page what to put back.
+// The number the site prints: `site_number` when the config carries it (every hour, since Oct 30), else by day
+// `default`. It is kept for an older backend's night map, where `default` is the after-hours number and nothing
+// else in the block names the printed one: the last daytime map then tells the untagged tel: links apart.
 const SITE_PREFIX = 'famaash_dni_site_';
-function rememberSite(firmId: string, cfg: DniConfig | null): void {
-  try { if (cfg && !cfg.after_hours && cfg.default) localStorage.setItem(SITE_PREFIX + firmId, cfg.default); } catch { /* storage blocked */ }
+function printedNumber(cfg: DniConfig): string | null {
+  return cfg.site_number || (!cfg.after_hours ? cfg.default ?? null : null);
 }
-function siteNumber(firmId: string): string | null {
+function rememberSite(firmId: string, cfg: DniConfig | null): void {
+  try { const n = cfg ? printedNumber(cfg) : null; if (n) localStorage.setItem(SITE_PREFIX + firmId, n); } catch { /* storage blocked */ }
+}
+function siteNumber(firmId: string, cfg: DniConfig): string | null {
+  const own = printedNumber(cfg);
+  if (own) return own;
   try { return localStorage.getItem(SITE_PREFIX + firmId); } catch { return null; }
 }
 function writeCache(firmId: string, cfg: DniConfig | null): void {
@@ -334,15 +343,15 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
     if (!swapOn || !cfg || cfg.enabled === false || !cfg.default) { stop(); return; }
     if (cfg.after_hours) {
       // After hours (after-hours-number guide §2): `default` is the after-hours number and every visitor sees it,
-      // whatever their source. The printed number isn't in this map; each tagged element gives up its own
-      // (heldNumber), and the untagged tel: safety net uses the number the last daytime map named, if any.
+      // whatever their source. The printed number is `site_number`; each tagged element gives up its own anyway
+      // (heldNumber), and the untagged tel: links to the printed number swap through the safety net.
       const night = national(cfg.default);
-      const site = national(siteNumber(firmId));
+      const site = national(siteNumber(firmId, cfg));
       if (!night || night === site) { stop(); return; }
       start(cfg.default, site, night);
       return;
     }
-    const main = national(cfg.default);
+    const main = national(siteNumber(firmId, cfg) ?? cfg.default);
     // A number set to "organic" on the Law App answers both search keys (Ali, Oct 14).
     const target = cfg.sources?.[source] ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined);
     const next = national(target);
