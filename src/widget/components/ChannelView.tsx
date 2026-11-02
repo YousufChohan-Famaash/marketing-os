@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useWidgetStore } from '../store/widgetStore';
 import { useKnownContact } from '../store/useKnownContact';
-import { ApiError, connectText, fetchCallStatus, placeCallNow } from '../services/api';
+import { ApiError, connectText, errorCode, fetchCallStatus, getTextOptions, placeCallNow, type TextOptionsResponse } from '../services/api';
 import { track } from '../services/track';
 import { connectErrorMessage } from '../utils/connectErrors';
 import { resolveTcpa } from '../utils/compliance';
@@ -97,7 +97,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       : `${kept.slice(0, -1).join(', ')} ${andWord} ${kept[kept.length - 1]}`;
 
   const [done, setDone] = useState<string | null>(null);
-  const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(settings.textMethods[0] ?? 'sms');
+  // The mid-chat button names the method (chat-channel-handover guide); the launcher's Text picks the firm's first.
+  const preferredTextMethod = useWidgetStore((s) => s.preferredTextMethod);
+  const [textMethod, setTextMethod] = useState<'sms' | 'whatsapp'>(preferredTextMethod ?? settings.textMethods[0] ?? 'sms');
   // Call-now lifecycle: calling → connected | failed. The backend pushes the
   // live status over the chat data channel (connectCallStatus in the store).
   const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
@@ -112,6 +114,40 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
   // Text-me lifecycle: hand the intake off to the visitor's phone (WhatsApp/SMS).
   const [texting, setTexting] = useState(false);
   const [textError, setTextError] = useState<string | null>(null);
+  // What the Text / WhatsApp screen shows (guide §4): the number on file, whether the tick is needed for it, the
+  // consent sentence to show verbatim and send back, and the methods the firm offers. A read, never a write.
+  const [textOpts, setTextOpts] = useState<TextOptionsResponse | null | undefined>(undefined);
+  const [typedPhone, setTypedPhone] = useState<string | null>(null);
+  /** Methods taken off for this session: one the backend refused (text_method_disabled, whatsapp_not_configured). */
+  const [methodsOff, setMethodsOff] = useState<string[]>([]);
+  /** The backend asked for the tick on a send (consent_required): shown from then on, with its sentence. */
+  const [consentAsked, setConsentAsked] = useState<{ text: string; version: string } | null>(null);
+  useEffect(() => {
+    if (channel !== 'text') return;
+    let alive = true;
+    setTextOpts(undefined);
+    getTextOptions({ conversationId, firmId })
+      .then((o) => { if (alive) setTextOpts(o); })
+      .catch(() => { if (alive) setTextOpts(null); });
+    return () => { alive = false; };
+  }, [channel, conversationId, firmId]);
+  const digitsOf = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
+  /** The number typed differs from the one on file: its consent isn't known, so the tick is asked (guide §4). */
+  const phoneEdited = typedPhone !== null && digitsOf(typedPhone) !== digitsOf(textOpts?.phone);
+  const needConsent = !textOpts || textOpts.consentNeeded || phoneEdited || !!consentAsked;
+  const textConsentLabel = consentAsked?.text ?? textOpts?.consentText ?? consentLabel;
+  const textConsentVersion = consentAsked?.version ?? textOpts?.consentVersion ?? consentVersion;
+  const textMethods = (textOpts?.textMethods?.length ? textOpts.textMethods : settings.textMethods).filter((m): m is 'sms' | 'whatsapp' => (m === 'sms' || m === 'whatsapp') && !methodsOff.includes(m));
+  useEffect(() => { if (textMethods.length && !textMethods.includes(textMethod)) setTextMethod(textMethods[0]); }, [textMethods, textMethod]);
+  /** A send's refusal, by its code (guide §7). The code and any consent sentence sit in `detail` as JSON. */
+  const refusal = (err: unknown): { code: string | null; consentText?: string; consentVersion?: string } => {
+    const code = errorCode(err);
+    try {
+      const raw = err instanceof ApiError ? err.detail : null;
+      const d = raw ? (JSON.parse(raw) as { detail?: { consentText?: string; consentVersion?: string } }).detail : undefined;
+      return { code, consentText: d?.consentText, consentVersion: d?.consentVersion };
+    } catch { return { code }; }
+  };
 
   // ── Video collapse choreography ─────────────────────────────────────────────
   // On landing a contact screen the intro clip greets full-width at the top, then
@@ -267,41 +303,50 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
       setTextError(t('Your session expired. Please reopen the chat and try again.'));
       return;
     }
+    if (texting) return; // one tap, one text (guide §10)
     setTexting(true);
-    let channel: 'sms' | 'whatsapp' = textMethod;
+    const channel: 'sms' | 'whatsapp' = textMethod;
     try {
-      let out;
-      try {
-        out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: consentLabel, copyVersion: consentVersion });
-      } catch (err) {
-        // WhatsApp unreachable for this firm → fall back to SMS automatically.
-        if (err instanceof ApiError && err.status === 503 && channel === 'whatsapp') {
-          channel = 'sms';
-          setTextMethod('sms');
-          out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: consentLabel, copyVersion: consentVersion });
-        } else {
-          throw err;
-        }
-      }
+      // The tick is `agreed` when the box was shown (it gates the button); with consent already on file for this
+      // number, the box is away and `agreed: false` goes, which the backend accepts then (guide §4).
+      const out = await connectText({ conversationId, firmId: firmId ?? undefined, phone, name, channel, consentText: textConsentLabel, copyVersion: textConsentVersion, agreed: needConsent });
       // Hold the conversation the server used or minted, so a later Call/Book
       // lands on the SAME lead instead of creating a second one (§4).
       if (out.conversationId) setConversationId(out.conversationId);
       if (out.channel === 'whatsapp') {
         if (out.waMeLink) {
+          // They might not tap the link: the chat stays open; their first WhatsApp message picks it up (guide §4).
           if (typeof window !== 'undefined') window.open(out.waMeLink, '_blank', 'noopener');
           setDone(t('Continue in WhatsApp. We opened it with your message ready to send.'));
         } else {
-          setDone(t("We've messaged you on WhatsApp. Check your phone to continue."));
+          setDone(out.handedOver ? t('Sent! Check your WhatsApp. This chat continues there.') : t("We've messaged you on WhatsApp. Check your phone to continue."));
         }
       } else {
-        setDone(t('We just texted you. Reply to that message to continue.'));
+        setDone(out.handedOver ? t('Sent! Check your phone. This chat continues there.') : t('We just texted you. Reply to that message to continue.'));
       }
     } catch (err) {
-      // Keep the two channel-specific cases we word better ourselves, and hand
-      // everything else to the shared mapper — never the backend's `detail`.
       const status = err instanceof ApiError ? err.status : 0;
-      if (status === 503) {
-        setTextError(t("We couldn't send that just now. Try another option."));
+      const r = refusal(err);
+      if (r.code === 'consent_required') {
+        // The box, with the sentence the backend sends back, and the ask (guide §7).
+        setConsentAsked({ text: r.consentText ?? textConsentLabel, version: r.consentVersion ?? textConsentVersion ?? '1' });
+        setTextError(t('Please tick the box so we can text you.'));
+      } else if (r.code === 'invalid_phone') {
+        setTextError(t('Please enter a valid mobile number.'));
+      } else if (r.code === 'text_method_disabled') {
+        setMethodsOff((m) => [...m, channel]);
+        setTextError(t("Texting isn't available right now."));
+      } else if (r.code === 'channel_disabled') {
+        setMethodsOff(['sms', 'whatsapp']);
+        setTextError(t("Texting isn't available right now."));
+      } else if (r.code === 'whatsapp_not_configured') {
+        // WhatsApp isn't set up for this firm: it goes for the session; SMS stays a tap away. No automatic resend.
+        setMethodsOff((m) => [...m, 'whatsapp']);
+        setTextError(t("WhatsApp isn't available right now. We can text you instead."));
+      } else if (status === 404) {
+        setTextError(t('Something went wrong, please refresh.'));
+      } else if (status === 503) {
+        setTextError(t("We couldn't send the text. Try again, or use Call me instead."));
       } else {
         setTextError(connectErrorMessage(err, 'text', uiLocale, firmPhone));
       }
@@ -445,9 +490,9 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                 {textError && (
                   <p className="rounded-lg bg-danger-soft px-3 py-2 text-[12px] text-danger">{textError}</p>
                 )}
-                {settings.textMethods.length > 1 && (
+                {textMethods.length > 1 && (
                   <div className="flex gap-2">
-                    {settings.textMethods.map((m) => (
+                    {textMethods.map((m) => (
                       <button
                         key={m}
                         type="button"
@@ -470,6 +515,7 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                   </div>
                 )}
                 <CallbackForm
+                  key={textOpts?.phone ?? 'no-number'}
                   variant={textMethod === 'whatsapp' ? 'whatsapp' : 'brand'}
                   heading={t('Pick up this chat by text')}
                   body={
@@ -484,10 +530,16 @@ export function ChannelView({ channel, onClose, onMinimize, onExpand, isExpanded
                         ? t('Message me on WhatsApp')
                         : t('Text me')
                   }
-                  busy={texting}
-                  consentLabel={consentLabel}
+                  busy={texting || textOpts === undefined}
+                  consentLabel={needConsent ? textConsentLabel : undefined}
+                  initialPhone={textOpts?.phone ? textOpts.phone.replace(/^\+1(\d{10})$/, '$1') : undefined}
+                  onPhoneChange={setTypedPhone}
+                  gateOnConsent
                   onSubmit={finishText}
                 />
+                {textOpts && !needConsent && (
+                  <p className="text-[11.5px] leading-relaxed text-muted">{t('You already agreed to texts from us at this number.')}</p>
+                )}
               </div>
             )}
 

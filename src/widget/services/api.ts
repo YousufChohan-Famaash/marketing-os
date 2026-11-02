@@ -258,6 +258,27 @@ export interface TextConnectResponse {
   waMeLink?: string | null;
   /** WhatsApp only → true when we messaged them directly (approved template); waMeLink is null. */
   whatsappMessaged?: boolean;
+  /** The chat was carried on to the phone and is closing itself (chat-channel-handover guide §4). */
+  handedOver?: boolean;
+}
+
+/** GET /connect/text-options — what the Text / WhatsApp screen shows (chat-channel-handover guide §4). Reads only. */
+export type TextConsentStatus = 'yes' | 'said_no' | 'not_asked' | 'no_number' | (string & {});
+export interface TextOptionsResponse {
+  ok: boolean;
+  /** E.164; null = nothing on file. */
+  phone: string | null;
+  textConsent: TextConsentStatus;
+  /** true → show consentText with a checkbox; Send stays disabled until ticked. */
+  consentNeeded: boolean;
+  /** Shown verbatim and sent back as consent.text: it is the legal record. */
+  consentText: string;
+  consentVersion: string;
+  textMethods: Array<'sms' | 'whatsapp' | (string & {})>;
+}
+export function getTextOptions(args: { conversationId?: string | null; firmId?: string | null }): Promise<TextOptionsResponse> {
+  const q = args.conversationId ? `conversationId=${encodeURIComponent(args.conversationId)}` : `firmId=${encodeURIComponent(args.firmId ?? '')}`;
+  return request<TextOptionsResponse>(`/connect/text-options?${q}`);
 }
 
 export function connectText(args: {
@@ -274,6 +295,8 @@ export function connectText(args: {
   caseTypeId?: string;
   consentText?: string;
   copyVersion?: string;
+  /** The tick. false is accepted only when text-options said consentNeeded was false (guide §4). */
+  agreed?: boolean;
 }): Promise<TextConnectResponse> {
   return request<TextConnectResponse>('/connect/text', {
     method: 'POST',
@@ -285,7 +308,7 @@ export function connectText(args: {
       name: args.name,
       caseTypeId: args.caseTypeId,
       consent: {
-        agreed: true,
+        agreed: args.agreed ?? true,
         copyVersion: args.copyVersion ?? 'tcpa-v1',
         text: args.consentText,
       },

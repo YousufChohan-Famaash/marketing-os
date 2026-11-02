@@ -32,6 +32,10 @@ interface CallbackFormProps {
    * row. Only the in-panel channel views pass this; modals leave it off. */
   media?: ReactNode;
   onSubmit: (phone: string, name?: string, email?: string) => void;
+  /** Every change to the number, so a screen can ask for consent again when it differs from the one on file. */
+  onPhoneChange?: (phone: string) => void;
+  /** Keep the button disabled until the consent box is ticked (chat-channel-handover guide §2). */
+  gateOnConsent?: boolean;
 }
 
 /**
@@ -55,6 +59,8 @@ export function CallbackForm({
   emailError,
   media,
   onSubmit,
+  onPhoneChange,
+  gateOnConsent = false,
 }: CallbackFormProps) {
   // Pre-fill from what we already know about the visitor (captured this session
   // or remembered from before), so quick actions never ask for the number twice.
@@ -86,7 +92,7 @@ export function CallbackForm({
   // When the visitor already gave us a number, don't ask for it again — confirm
   // the one on file and let them edit it (CEO feedback). Applies to every flow
   // that shares this form: Call / Talk to a human, Text me, I need help now.
-  const prefilledPhone = (initialPhone ?? known.phone ?? '').trim();
+  const prefilledPhone = formatPhone((initialPhone ?? known.phone ?? '').trim());
   const hasKnownPhone = prefilledPhone.replace(/\D/g, '').length >= 7;
   const verbWord = brand ? 'text' : 'call';
   const shownHeading = hasKnownPhone ? t('Is this the best number to reach you?') : heading;
@@ -145,7 +151,7 @@ export function CallbackForm({
           inputMode="tel"
           autoComplete="tel"
           value={phone}
-          onChange={(e) => setPhone(formatPhone(e.target.value))}
+          onChange={(e) => { const v = formatPhone(e.target.value); setPhone(v); onPhoneChange?.(v); }}
           onBlur={() => touch('phone')}
           placeholder="(555) 123-4567"
           aria-invalid={show('phone') && !!phoneErr}
@@ -226,7 +232,7 @@ export function CallbackForm({
           rememberContact({ phone: p, name: n, email: e });
           onSubmit(p, n, e);
         }}
-        disabled={busy}
+        disabled={busy || (gateOnConsent && !!consentErr)}
         className={cn(
           'flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-[15px] font-semibold text-white transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:bg-[#E5E7EB] disabled:text-[#9CA3AF]',
           whatsapp ? 'bg-[#25D366]' : 'bg-famaash',

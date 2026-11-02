@@ -66,6 +66,8 @@ export interface UiSlice {
   /** Where a contact screen's Back goes: the home menu, or the chat when the
    *  visitor came from the mid-chat "Call me instead" button. */
   connectReturn: 'home' | 'chat';
+  /** Which method the mid-chat Text me / WhatsApp me button asked for (chat-channel-handover guide). */
+  preferredTextMethod: 'sms' | 'whatsapp' | null;
   /** True once a conversation (chat) has actually begun — drives Small-mode
    * expand and the video shrink-to-avatar. */
   conversationStarted: boolean;
@@ -114,6 +116,8 @@ export interface UiSlice {
   setConnectView: (view: ConnectView) => void;
   /** Mid-chat "Call me instead": the launcher's call screen, with Back leading to the chat. */
   openCallFromChat: () => void;
+  /** Mid-chat "Text me" / "WhatsApp me": the launcher's text screen, that method picked, Back leading to the chat. */
+  openTextFromChat: (method: 'sms' | 'whatsapp') => void;
   setConnectReturn: (to: 'home' | 'chat') => void;
   setConversationStarted: (started: boolean) => void;
   dismissCinematic: () => void;
@@ -160,6 +164,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   activeSigning: null,
   connectView: 'home',
   connectReturn: 'home',
+  preferredTextMethod: null,
   conversationStarted: false,
   cinematicDismissed: false,
   undoableMessageId: null,
@@ -178,6 +183,7 @@ export const createUiSlice: StateCreator<WidgetStore, [], [], UiSlice> = (
   setIntroVideoPlayed: (played) => set({ introVideoPlayed: played }),
   setConnectView: (view) => set({ connectView: view }),
   openCallFromChat: () => set({ connectView: 'call', connectReturn: 'chat' }),
+  openTextFromChat: (method) => set({ connectView: 'text', connectReturn: 'chat', preferredTextMethod: method }),
   setConnectReturn: (to) => set({ connectReturn: to }),
   setConversationStarted: (started) => set({ conversationStarted: started }),
   dismissCinematic: () => set({ cinematicDismissed: true }),

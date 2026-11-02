@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useSocket } from "../services/socketContext";
 import { useWidgetStore } from "../store/widgetStore";
+import { MessageMark, WhatsAppMark } from "./WhatsAppMark";
 import { fetchCallStatus, uploadMedia } from "../services/api";
 import { trackFirstChatMessage } from "../services/track";
 import type { ConnectCallStatus } from "../types/protocol";
@@ -75,6 +76,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   const humanRequested = useWidgetStore((s) => s.humanRequested);
   const chatCallPhase = useWidgetStore((s) => s.chatCallPhase);
   const openCallFromChat = useWidgetStore((s) => s.openCallFromChat);
+  const openTextFromChat = useWidgetStore((s) => s.openTextFromChat);
+  const connectSettings = useWidgetStore((s) => s.connect);
   const setChatCallPhase = useWidgetStore((s) => s.setChatCallPhase);
   const connectCallStatus = useWidgetStore((s) => s.connectCallStatus);
   const setConnectCallStatus = useWidgetStore((s) => s.setConnectCallStatus);
@@ -279,6 +282,11 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   // an AI callback while they wait on a person reads as ignoring them (guide §7).
   const callEligible =
     chatCallPhase === "idle" && !!activeConversationId && !agentTakeover && !humanRequested;
+  // Text me / WhatsApp me (chat-channel-handover guide §3): a live conversation to carry on, the Text channel on
+  // for the firm, and each method only when the firm offers it. The same human-handoff rule as the call button.
+  const textEligible = chatCallPhase === "idle" && !!activeConversationId && !agentTakeover && !humanRequested && connectSettings.channels.includes('text');
+  const offerSms = textEligible && connectSettings.textMethods.includes('sms');
+  const offerWhatsApp = textEligible && connectSettings.textMethods.includes('whatsapp');
 
   // What the attachment (+) menu can offer, given firm config + browser support.
   const voiceAvailable = (allowVoiceNotes && canRecordMedia()) || Boolean(flags?.voice);
@@ -392,15 +400,27 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
           </button>
         </div>
       )}
-      {callEligible && (
-        <button
-          type="button"
-          onClick={openCallFromChat}
-          className="mb-2 inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash"
-        >
-          <PhoneIcon size={13} aria-hidden="true" />
-          {t('Call me instead')}
-        </button>
+      {(callEligible || offerSms || offerWhatsApp) && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5" data-testid="chat-handover">
+          {callEligible && (
+            <button type="button" onClick={openCallFromChat} className="inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash">
+              <PhoneIcon size={13} aria-hidden="true" />
+              {t('Call me instead')}
+            </button>
+          )}
+          {offerSms && (
+            <button type="button" onClick={() => openTextFromChat('sms')} className="inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash">
+              <MessageMark size={13} />
+              {t('Text me')}
+            </button>
+          )}
+          {offerWhatsApp && (
+            <button type="button" onClick={() => openTextFromChat('whatsapp')} className="inline-flex items-center gap-1.5 rounded-pill border border-hairline bg-white px-3 py-1.5 text-[12px] font-semibold text-muted transition-colors hover:border-famaash-border hover:text-famaash">
+              <WhatsAppMark size={13} />
+              {t('WhatsApp me')}
+            </button>
+          )}
+        </div>
       )}
       {stt.listening && (
         <div className="mb-2 flex items-center gap-2 rounded-pill bg-[#EEEEFF] px-3 py-1.5">
