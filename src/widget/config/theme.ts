@@ -113,10 +113,36 @@ export function applyTheme(colors: ThemeColors): boolean {
  * vars, keeping the existing stack as the fallback so a name the browser can't
  * resolve degrades gracefully. No-op when unset.
  */
+/** The Google Fonts stylesheet for one family, the four weights the widget uses. */
+export function googleFontHref(family: string): string {
+  return `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family.trim()).replace(/%20/g, '+')}:wght@400;500;600;700&display=swap`;
+}
+
+/** Load a family from Google Fonts into this document, once. A family that isn't there just doesn't arrive, and
+ *  the stack falls back to Manrope. "System default" and the built-in Manrope need no load. */
+export function loadGoogleFont(family: string | null | undefined, doc: Document = document): void {
+  const f = (family ?? '').trim();
+  if (!f || /^system default$/i.test(f) || /^manrope$/i.test(f)) return;
+  const id = `famaash-font-${f.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  if (doc.getElementById(id)) return;
+  const link = doc.createElement('link');
+  link.id = id; link.rel = 'stylesheet'; link.href = googleFontHref(f);
+  doc.head.appendChild(link);
+}
+
+/** The firm's font from Branding (`branding.fontFamily`): loaded, then set on both variables. Manrope stays the
+ *  fallback, and the default when no font is set (tokens.css). */
 export function applyFont(font?: string | null): void {
   if (typeof document === 'undefined' || !font || !font.trim()) return;
+  const f = font.trim();
   const root = document.documentElement;
-  const family = `"${font.trim()}", 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+  if (/^system default$/i.test(f)) {
+    const sys = `-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif`;
+    root.style.setProperty('--font-ui', sys); root.style.setProperty('--font-message', sys);
+    return;
+  }
+  loadGoogleFont(f);
+  const family = `"${f}", 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
   root.style.setProperty('--font-ui', family);
   root.style.setProperty('--font-message', family);
 }

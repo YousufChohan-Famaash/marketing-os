@@ -57,7 +57,7 @@ const styles = `
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
   --fa-accent: ${FALLBACK_ACCENT};
   --fa-bubble: var(--fa-accent);
 }
@@ -882,8 +882,24 @@ function readScriptConfig(): {
   return { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, apiBaseAttr, uiLang };
 }
 
+/** A Google font into the host page, once: Manrope for the teaser (t102442), and a firm's own pick. */
+function loadHostFont(family: string): void {
+  try {
+    const f = family.trim();
+    if (!f) return;
+    const id = `famaash-font-${f.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id; link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f).replace(/%20/g, '+')}:wght@400;500;600;700&display=swap`;
+    (document.head || document.documentElement).appendChild(link);
+  } catch { /* the teaser keeps the system font */ }
+}
+
 (function boot() {
   const { firmId, widgetOrigin, size, sizeExplicit, name, poster, cine, media, apiBase, apiBaseAttr, uiLang } = readScriptConfig();
+  // The teaser's font on the host page (t102442). A firm's own pick, when /config names one, loads below.
+  loadHostFont('Manrope');
   teaserLang = /^es/i.test(uiLang) ? 'es' : 'en';
   // Dynamic number insertion (t102224): classify the visit and remember its
   // source first, then swap the tagged phone numbers as soon as the firm's
@@ -1573,9 +1589,13 @@ function readScriptConfig(): {
         if (b.bubbleBgColor) {
           dockApi.dock.style.setProperty('--fa-bubble', b.bubbleBgColor);
         }
-        // Firm font on the host-page teaser (the panel themes itself from /config).
-        if (b.fontFamily) {
-          dockApi.dock.style.fontFamily = `"${b.fontFamily}", -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif`;
+        // Firm font on the host-page teaser (the panel themes itself from /config): loaded from Google Fonts into
+        // the host page, Manrope behind it.
+        if (b.fontFamily && !/^system default$/i.test(b.fontFamily)) {
+          loadHostFont(b.fontFamily);
+          dockApi.dock.style.fontFamily = `"${b.fontFamily}", 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif`;
+        } else if (b.fontFamily) {
+          dockApi.dock.style.fontFamily = `-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif`;
         }
         // Launcher offsets from the screen edges (default 24px). Respect the side.
         if (typeof b.launcherOffsetY === 'number') {

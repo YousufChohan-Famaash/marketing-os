@@ -6,6 +6,7 @@ export default {
     extend: {
       fontFamily: {
         sans: [
+          'Manrope',
           'Inter',
           '-apple-system',
           'BlinkMacSystemFont',
