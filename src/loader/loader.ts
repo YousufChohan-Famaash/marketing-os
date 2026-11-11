@@ -919,6 +919,9 @@ function loadHostFont(family: string): void {
     if (utm.utm_source) a.utm_source = utm.utm_source;
     if (utm.utm_medium) a.utm_medium = utm.utm_medium;
     if (utm.utm_campaign) a.utm_campaign = utm.utm_campaign;
+    // The ad's details (ai-search guide §4.2): the ad id and the ad group / keyword, each at most 255 characters.
+    if (utm.utm_content) a.utm_content = utm.utm_content.slice(0, 255);
+    if (utm.utm_term) a.utm_term = utm.utm_term.slice(0, 255);
     if (document.referrer) a.referrer = document.referrer;
     a.landing_path = window.location.pathname || '/';
     // The visit's source after the number changer's memory rule, and the ad
@@ -927,6 +930,7 @@ function loadHostFont(family: string): void {
     const ids = clickIds(window.location.search);
     if (ids.gclid) a.gclid = ids.gclid;
     if (ids.msclkid) a.msclkid = ids.msclkid;
+    if (ids.oppref) a.oppref = ids.oppref.slice(0, 255); // ChatGPT Ads' click reference
     return a;
   })();
 

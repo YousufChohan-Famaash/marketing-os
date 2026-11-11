@@ -42,7 +42,7 @@ export interface DniConfig {
 
 /** The source keys the classifier produces. Ali maps each tracking number's lead_source to one of these. */
 export const DNI_SOURCE_KEYS = [
-  'google_paid', 'google_ads', 'bing_ads', 'facebook_ads', 'gbp', 'email', 'google_organic', 'organic_search', 'social', 'directory', 'referral', 'other',
+  'google_paid', 'google_ads', 'bing_ads', 'facebook_ads', 'chatgpt_ads', 'gbp', 'email', 'ai_search', 'google_organic', 'organic_search', 'social', 'directory', 'referral', 'other',
 ] as const;
 export type DniSource = (typeof DNI_SOURCE_KEYS)[number] | 'direct';
 
@@ -76,6 +76,10 @@ const GOOGLE_HOSTS = /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/i;
 const SOCIAL_HOSTS = /(^|\.)(facebook\.com|fb\.com|instagram\.com|t\.co|x\.com|twitter\.com|linkedin\.com|tiktok\.com|youtube\.com|youtu\.be|reddit\.com|nextdoor\.com|threads\.net)$/i;
 const DIRECTORY_HOSTS = /(^|\.)(avvo\.com|justia\.com|findlaw\.com|yelp\.com|superlawyers\.com|lawyers\.com|martindale\.com|nolo\.com|bbb\.org|lawinfo\.com|hg\.org)$/i;
 const DIRECTORY_SOURCES = /^(avvo|justia|findlaw|yelp|superlawyers|lawyers|martindale|nolo|bbb)$/i;
+// A free AI answer (ai-search guide §5): by tag when the visit carries one, else by the referrer's host (or a subdomain
+// of it). Never a bare "meta" (that's Facebook) or "you"; the engine itself is one bucket, "ai_search".
+const AI_HOSTS = /(^|\.)(chatgpt\.com|chat\.openai\.com|perplexity\.ai|copilot\.microsoft\.com|gemini\.google\.com|claude\.ai|meta\.ai|grok\.com|chat\.deepseek\.com|chat\.mistral\.ai|you\.com)$/i;
+const AI_TAGS = /^(chatgpt\.com|chat\.openai\.com|perplexity\.ai|copilot\.microsoft\.com|gemini\.google\.com|claude\.ai|meta\.ai|grok\.com|chat\.deepseek\.com|chat\.mistral\.ai|you\.com|chatgpt|openai|perplexity|copilot|gemini|claude|meta_ai|grok|deepseek|mistral)$/i;
 
 const digitsOf = (s: string | null | undefined): string => (s ?? '').replace(/\D/g, '');
 /** The last ten digits: the national number, without a country code. */
@@ -102,9 +106,14 @@ export function classifyVisit(loc: { search: string; hostname: string }, referre
   if (/^(google|adwords|googleads)$/.test(src) && paid) return 'google_paid';
   if (q.has('msclkid') || (/^(bing|microsoft|msn)$/.test(src) && paid)) return 'bing_ads';
   if (/^(facebook|instagram|meta|fb|ig)$/.test(src) && paid) return 'facebook_ads';
+  // A ChatGPT ad click (ai-search guide §2.1), before the free AI-answer rule, or every ad click would count as free
+  // traffic. ChatGPT Ads adds `oppref` to every click; the advertiser's own tag is utm_source=chatgpt_ads.
+  if (src === 'chatgpt_ads' || (/^(chatgpt\.com|chatgpt|openai)$/.test(src) && paid) || q.has('oppref')) return 'chatgpt_ads';
   if (/^(gbp|google_business|google_my_business|gmb|googlemybusiness)$/.test(src)) return 'gbp';
   if (/^(email|sms|text|newsletter)$/.test(med)) return 'email';
   if (src) {
+    // A tag decides when there is one (guide §2.2): utm_source=newsletter from chatgpt.com is not AI search.
+    if (AI_TAGS.test(src)) return 'ai_search';
     if (/^(google)$/.test(src) && /^(organic)$/.test(med)) return 'google_organic';
     if (DIRECTORY_SOURCES.test(src)) return 'directory';
     if (/^(facebook|instagram|meta|fb|ig|twitter|x|linkedin|tiktok|youtube)$/.test(src)) return 'social';
@@ -113,6 +122,7 @@ export function classifyVisit(loc: { search: string; hostname: string }, referre
   }
   const ref = hostOf(referrer);
   if (!ref || sameSite(ref, loc.hostname)) return 'direct';
+  if (AI_HOSTS.test(ref)) return 'ai_search'; // before the Google host rule: gemini.google.com is AI search (guide §2.3)
   if (GOOGLE_HOSTS.test(ref)) return 'google_organic';
   if (SEARCH_HOSTS.test(ref)) return 'organic_search';
   if (SOCIAL_HOSTS.test(ref)) return 'social';
@@ -387,11 +397,12 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
 }
 
 /** The ad click ids worth carrying onto a lead, from the landing URL. */
-export function clickIds(search: string): { gclid?: string; msclkid?: string; fbclid?: string } {
+export function clickIds(search: string): { gclid?: string; msclkid?: string; fbclid?: string; oppref?: string } {
   const q = new URLSearchParams(search);
-  const out: { gclid?: string; msclkid?: string; fbclid?: string } = {};
+  const out: { gclid?: string; msclkid?: string; fbclid?: string; oppref?: string } = {};
   const g = q.get('gclid') || q.get('gbraid') || q.get('wbraid'); if (g) out.gclid = g;
   const m = q.get('msclkid'); if (m) out.msclkid = m;
   const f = q.get('fbclid'); if (f) out.fbclid = f;
+  const o = q.get('oppref'); if (o) out.oppref = o; // ChatGPT Ads' click reference (ai-search guide §4.2)
   return out;
 }

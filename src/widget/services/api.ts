@@ -538,6 +538,10 @@ export function createConversationToken(
     utm_source?: string;
     utm_medium?: string;
     utm_campaign?: string;
+    /** The ad's details and ChatGPT Ads' click reference (ai-search guide §4.2). */
+    utm_content?: string;
+    utm_term?: string;
+    oppref?: string;
     referrer?: string;
     landing_path?: string;
     /** The number changer's source and the ad click ids (t102224). */

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getAttribution } from '../config/env';
 import { useWidgetStore } from '../store/widgetStore';
 import {
   ApiError,
@@ -50,15 +51,16 @@ const STEP_TITLES = [
   'Where can we reach you?',
 ];
 
-/** Pull UTM attribution off the URL, if any (best-effort; usually empty in-iframe). */
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'oppref'] as const;
+/** The visit's attribution for the form's `utm` map: the host page's, forwarded by the loader (utm_*, and ChatGPT Ads'
+ *  click reference `oppref`; ai-search guide §4.2), with whatever the iframe's own URL carries on top. */
 function readUtm(): Record<string, string> | undefined {
   if (typeof window === 'undefined') return undefined;
-  const p = new URLSearchParams(window.location.search);
   const utm: Record<string, string> = {};
-  for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']) {
-    const v = p.get(k);
-    if (v) utm[k] = v;
-  }
+  const a = getAttribution();
+  for (const k of UTM_KEYS) { const v = a?.[k]; if (v) utm[k] = v; }
+  const p = new URLSearchParams(window.location.search);
+  for (const k of UTM_KEYS) { const v = p.get(k); if (v) utm[k] = v; }
   return Object.keys(utm).length ? utm : undefined;
 }
 

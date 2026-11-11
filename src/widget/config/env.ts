@@ -97,6 +97,10 @@ export interface Attribution {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  /** The ad's details and ChatGPT Ads' click reference (ai-search guide §4.2). */
+  utm_content?: string;
+  utm_term?: string;
+  oppref?: string;
   referrer?: string;
   landing_path?: string;
   /** GA4 client id read from the host page's `_ga` cookie by the loader. Sent
@@ -121,6 +125,9 @@ export function getAttribution(): Attribution | null {
       utm_source: str(p.utm_source),
       utm_medium: str(p.utm_medium),
       utm_campaign: str(p.utm_campaign),
+      utm_content: str(p.utm_content),
+      utm_term: str(p.utm_term),
+      oppref: str(p.oppref),
       referrer: str(p.referrer),
       landing_path: str(p.landing_path),
       ga_client_id: str(p.ga_client_id),
