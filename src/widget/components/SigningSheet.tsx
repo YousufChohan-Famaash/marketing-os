@@ -4,17 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import type { ActiveSigning } from '../store/slices/uiSlice';
-import { createEsignSession } from '../services/api';
+import { createEsignSession, fetchDocuments } from '../services/api';
 import { CloseIcon, SpinnerIcon } from '../utils/icons';
 import { useT } from '../i18n';
 
 /**
- * Inline document signing via the Dropbox Sign (HelloSign) embedded SDK.
+ * Inline document signing.
  *
- * On open: fetch a fresh signing URL (`POST /esign/session`), load the SDK, and
- * render its iframe into our container. The `sign` event is the fast path — we
- * publish `document_signed` immediately so the agent advances in <1s (the
- * server webhook is only a slow fallback for persistence).
+ * On open: fetch a fresh signing URL (`POST /esign/session`); the response says which service the document goes
+ * through (boldsign guide §4.4).
+ *
+ * - Dropbox Sign: load the embedded SDK and render its iframe into our container. Its `sign` event is the fast
+ *   path — we publish `document_signed` immediately so the agent advances in <1s (the server webhook is only a
+ *   slow fallback for persistence).
+ * - BoldSign: a plain iframe with the link, no SDK. BoldSign sends no event we can rely on; after Finish it loads
+ *   the firm's portal page (another origin) inside the iframe. The sheet notices the iframe navigating away (its
+ *   second load) or the portal's "esign:signed" message, then re-reads GET /documents every 2 s for up to 30 s
+ *   until the backend itself says the item is signed (boldsign guide §2, §11). Only then does it publish
+ *   `document_signed`. A slower read every 5 s runs the whole time the sheet is open, in case the return isn't seen.
  */
 export function SigningSheet({ signing }: { signing: ActiveSigning }) {
   const conversationId = useWidgetStore((s) => s.conversationId);
@@ -29,6 +36,12 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
   const signedRef = useRef(false);
   const [launched, setLaunched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The BoldSign link, when the document goes through BoldSign. */
+  const [frameUrl, setFrameUrl] = useState<string | null>(null);
+  const [frameLoads, setFrameLoads] = useState(0);
+  const [confirming, setConfirming] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const itemIdRef = useRef<string | undefined>(signing.itemId);
 
   const close = () => setActiveSigning(null);
 
@@ -52,15 +65,23 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
         setError(t('No active conversation.'));
         return;
       }
-      if (!clientId) {
-        setError(t('Inline signing isn’t configured for this firm.'));
-        return;
-      }
       try {
         const session = await createEsignSession(conversationId, signing.itemId);
         if (cancelled) return;
         const itemId = session.itemId ?? signing.itemId;
+        itemIdRef.current = itemId;
 
+        if (session.signingProvider === 'boldsign') {
+          // A plain iframe; the return and the re-read are handled by the effects below.
+          setFrameUrl(session.signingUrl);
+          setLaunched(true);
+          return;
+        }
+
+        if (!clientId) {
+          setError(t('Inline signing isn’t configured for this firm.'));
+          return;
+        }
         const { default: HelloSign } = await import('hellosign-embedded');
         if (cancelled) return;
 
@@ -98,6 +119,76 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // BoldSign: re-read the document list until the backend says signed (guide §2). Fast after the return is seen
+  // (2 s, up to 30 s), slow the whole time the sheet is open (5 s), never from the browser's say-so.
+  useEffect(() => {
+    if (!frameUrl || !conversationId) return;
+    let stopped = false;
+    let fastTicks = 0;
+    const read = async () => {
+      try {
+        const d = await fetchDocuments(conversationId);
+        if (stopped) return;
+        const want = itemIdRef.current;
+        const row = d.signing.find((x) => (want ? x.itemId === want : x.isRetainer && x.status === 'signed'));
+        if (row?.status === 'signed') {
+          stopped = true;
+          if (signedRef.current) return;
+          signedRef.current = true;
+          socket?.send({ type: 'document_signed', itemId: row.itemId });
+          if (signing.messageId) {
+            updateMessage(signing.messageId, { retainerStatus: 'signed', selectedOption: 'signed' });
+          }
+          setActiveSigning(null);
+          useWidgetStore.getState().beginTyping();
+        }
+      } catch {
+        /* a read; the next tick tries again */
+      }
+    };
+    const slowTimer = setInterval(() => { void read(); }, 5000);
+    let fastTimer: ReturnType<typeof setInterval> | null = null;
+    if (confirming) {
+      void read();
+      fastTimer = setInterval(() => {
+        fastTicks += 1;
+        if (fastTicks >= 15) {
+          if (fastTimer) clearInterval(fastTimer);
+          fastTimer = null;
+          setSlow(true);
+          return;
+        }
+        void read();
+      }, 2000);
+    }
+    return () => {
+      stopped = true;
+      clearInterval(slowTimer);
+      if (fastTimer) clearInterval(fastTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameUrl, confirming, conversationId]);
+
+  // The portal page, booting inside the iframe after Finish, posts {type: "esign:signed", itemId} to any parent.
+  // It carries no secret and is only a cue to re-read; the list is the source of truth.
+  useEffect(() => {
+    if (!frameUrl) return;
+    const onMessage = (e: MessageEvent) => {
+      const d = e.data as { type?: string; itemId?: string } | null;
+      if (d?.type === 'esign:signed') setConfirming(true);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [frameUrl]);
+
+  // The iframe's first load is BoldSign; a second load means it navigated away (back to the portal after Finish).
+  const onFrameLoad = () => {
+    setFrameLoads((n) => {
+      if (n + 1 >= 2) setConfirming(true);
+      return n + 1;
+    });
+  };
+
   return (
     <FocusTrap focusTrapOptions={{ escapeDeactivates: false, allowOutsideClick: true }}>
       <div
@@ -109,7 +200,13 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
         <div className="flex shrink-0 items-center justify-between border-b border-hairline px-4 py-3">
           <div>
             <h2 className="text-[15px] font-semibold text-ink">{signing.name}</h2>
-            <p className="mt-0.5 text-[12px] text-muted">{t('Review and sign to continue.')}</p>
+            <p className="mt-0.5 text-[12px] text-muted">
+              {confirming
+                ? slow
+                  ? t('Signed. We’re finalising it, this can take a minute.')
+                  : t('Saving your signature…')
+                : t('Review and sign to continue.')}
+            </p>
           </div>
           <button
             type="button"
@@ -121,18 +218,30 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
           </button>
         </div>
 
-        {/* The Dropbox Sign SDK renders its iframe into this container. */}
+        {/* Dropbox: the SDK renders its iframe into this container. BoldSign: our own iframe, below. */}
         <div ref={containerRef} className="relative min-h-0 flex-1 bg-white">
           {error ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
               <p className="text-[13px] font-medium text-ink">{error}</p>
             </div>
           ) : (
-            !launched && (
-              <div className="flex h-full items-center justify-center">
+            (!launched || (frameUrl && (frameLoads === 0 || confirming))) && (
+              <div className="absolute inset-0 flex items-center justify-center">
                 <SpinnerIcon size={24} className="text-famaash" />
               </div>
             )
+          )}
+          {frameUrl && !error && (
+            // No sandbox: BoldSign needs scripts, forms, popups and same-origin (boldsign guide §11).
+            <iframe
+              src={frameUrl}
+              title={t('Sign your document')}
+              allow="clipboard-write"
+              onLoad={onFrameLoad}
+              data-testid="boldsign-frame"
+              className="relative h-full w-full border-0"
+              style={{ visibility: confirming ? 'hidden' : 'visible' }}
+            />
           )}
         </div>
 

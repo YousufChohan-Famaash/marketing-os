@@ -349,6 +349,9 @@ const ES: Record<string, string> = {
   'Signing failed. Please try again.': 'La firma falló. Inténtelo de nuevo.',
   'Could not load the document. Please try again.': 'No se pudo cargar el documento. Inténtelo de nuevo.',
   'Review and sign to continue.': 'Revise y firme para continuar.',
+  'Saving your signature…': 'Guardando su firma…',
+  'Signed. We’re finalising it, this can take a minute.': 'Firmado. Lo estamos finalizando, puede tardar un minuto.',
+  'Sign your document': 'Firme su documento',
   'Close document': 'Cerrar documento',
   // ── Voice / video prototype chunks ──
   'Voice with AI agent': 'Voz con el agente de IA',

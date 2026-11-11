@@ -52,6 +52,8 @@ export interface EsignSessionResponse {
   signingUrl: string;
   itemId?: string;
   isRetainer?: boolean;
+  /** "boldsign" → a plain iframe; "dropbox" (or absent) → the Dropbox SDK (boldsign guide §4.4). */
+  signingProvider?: 'boldsign' | 'dropbox' | (string & {});
 }
 
 /** One document in the document-collection state (signing or upload list). */
