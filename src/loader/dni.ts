@@ -357,13 +357,18 @@ export function initDni(firmId: string, explicitApiBase?: string | null): Dni {
     // Off (the firm's switch, or nothing to swap to): change nothing on the page.
     if (!swapOn || !cfg || cfg.enabled === false || !cfg.default) { stop(); return; }
     if (cfg.after_hours) {
-      // After hours (after-hours-number guide §2): `default` is the after-hours number and every visitor sees it,
-      // whatever their source. The printed number is `site_number`; each tagged element gives up its own anyway
-      // (heldNumber), and the untagged tel: links to the printed number swap through the safety net.
-      const night = national(cfg.default);
+      // After hours (after-hours-number guide §2; Faisal, 12 Nov): `default` is the after-hours number, for a direct
+      // visitor and for a source with no number of its own (Facebook, GBP, a directory, another site). A source
+      // with a number keeps it, the same as by day. The printed number is `site_number`; each tagged element gives
+      // up its own anyway (heldNumber), and the untagged tel: links to the printed number swap through the safety net.
       const site = national(siteNumber(firmId, cfg));
-      if (!night || night === site) { stop(); return; }
-      start(cfg.default, site, night);
+      const own = cfg.sources?.[source]
+        ?? ((source === 'google_organic' || source === 'organic_search') ? cfg.sources?.organic : undefined)
+        ?? (source === 'google_paid' ? cfg.sources?.google_ads : undefined);
+      const target = own || cfg.default;
+      const next = national(target);
+      if (!next || next === site) { stop(); return; }
+      start(target, site, next);
       return;
     }
     const main = national(siteNumber(firmId, cfg) ?? cfg.default);
