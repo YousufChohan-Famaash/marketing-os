@@ -42,7 +42,7 @@ export interface DniConfig {
 
 /** The source keys the classifier produces. Ali maps each tracking number's lead_source to one of these. */
 export const DNI_SOURCE_KEYS = [
-  'google_paid', 'google_ads', 'bing_ads', 'facebook_ads', 'chatgpt_ads', 'gbp', 'email', 'ai_search', 'google_organic', 'organic_search', 'social', 'directory', 'referral', 'other',
+  'google_paid', 'google_ads', 'bing_ads', 'facebook_ads', 'chatgpt_ads', 'lsa', 'gbp', 'email', 'ai_search', 'google_organic', 'organic_search', 'social', 'directory', 'referral', 'other',
 ] as const;
 export type DniSource = (typeof DNI_SOURCE_KEYS)[number] | 'direct';
 
@@ -109,6 +109,9 @@ export function classifyVisit(loc: { search: string; hostname: string }, referre
   // A ChatGPT ad click (ai-search guide §2.1), before the free AI-answer rule, or every ad click would count as free
   // traffic. ChatGPT Ads adds `oppref` to every click; the advertiser's own tag is utm_source=chatgpt_ads.
   if (src === 'chatgpt_ads' || (/^(chatgpt\.com|chatgpt|openai)$/.test(src) && paid) || q.has('oppref')) return 'chatgpt_ads';
+  // Google shows the LSA number inside the ad itself; a site visit is LSA only when the link from the LSA profile is
+  // tagged (Ali, Nov 3).
+  if (/^(lsa|google_lsa|localservices|local_services)$/.test(src)) return 'lsa';
   if (/^(gbp|google_business|google_my_business|gmb|googlemybusiness)$/.test(src)) return 'gbp';
   if (/^(email|sms|text|newsletter)$/.test(med)) return 'email';
   if (src) {
