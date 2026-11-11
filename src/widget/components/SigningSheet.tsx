@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../services/socketContext';
 import { useWidgetStore } from '../store/widgetStore';
 import type { ActiveSigning } from '../store/slices/uiSlice';
-import { createEsignSession, fetchDocuments } from '../services/api';
+import { ApiError, createEsignSession, fetchDocuments } from '../services/api';
 import { CloseIcon, SpinnerIcon } from '../utils/icons';
 import { useT } from '../i18n';
 
@@ -102,8 +102,17 @@ export function SigningSheet({ signing }: { signing: ActiveSigning }) {
           skipDomainVerification: testMode,
         });
         if (!cancelled) setLaunched(true);
-      } catch {
-        if (!cancelled) setError(t('Could not load the document. Please try again.'));
+      } catch (e) {
+        if (cancelled) return;
+        // Withdrawn by the firm (cancel-signing guide §7): the backend's own words, and nothing to sign.
+        if (e instanceof ApiError && e.status === 410) {
+          let msg = '';
+          try { const d = JSON.parse(e.detail ?? '') as { detail?: { message?: string } }; msg = d.detail?.message ?? ''; } catch { /* no body */ }
+          setError(msg || t('This document was withdrawn by the firm. There is nothing to sign.'));
+          if (signing.messageId) updateMessage(signing.messageId, { selectedOption: 'cancelled' });
+          return;
+        }
+        setError(t('Could not load the document. Please try again.'));
       }
     })();
 

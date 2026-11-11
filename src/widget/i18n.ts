@@ -352,6 +352,8 @@ const ES: Record<string, string> = {
   'Saving your signature…': 'Guardando su firma…',
   'Signed. We’re finalising it, this can take a minute.': 'Firmado. Lo estamos finalizando, puede tardar un minuto.',
   'Sign your document': 'Firme su documento',
+  'This document was withdrawn by the firm. There is nothing to sign.': 'La firma retiró este documento. No hay nada que firmar.',
+  'withdrawn': 'retirado',
   'Close document': 'Cerrar documento',
   // ── Voice / video prototype chunks ──
   'Voice with AI agent': 'Voz con el agente de IA',

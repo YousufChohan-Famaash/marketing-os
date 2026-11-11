@@ -23,6 +23,8 @@ export function DocumentSignCard({ message }: { message: Message }) {
   const allowSkip = doc?.allowSkip === true;
   const signed = message.selectedOption === 'signed' || doc?.status === 'signed';
   const skipped = message.selectedOption === 'skipped';
+  // Withdrawn by the firm (cancel-signing guide): a stale card reads as settled, nothing to sign.
+  const withdrawn = message.selectedOption === 'cancelled';
 
   const open = () => {
     setActiveSigning({ itemId: doc?.itemId, name, messageId: message.id });
@@ -35,7 +37,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
     useWidgetStore.getState().beginTyping();
   };
 
-  if (signed || skipped) {
+  if (signed || skipped || withdrawn) {
     return (
       <div
         className={cn(
@@ -51,7 +53,7 @@ export function DocumentSignCard({ message }: { message: Message }) {
           <FileIcon size={16} className="shrink-0 text-muted" aria-hidden="true" />
         )}
         <span className="font-medium">{name}</span>
-        <span>{signed ? t('signed') : t('skipped')}</span>
+        <span>{signed ? t('signed') : withdrawn ? t('withdrawn') : t('skipped')}</span>
       </div>
     );
   }
